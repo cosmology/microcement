@@ -80,10 +80,9 @@ export default function LuxurySection() {
           initial={{ opacity: 0, y: 40 }}
           animate={getAnim(headerState, forceIntro)}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-12"
-          style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}
+          className="text-4xl md:text-5xl font-bold text-center mb-12 text-gray-900 dark:text-white"
         >
-          A New Kind of Luxury
+          Luxury Redefined
         </motion.h2>
 
         <motion.div

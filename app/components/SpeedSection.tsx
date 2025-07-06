@@ -55,10 +55,9 @@ export default function SpeedSection() {
           initial={{ opacity: 0, y: 40 }}
           animate={getAnim(headerState)}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          className="text-4xl md:text-5xl font-bold text-center text-gray-900 dark:text-white mb-8"
-          style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}
+          className="text-4xl md:text-5xl font-bold text-center mb-12 text-gray-900 dark:text-white"
         >
-          Fast Remodels with Minimal Disruption
+          Speed & Efficiency
         </motion.h2>
 
         <motion.div
@@ -68,11 +67,11 @@ export default function SpeedSection() {
           transition={{ duration: 0.7, ease: "easeOut", delay: 0.2 }}
           className="flex flex-col md:flex-row justify-center items-center mb-12 space-y-4 md:space-y-0 md:space-x-8"
         >
-          <h3 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-200" style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}>
-            Renovate in Days,
+          <h3 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-200">
+            Installation in Hours, Not Days
           </h3>
-          <h3 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-200" style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}>
-            Not Weeks.
+          <h3 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-200">
+            Minimal Disruption
           </h3>
         </motion.div>
 
@@ -99,8 +98,8 @@ export default function SpeedSection() {
             transition={{ duration: 0.7, ease: "easeOut", delay: 0.6 }}
             className="space-y-6"
           >
-            <h4 className="text-xl font-semibold text-gray-900 dark:text-white" style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}>
-              Perfect for Live-in or Active Spaces
+            <h4 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Quick Application
             </h4>
             <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">
               No need to shut down your café, leave your home, or relocate your staff. Our quick-dry systems and

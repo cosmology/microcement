@@ -8,37 +8,37 @@ const textures = [
   {
     name: "Smooth Finish",
     description: "Ultra-smooth surface perfect for modern minimalist designs",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/microcement/placeholder.svg?height=300&width=300",
     color: "Light Gray",
   },
   {
     name: "Fine Texture",
     description: "Subtle texture that adds depth while maintaining elegance",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/microcement/placeholder.svg?height=300&width=300",
     color: "Warm White",
   },
   {
     name: "Medium Grain",
     description: "Balanced texture ideal for high-traffic commercial spaces",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/microcement/placeholder.svg?height=300&width=300",
     color: "Charcoal",
   },
   {
     name: "Rustic Finish",
     description: "Natural, organic texture for industrial and rustic aesthetics",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/microcement/placeholder.svg?height=300&width=300",
     color: "Earth Tone",
   },
   {
     name: "Polished",
     description: "High-gloss finish that reflects light beautifully",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/microcement/placeholder.svg?height=300&width=300",
     color: "Pure White",
   },
   {
     name: "Matte Stone",
     description: "Stone-like appearance with natural variations",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/microcement/placeholder.svg?height=300&width=300",
     color: "Slate Gray",
   },
 ]
@@ -106,9 +106,8 @@ export default function TextureSamples() {
           animate={getAnim(headerState)}
           transition={{ duration: 0.7, ease: "easeOut" }}
           className="text-4xl md:text-5xl font-bold text-center text-gray-900 dark:text-white mb-4"
-          style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}
         >
-          Texture & Finish Options
+          Texture Samples
         </motion.h2>
 
         <motion.p
@@ -145,7 +144,7 @@ export default function TextureSamples() {
                 </div>
               </div>
               <div className="p-6">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3" style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}>{texture.name}</h3>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{texture.name}</h3>
                 <p className="text-gray-600 dark:text-gray-300">{texture.description}</p>
               </div>
             </motion.div>

@@ -10,8 +10,9 @@ const nextConfig = {
     unoptimized: true,
   },
   output: 'standalone',
-  basePath: '/microcement',
-  assetPrefix: '/microcement',
+  basePath: "/microcement",
+  assetPrefix: "/microcement",
+  transpilePackages: ['geist'], // Add this line
 }
 
 export default nextConfig

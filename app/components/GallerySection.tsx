@@ -173,7 +173,7 @@ export default function GallerySection() {
             >
               <ElementType 
                 className={element.className}
-                style={element.type === "h2" ? { fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' } : {}}
+                style={element.type === "h2" ? {} : {}}
               >
                 {element.content}
               </ElementType>
@@ -213,7 +213,7 @@ export default function GallerySection() {
             >
               <div className="relative overflow-hidden">
                 <Image
-                  src={item.image || "/placeholder.svg"}
+                  src={item.image || "/microcement/placeholder.svg"}
                   alt={item.title}
                   width={600}
                   height={400}
@@ -234,7 +234,7 @@ export default function GallerySection() {
                 <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-sm rounded-full mb-3">
                   {item.category}
                 </span>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2" style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}>{item.title}</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{item.title}</h3>
                 <p className="text-gray-600 dark:text-gray-300 text-sm">{item.description}</p>
               </div>
             </motion.div>
@@ -259,7 +259,7 @@ export default function GallerySection() {
             >
               <div className="relative">
                 <Image
-                  src={selectedImage.image || "/placeholder.svg"}
+                  src={selectedImage.image || "/microcement/placeholder.svg"}
                   alt={selectedImage.title}
                   width={800}
                   height={600}
@@ -275,7 +275,7 @@ export default function GallerySection() {
                 </button>
               </div>
               <div className="p-6">
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2" style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}>{selectedImage.title}</h3>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{selectedImage.title}</h3>
                 <p className="text-gray-600 dark:text-gray-300 mb-4">{selectedImage.description}</p>
                 <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-sm rounded-full">
                   {selectedImage.category}

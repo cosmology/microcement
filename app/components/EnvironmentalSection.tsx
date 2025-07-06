@@ -102,10 +102,9 @@ export default function EnvironmentalSection() {
           initial={{ opacity: 0, y: 40 }}
           animate={getAnim(headerState, forceIntro)}
           transition={{ duration: 0.7, ease: "easeIn" }}
-          className="text-4xl md:text-5xl font-bold text-center text-gray-900 dark:text-white mb-8"
-          style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}
+          className="text-4xl md:text-5xl font-bold text-center mb-12 text-gray-900 dark:text-white"
         >
-          Eco-Friendly by Design
+          Environmental Benefits
         </motion.h2>
 
         <motion.h3
@@ -114,9 +113,8 @@ export default function EnvironmentalSection() {
           animate={getAnim(subheaderState, forceIntro)}
           transition={{ duration: 0.7, ease: "easeIn" }}
           className="text-3xl md:text-4xl font-bold text-center text-gray-800 dark:text-gray-200 mb-12"
-          style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}
         >
-          Sustainable surfaces that don't compromise on style
+          Sustainable. Responsible. Beautiful.
         </motion.h3>
 
         <motion.div
@@ -142,7 +140,6 @@ export default function EnvironmentalSection() {
               animate={getAnim(ecoHeaderState, forceIntro)}
               transition={{ duration: 0.7, ease: "easeIn" }}
               className="text-2xl font-bold text-gray-900 dark:text-white mb-6"
-              style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}
             >
               Eco-Friendly Composition
             </motion.h4>
@@ -162,8 +159,8 @@ export default function EnvironmentalSection() {
 
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-700 p-6 rounded-lg border border-gray-200 dark:border-gray-600">
-              <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-3" style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}>
-                Reduced Carbon Footprint
+              <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                Reduced Waste
               </h5>
               <p className="text-gray-700 dark:text-gray-300">
                 Up to 60% less CO2 emissions compared to traditional tile and stone installations.
@@ -171,8 +168,8 @@ export default function EnvironmentalSection() {
             </div>
 
             <div className="bg-white dark:bg-gray-700 p-6 rounded-lg border border-gray-200 dark:border-gray-600">
-              <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-3" style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}>
-                Zero Waste Installation
+              <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                Longevity
               </h5>
               <p className="text-gray-700 dark:text-gray-300">
                 Applied directly over existing surfaces, eliminating demolition waste and material disposal.
@@ -180,7 +177,7 @@ export default function EnvironmentalSection() {
             </div>
 
             <div className="bg-white dark:bg-gray-700 p-6 rounded-lg border border-gray-200 dark:border-gray-600">
-              <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-3" style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}>
+              <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
                 Long-Term Durability
               </h5>
               <p className="text-gray-700 dark:text-gray-300">
