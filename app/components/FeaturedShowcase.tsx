@@ -9,19 +9,19 @@ const featuredProjects = [
     id: 1,
     title: "Hair Salon",
     location: "Sunset West Hollywood, Los Angeles",
-    image: "/images/featured/west-hollywood-sunset-hair-salon.png",
+    image: "/microcement/images/featured/west-hollywood-sunset-hair-salon.png",
     description:
-      "A high-end fashion boutique featuring dramatic micro-cement walls and floors that create an industrial-chic atmosphere.",
-    features: ["Unique textures", "Brand color matching", "Durable finish", "Instagram-worthy design"],
+      "A 2 day project turn around for a prestigious West Hollywood hair salon with minimal business disruption.",
+    features: ["Quick installation", "Durable finish", "Topcrete featured gallery", "Eco-friendly materials", "Eco-cemento"],
   },
   {
     id: 2,
-    title: "Luxury Hotel Lobby",
-    location: "Manhattan, NYC",
-    image: "https://www.idealwork.com/wp-content/uploads/2017/08/slider_Appartamento_Belgio_MT1.jpg",
+    title: "Custom Bath Countertop",
+    location: "San Diego, CA",
+    image: "/microcement/images/gallery/b&a/bath_after.jpg",
     description:
-      "A stunning 2,000 sq ft lobby transformation completed in just 4 days with minimal disruption to hotel operations.",
-    features: ["Seamless flooring", "Custom color matching", "High-traffic durability", "Quick installation"],
+      "A one day face-lift bathroom countertop project over existing 50 year old plastered surface. The client wanted a modern, clean look with a custom color with fast installation.",
+    features: ["Quick installation", "Custom color matching", "Eco-friendly materials"],
   },
   {
     id: 3,
@@ -158,7 +158,7 @@ export default function FeaturedShowcase() {
             >
               <ElementType 
                 className={element.className}
-                style={element.type === "h2" ? { fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' } : {}}
+                style={element.type === "h2" ? {} : {}}
               >
                 {element.content}
               </ElementType>
@@ -196,13 +196,13 @@ export default function FeaturedShowcase() {
 
               <div className="lg:w-1/2 space-y-6">
                 <div>
-                  <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-2" style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}>{project.title}</h3>
+                  <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{project.title}</h3>
                   <p className="text-lg text-gray-600 dark:text-gray-400 mb-4">{project.location}</p>
                   <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">{project.description}</p>
                 </div>
 
                 <div>
-                  <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-4" style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}>Key Features:</h4>
+                  <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Key Features:</h4>
                   <div className="grid grid-cols-2 gap-3">
                     {project.features.map((feature, featureIndex) => (
                       <motion.div

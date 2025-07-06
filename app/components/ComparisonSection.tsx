@@ -107,7 +107,7 @@ export default function ComparisonSection() {
             >
               <ElementType 
                 className={element.className}
-                style={element.type === "h2" || element.type === "h3" ? { fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' } : {}}
+                style={element.type === "h2" || element.type === "h3" ? {} : {}}
               >
                 {element.content}
               </ElementType>

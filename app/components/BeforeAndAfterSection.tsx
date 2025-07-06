@@ -185,8 +185,7 @@ export default function BeforeAndAfterSection() {
       <div className="w-full max-w-6xl mx-auto px-4">
         <motion.h2 
           ref={headerRef}
-          className="text-4xl md:text-5xl font-bold text-center mb-12 text-gray-900 dark:text-white"
-          style={{ fontFamily: '"Publico Banner", "Frutiger LT Pro", "Narkiss Tam", sans-serif' }}
+          className="text-4xl md:text-5xl font-bold text-center text-gray-900 dark:text-white"
           initial={{ opacity: 0, y: 40 }}
           animate={{
             opacity: (headerState.visible && !headerState.out) || forceIntro ? 1 : 0,
@@ -332,7 +331,7 @@ export default function BeforeAndAfterSection() {
         </div>
 
         {/* Navigation Arrows - Only show when there are items to navigate to */}
-        <div className="flex justify-between items-center mt-8 max-w-4xl mx-auto bg-transparent">
+        <div className="flex justify-between items-center max-w-4xl mx-auto bg-transparent">
           {/* Left arrow - only show if not at first item */}
           {currentIndex > 0 && (
             <motion.button
@@ -375,7 +374,7 @@ export default function BeforeAndAfterSection() {
         </div>
 
         {/* Carousel Thumbnails */}
-        <div className="flex justify-center items-center mt-8 space-x-4">
+        <div className="flex justify-center items-center mt-4 space-x-4">
           {beforeAfterPairs.map((pair, idx) => (
             <button
               key={pair.id}

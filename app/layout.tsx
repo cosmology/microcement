@@ -1,9 +1,14 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 
-const inter = Inter({ subsets: ["latin"] })
+import { Nunito_Sans } from 'next/font/google'
+ 
+const nunito = Nunito_Sans({
+  subsets: ['latin'],
+})
+
+// const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Microcement - Transform Spaces Sustainably",
@@ -17,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={nunito.className}>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
