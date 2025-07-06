@@ -9,6 +9,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  basePath: "/microcement",
   output: "export",
   reactStrictMode: true,
 }
