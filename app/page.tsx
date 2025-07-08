@@ -14,6 +14,7 @@ import LuxurySection from "./components/LuxurySection"
 import SpeedSection from "./components/SpeedSection"
 import BenefitsSection from "./components/BenefitsSection"
 import CTASection from "./components/CTASection"
+import NavigationSection from "./components/NavigationSection"
 
 export default function Home() {
   const { scrollYProgress } = useScroll()
@@ -27,7 +28,8 @@ export default function Home() {
 
   return (
     <div className="relative">
-      <StickyNav />
+      {/* <StickyNav /> */}
+      <NavigationSection />
       <main className="relative">
         <HeroSection />
         <EnvironmentalSection />
