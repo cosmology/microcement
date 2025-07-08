@@ -178,7 +178,7 @@ export default function BeforeAndAfterSection() {
   }
 
   return (
-    <section id="before-and-after" ref={sectionRef} className="w-full flex flex-col items-center py-20 bg-gray-50 dark:bg-gray-900">
+    <section id="before-after" ref={sectionRef} className="w-full flex flex-col items-center py-20 bg-gray-50 dark:bg-gray-900">
       <div className="w-full max-w-6xl mx-auto px-4">
         <motion.h2 
           ref={headerRef}

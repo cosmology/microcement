@@ -71,6 +71,7 @@ export default function LuxurySection() {
 
   return (
     <section 
+      id="luxury"
       ref={sectionRef} 
       className="py-20 bg-gray-50 dark:bg-gray-800 px-6"
     >
