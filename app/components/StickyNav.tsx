@@ -7,8 +7,11 @@ import { ThemeToggle } from "@/components/theme-toggle"
 const navItems = [
   { name: "Eco Friendly", href: "#environmental", sectionId: "environmental" },
   { name: "Sleek", href: "#comparison", sectionId: "comparison" },
-  { name: "Gallery", href: "#gallery", sectionId: "gallery" },
   { name: "Speed", href: "#speed", sectionId: "speed" },
+  { name: "Gallery", href: "#gallery", sectionId: "gallery" },
+  { name: "Featured", href: "#featured", sectionId: "featured" },
+  { name: "Before/After", href: "#before-and-after", sectionId: "before-and-after" },
+  { name: "Textures", href: "#textures", sectionId: "texturesr" },
   { name: "Benefits", href: "#benefits", sectionId: "benefits" },
 ]
 

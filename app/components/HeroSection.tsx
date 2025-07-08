@@ -5,7 +5,7 @@ import { useRef, useEffect, useState } from "react"
 import { globalNavigation } from "@/lib/navigation"
 
 const LINES = [
-  { text: "Transform Spaces.", from: "left" },
+  { text: "Transform.", from: "left" },
   { text: "Sustainably.", from: "right" },
   { text: "Stylishly.", from: "left" },
   { text: "Fast.", from: "right" },
@@ -61,12 +61,12 @@ export default function HeroSection() {
       style={{ scrollSnapAlign: "start" }}
     >
       <div className="w-full max-w-4xl flex flex-col items-center justify-center text-center relative z-10">
-        <div className="text-5xl md:text-7xl font-bold text-gray-900 dark:text-white leading-tight flex flex-col gap-2 w-full">
+        <div className="text-5xl md:text-7xl font-bold text-gray-900 dark:text-white leading-relaxed flex flex-col gap-4 w-full">
           {LINES.map((line, i) => {
             let initialX = line.from === "left" ? -120 : 120
             let animateX = lineStates[i].visible ? 0 : initialX
-            let animateY = lineStates[i].out ? -40 : 0
-            let opacity = lineStates[i].visible ? 1 : 0
+            let animateY = lineStates[i].out ? -20 : 0
+            let opacity = lineStates[i].visible ? 1 : 1
             if (lineStates[i].out) opacity = 0
 
             return (

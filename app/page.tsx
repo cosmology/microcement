@@ -30,16 +30,16 @@ export default function Home() {
       <StickyNav />
       <main className="relative">
         <HeroSection />
-        <BeforeAndAfterSection />
         <EnvironmentalSection />
         <ComparisonSection />
+        <SpeedSection />
         <GallerySection />
         <FeaturedShowcase />
         <TextureSamples />
         <LuxurySection />
-        <SpeedSection />
         <BenefitsSection />
-        <CTASection />
+        <BeforeAndAfterSection />
+        <CTASection /> 
       </main>
     </div>
   )

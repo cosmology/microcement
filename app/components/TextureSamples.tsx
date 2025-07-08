@@ -98,7 +98,7 @@ export default function TextureSamples() {
   }
 
   return (
-    <section ref={sectionRef} className="py-20 bg-gray-100 dark:bg-gray-800 px-6">
+    <section id="textures" ref={sectionRef} className="py-20 bg-gray-100 dark:bg-gray-800 px-6">
       <div className="max-w-7xl mx-auto">
         <motion.h2
           ref={headerRef}
