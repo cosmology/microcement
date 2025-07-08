@@ -38,6 +38,7 @@ const beforeAfterPairs: BeforeAfterPair[] = [
 
 export default function BeforeAndAfterSection() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const sectionRef = useRef<HTMLDivElement>(null)
   const carouselRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLHeadingElement>(null)
   const [sliderX, setSliderX] = useState(50)
@@ -131,15 +132,15 @@ export default function BeforeAndAfterSection() {
 
   // Calculate positions for 3D perspective
   const calculateItemPosition = (index: number) => {
-    const activeWidth = containerWidth * 0.6 // 60% of container width
-    const nonActiveWidth = containerWidth * 0.15 // 15% of container width for non-active items
+    const activeWidth = Math.min(containerWidth * 0.6, containerWidth); // Clamp to container width
+    const nonActiveWidth = Math.min(containerWidth * 0.15, containerWidth); // Clamp to container width
     
     if (index === currentIndex) {
       // Active item is centered
       return {
         width: activeWidth,
-        left: containerCenter - (activeWidth / 2),
-        top: (containerHeight - (activeWidth * 0.5)) / 2, // Center vertically based on aspect ratio
+        left: Math.max(0, containerCenter - (activeWidth / 2)),
+        top: (containerHeight - (activeWidth * 0.5)) / 2,
         scale: 1,
         opacity: 1,
         zIndex: 20,
@@ -149,23 +150,19 @@ export default function BeforeAndAfterSection() {
       const distance = index - currentIndex
       const isLeft = distance < 0
       
-      // Calculate position based on distance from active item
       let left: number
       if (isLeft) {
-        // Items to the left
-        left = containerCenter - (activeWidth / 2) - (Math.abs(distance) * nonActiveWidth * 1.2)
+        left = Math.max(0, containerCenter - (activeWidth / 2) - (Math.abs(distance) * nonActiveWidth * 1.2));
       } else {
-        // Items to the right
-        left = containerCenter + (activeWidth / 2) + ((distance - 1) * nonActiveWidth * 1.2)
+        left = Math.min(containerWidth - nonActiveWidth, containerCenter + (activeWidth / 2) + ((distance - 1) * nonActiveWidth * 1.2));
       }
       
       const scale = Math.max(0.3, 1 - Math.abs(distance) * 0.25)
       const opacity = Math.max(0.2, 1 - Math.abs(distance) * 0.4)
       const zIndex = 20 - Math.abs(distance)
-      const blur = Math.min(8, Math.abs(distance) * 2) // Progressive blur effect
+      const blur = Math.min(8, Math.abs(distance) * 2)
       
-      // Calculate vertical position for non-active items (scaled height)
-      const itemHeight = nonActiveWidth * 0.5 // aspect ratio 2:1
+      const itemHeight = nonActiveWidth * 0.5
       const top = (containerHeight - (itemHeight * scale)) / 2
       
       return {
@@ -181,19 +178,15 @@ export default function BeforeAndAfterSection() {
   }
 
   return (
-    <section className="w-full flex flex-col items-center py-16 bg-gray-50 dark:bg-gray-900">
+    <section id="before-and-after" ref={sectionRef} className="w-full flex flex-col items-center py-20 bg-gray-50 dark:bg-gray-900">
       <div className="w-full max-w-6xl mx-auto px-4">
         <motion.h2 
           ref={headerRef}
           className="text-4xl md:text-5xl font-bold text-center text-gray-900 dark:text-white"
-          initial={{ opacity: 0, y: 40 }}
+          initial={{ opacity: 0 }}
           animate={{
             opacity: (headerState.visible && !headerState.out) || forceIntro ? 1 : 0,
-            y: (headerState.visible && !headerState.out) || forceIntro ? 0 : (headerState.out ? -40 : 40)
-          }}
-          transition={{
-            duration: 0.8,
-            ease: "easeInOut"
+            y: (headerState.visible && !headerState.out) || forceIntro ? 0 : (headerState.out ? 0 : 40)
           }}
         >
           Before & After Gallery
@@ -202,7 +195,7 @@ export default function BeforeAndAfterSection() {
         {/* Carousel Container - Increased height to accommodate title and shadows */}
         <div 
           ref={carouselRef}
-          className="relative w-full h-[32rem] overflow-visible"
+          className="relative w-full h-[26rem] overflow-visible"
         >
           {beforeAfterPairs.map((pair, idx) => {
             const position = calculateItemPosition(idx)

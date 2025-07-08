@@ -140,6 +140,7 @@ export default function FeaturedShowcase() {
 
   return (
     <section 
+      id="featured"
       ref={sectionRef} 
       className="py-20 bg-white dark:bg-gray-900 px-6"
     >
