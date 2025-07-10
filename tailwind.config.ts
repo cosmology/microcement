@@ -103,6 +103,7 @@ const config: Config = {
   			'light-main': '#b0b09e',
   			'light-dark': '#7c7c6a',
   			'light-light': '#e5e5db',
+  			'light-lightest': '#F9FAFB',
   		},
 		screens: {
 			'sm': '640px',
