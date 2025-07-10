@@ -91,14 +91,14 @@ export default function SpeedSection() {
   }
 
   return (
-    <section id="speed" ref={sectionRef} className="py-20 bg-light-main dark:bg-gray-900 px-6">
+    <section id="speed" ref={sectionRef} className="py-20 bg-light-light dark:bg-gray-900 px-6">
       <div className="max-w-6xl mx-auto">
         <motion.h2
           ref={headerRef}
           initial={{ opacity: 0, y: 40 }}
           animate={getAnim(headerState)}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          className="text-4xl md:text-5xl font-bold text-center mb-12 text-light-dark dark:text-white"
+          className="text-4xl md:text-5xl font-bold text-center mb-12 dark:text-white"
         >
           Speed & Efficiency
         </motion.h2>
@@ -160,7 +160,7 @@ export default function SpeedSection() {
               ref={el => (processRefs.current[index] = el)}
               initial={{ opacity: 0, y: 50 }}
               animate={getAnim(processStates[index])}
-              transition={{ duration: 0.7, ease: "easeOut", delay: 0.8 + index * 0.1 }}
+              transition={{ duration: 0.7, ease: "easeOut", delay: index * 0.1 }}
               className="space-y-8"
             >
               {/* Left-Aligned Title */}
@@ -168,13 +168,15 @@ export default function SpeedSection() {
                 <h4 className="text-xl md:text-2xl font-bold text-light-dark dark:text-white">
                   {step.title}
                 </h4>
+                <hr className="hr-divider" />
               </div>
+              
 
               {/* Image and Content Layout with Text Wrapping */}
               <div className="flex flex-wrap items-start gap-8">
                 {/* Image - 120px on small screens, 200px on larger screens */}
                 <div className="w-[120px] lg:w-[200px] flex-shrink-0">
-                  <div className="w-[120px] h-[180px] lg:w-[200px] lg:h-[300px] rounded-lg overflow-hidden shadow-lg">
+                  <div className="w-[120px] h-[180px] lg:w-[200px] lg:h-[300px] rounded-lg overflow-hidden border border-light-dark dark:border-gray-700">
                     <Image
                       src={step.image}
                       alt={step.imageAlt}

@@ -140,20 +140,23 @@ export default function NavigationSection() {
                 )
               )}
             </ul>
-            {/* Theme Toggle */}
-            <div className="flex-shrink-0 flex items-center ml-2">
-              <ThemeToggle />
+            {/* Right side controls - Theme Toggle and Hamburger */}
+            <div className="flex items-center gap-2">
+              {/* Theme Toggle */}
+              <div className="flex-shrink-0">
+                <ThemeToggle />
+              </div>
+              {/* Hamburger for mobile */}
+              <button
+                className="md:hidden flex items-center justify-center p-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-light-dark"
+                onClick={() => setMobileOpen((v) => !v)}
+                aria-label="Open menu"
+              >
+                <svg className="w-6 h-6 text-light-dark dark:text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
             </div>
-            {/* Hamburger for mobile */}
-            <button
-              className="md:hidden flex items-center justify-center p-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-light-dark"
-              onClick={() => setMobileOpen((v) => !v)}
-              aria-label="Open menu"
-            >
-              <svg className="w-6 h-6 text-light-dark dark:text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
           </div>
           {/* Mobile Menu */}
           <AnimatePresence>
