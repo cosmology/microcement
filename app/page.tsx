@@ -36,11 +36,11 @@ export default function Home() {
         <ComparisonSection />
         <SpeedSection />
         <GallerySection />
+        <BeforeAndAfterSection />
         <FeaturedShowcase />
         <TextureSamples />
         <LuxurySection />
         <BenefitsSection />
-        <BeforeAndAfterSection />
         <CTASection /> 
       </main>
     </div>
