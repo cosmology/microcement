@@ -305,7 +305,7 @@ export default function BeforeAndAfterSection() {
                       <div className="absolute top-4 left-4 bg-white/90 dark:bg-gray-800/90 px-3 py-1 rounded-full text-sm font-medium text-gray-900 dark:text-white">
                         Before
                       </div>
-                      <div className="absolute top-4 right-4 bg-black/90 text-white px-3 py-1 rounded-full text-sm font-medium">
+                      <div className="absolute top-4 right-4 bg-white/90 dark:bg-gray-800/90 px-3 py-1 rounded-full text-sm font-medium text-gray-900 dark:text-white">
                         After
                       </div>
                     </>
