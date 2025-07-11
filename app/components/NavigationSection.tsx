@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ThemeToggle } from "@/components/theme-toggle"
+import Image from "next/image"
 
 const galleryDropdown = [
   { name: "Before & After", href: "#before-after" },
@@ -25,8 +26,8 @@ const navLinks = [
 export default function NavigationSection() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
-  const [showNav, setShowNav] = useState(true)
-  const [navVisible, setNavVisible] = useState(true)
+  const [showNav, setShowNav] = useState(false) // Start hidden
+  const [navVisible, setNavVisible] = useState(false) // Start hidden
   const lastScrollY = useRef(0)
   const animating = useRef(false)
 
@@ -34,9 +35,10 @@ export default function NavigationSection() {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY
-      if (currentScrollY < 50) {
-        setShowNav(true)
-        setNavVisible(true)
+      if (currentScrollY < 100) {
+        // Hide nav when on HeroSection (top of page)
+        setShowNav(false)
+        setNavVisible(false)
       } else if (currentScrollY > lastScrollY.current) {
         setShowNav(false)
         setNavVisible(false)
@@ -84,7 +86,20 @@ export default function NavigationSection() {
           <div className="max-w-7xl mx-auto flex items-center justify-between h-12 sm:h-14 md:h-16 px-2 sm:px-4 md:px-8">
             {/* Logo or Brand */}
             <a href="#" className={`font-bold ${navFont} text-light-dark dark:text-white`}>
-              Microcement
+              <Image
+                src="/microcement/images/logo-horizontal.jpg"
+                alt="Microcement"
+                width={120}
+                height={50}
+                className="hidden sm:block h-8 w-auto"
+              />
+              <Image
+                src="/microcement/images/logo.jpg"
+                alt="Microcement"
+                width={80}
+                height={80}
+                className="block sm:hidden h-8 w-auto"
+              />
             </a>
             {/* Desktop Nav */}
             <ul className={`hidden md:flex items-center gap-2 sm:gap-4 md:gap-6 ${navFont}`}>

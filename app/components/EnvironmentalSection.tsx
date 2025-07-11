@@ -3,6 +3,14 @@
 import { motion } from "framer-motion"
 import { useRef, useEffect, useState } from "react"
 
+// Animation constants
+const ANIMATION_DURATION = 1
+const ANIMATION_EASING = "easeOut"
+const ANIMATION_Y_OFFSET = 20
+const INITIAL_Y_OFFSET = 40
+const SCROLL_VISIBILITY_THRESHOLD = 0.8
+const SCROLL_OUT_THRESHOLD = 50
+
 export default function EnvironmentalSection() {
   const sectionRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLHeadingElement>(null)
@@ -17,9 +25,6 @@ export default function EnvironmentalSection() {
   const [paraState, setParaState] = useState({ visible: false, out: false })
   const [ecoHeaderState, setEcoHeaderState] = useState({ visible: false, out: false })
   const [ecoParaState, setEcoParaState] = useState({ visible: false, out: false })
-  
-  // Force intro state for navigation triggers
-  const [forceIntro, setForceIntro] = useState(false)
 
   useEffect(() => {
     function onScroll() {
@@ -28,8 +33,8 @@ export default function EnvironmentalSection() {
         if (!ref.current) return { visible: false, out: false }
         const rect = ref.current.getBoundingClientRect()
         return {
-          visible: rect.top < window.innerHeight * 0.8,
-          out: rect.top < 50,
+          visible: rect.top < window.innerHeight * SCROLL_VISIBILITY_THRESHOLD,
+          out: rect.top < SCROLL_OUT_THRESHOLD,
         }
       }
       
@@ -40,10 +45,10 @@ export default function EnvironmentalSection() {
       if (paraRef.current && subheaderRef.current) {
         const paraRect = paraRef.current.getBoundingClientRect()
         const subheaderRect = subheaderRef.current.getBoundingClientRect()
-        const subheaderVisible = subheaderRect.top < window.innerHeight * 0.8 && subheaderRect.top >= 50
+        const subheaderVisible = subheaderRect.top < window.innerHeight * SCROLL_VISIBILITY_THRESHOLD && subheaderRect.top >= SCROLL_OUT_THRESHOLD
         setParaState({
-          visible: subheaderVisible && paraRect.top < window.innerHeight * 0.8,
-          out: paraRect.top < 50,
+          visible: subheaderVisible && paraRect.top < window.innerHeight * SCROLL_VISIBILITY_THRESHOLD,
+          out: paraRect.top < SCROLL_OUT_THRESHOLD,
         })
       }
       
@@ -53,10 +58,10 @@ export default function EnvironmentalSection() {
       if (ecoParaRef.current && ecoHeaderRef.current) {
         const ecoParaRect = ecoParaRef.current.getBoundingClientRect()
         const ecoHeaderRect = ecoHeaderRef.current.getBoundingClientRect()
-        const ecoHeaderVisible = ecoHeaderRect.top < window.innerHeight * 0.8 && ecoHeaderRect.top >= 50
+        const ecoHeaderVisible = ecoHeaderRect.top < window.innerHeight * SCROLL_VISIBILITY_THRESHOLD && ecoHeaderRect.top >= SCROLL_OUT_THRESHOLD
         setEcoParaState({
-          visible: ecoHeaderVisible && ecoParaRect.top < window.innerHeight * 0.8,
-          out: ecoParaRect.top < 50,
+          visible: ecoHeaderVisible && ecoParaRect.top < window.innerHeight * SCROLL_VISIBILITY_THRESHOLD,
+          out: ecoParaRect.top < SCROLL_OUT_THRESHOLD,
         })
       }
     }
@@ -66,27 +71,11 @@ export default function EnvironmentalSection() {
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
 
-  // Listen for navigation events
-  useEffect(() => {
-    function onNavActivate(e: any) {
-      if (e.detail?.sectionId === "environmental") {
-        setForceIntro(true)
-        // Reset after animation completes
-        setTimeout(() => setForceIntro(false), 1500)
-      }
-    }
-    window.addEventListener("section-nav-activate", onNavActivate)
-    return () => window.removeEventListener("section-nav-activate", onNavActivate)
-  }, [])
-
-  // Animation helper with force intro support
-  function getAnim(state: { visible: boolean; out: boolean }, force = false) {
-    if (force) {
-      return { opacity: 1, y: 0 }
-    }
+  // Animation helper
+  function getAnim(state: { visible: boolean; out: boolean }) {
     return {
       opacity: state.visible && !state.out ? 1 : 0,
-      y: state.out ? -40 : state.visible ? 0 : 40,
+      y: state.out ? -ANIMATION_Y_OFFSET : state.visible ? 0 : ANIMATION_Y_OFFSET,
     }
   }
 
@@ -99,9 +88,9 @@ export default function EnvironmentalSection() {
       <div className="max-w-6xl mx-auto">
         <motion.h2
           ref={headerRef}
-          initial={{ opacity: 0, y: 40 }}
-          animate={getAnim(headerState, forceIntro)}
-          transition={{ duration: 0.7, ease: "easeIn" }}
+          initial={{ opacity: 0, y: INITIAL_Y_OFFSET }}
+          animate={getAnim(headerState)}
+          transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
           className="text-4xl md:text-5xl font-bold text-center mb-12 text-gray-900 dark:text-white"
         >
           Environmental Benefits
@@ -109,9 +98,9 @@ export default function EnvironmentalSection() {
 
         <motion.h3
           ref={subheaderRef}
-          initial={{ opacity: 0, y: 40 }}
-          animate={getAnim(subheaderState, forceIntro)}
-          transition={{ duration: 0.7, ease: "easeIn" }}
+          initial={{ opacity: 0, y: INITIAL_Y_OFFSET }}
+          animate={getAnim(subheaderState)}
+          transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
           className="text-3xl md:text-4xl font-bold text-center text-gray-800 dark:text-gray-200 mb-12"
         >
           Sustainable. Responsible. Beautiful.
@@ -119,9 +108,9 @@ export default function EnvironmentalSection() {
 
         <motion.div
           ref={paraRef}
-          initial={{ opacity: 0, y: 40 }}
-          animate={getAnim(paraState, forceIntro)}
-          transition={{ duration: 0.7, ease: "easeIn" }}
+          initial={{ opacity: 0, y: INITIAL_Y_OFFSET }}
+          animate={getAnim(paraState)}
+          transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
           className="max-w-4xl mx-auto mb-16"
         >
           <p className="text-xl text-gray-700 dark:text-gray-300 leading-relaxed text-center">
@@ -136,9 +125,9 @@ export default function EnvironmentalSection() {
           <div>
             <motion.h4
               ref={ecoHeaderRef}
-              initial={{ opacity: 0, y: 40 }}
-              animate={getAnim(ecoHeaderState, forceIntro)}
-              transition={{ duration: 0.7, ease: "easeIn" }}
+              initial={{ opacity: 0, y: INITIAL_Y_OFFSET }}
+              animate={getAnim(ecoHeaderState)}
+              transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
               className="text-2xl font-bold text-gray-900 dark:text-white mb-6"
             >
               Eco-Friendly Composition
@@ -146,9 +135,9 @@ export default function EnvironmentalSection() {
 
             <motion.p
               ref={ecoParaRef}
-              initial={{ opacity: 0, y: 40 }}
-              animate={getAnim(ecoParaState, forceIntro)}
-              transition={{ duration: 0.7, ease: "easeIn" }}
+              initial={{ opacity: 0, y: INITIAL_Y_OFFSET }}
+              animate={getAnim(ecoParaState)}
+              transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
               className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed"
             >
               Our micro-cement formulations use natural minerals and low-VOC binders, ensuring minimal environmental 
@@ -158,32 +147,51 @@ export default function EnvironmentalSection() {
           </div>
 
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-700 p-6 rounded-lg border border-gray-200 dark:border-gray-600">
+            {/* Animated Info Cards */}
+            <motion.div
+              initial={{ opacity: 0, y: INITIAL_Y_OFFSET }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.6 }}
+              transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
+              className="bg-white dark:bg-gray-700 p-6 rounded-lg border border-gray-200 dark:border-gray-600"
+            >
               <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
                 Reduced Waste
               </h5>
               <p className="text-gray-700 dark:text-gray-300">
                 Up to 60% less CO2 emissions compared to traditional tile and stone installations.
               </p>
-            </div>
+            </motion.div>
 
-            <div className="bg-white dark:bg-gray-700 p-6 rounded-lg border border-gray-200 dark:border-gray-600">
+            <motion.div
+              initial={{ opacity: 0, y: INITIAL_Y_OFFSET }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.6 }}
+              transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
+              className="bg-white dark:bg-gray-700 p-6 rounded-lg border border-gray-200 dark:border-gray-600"
+            >
               <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
                 Longevity
               </h5>
               <p className="text-gray-700 dark:text-gray-300">
                 Applied directly over existing surfaces, eliminating demolition waste and material disposal.
               </p>
-            </div>
+            </motion.div>
 
-            <div className="bg-white dark:bg-gray-700 p-6 rounded-lg border border-gray-200 dark:border-gray-600">
+            <motion.div
+              initial={{ opacity: 0, y: INITIAL_Y_OFFSET }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.6 }}
+              transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
+              className="bg-white dark:bg-gray-700 p-6 rounded-lg border border-gray-200 dark:border-gray-600"
+            >
               <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
                 Long-Term Durability
               </h5>
               <p className="text-gray-700 dark:text-gray-300">
                 Lasts decades without replacement, reducing the need for frequent renovations and material consumption.
               </p>
-            </div>
+            </motion.div>
           </div>
         </div>
       </div>

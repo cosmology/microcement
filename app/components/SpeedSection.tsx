@@ -172,10 +172,10 @@ export default function SpeedSection() {
               </div>
               
 
-              {/* Image and Content Layout with Text Wrapping */}
-              <div className="flex flex-wrap items-start gap-8">
-                {/* Image - 120px on small screens, 200px on larger screens */}
-                <div className="w-[120px] lg:w-[200px] flex-shrink-0">
+              {/* Image and Content Layout with Word-style Text Wrapping */}
+              <div className="relative">
+                {/* Image - positioned with text wrapping */}
+                <div className="float-left mr-8 mb-4" style={{ shapeOutside: 'margin-box' }}>
                   <div className="w-[120px] h-[180px] lg:w-[200px] lg:h-[300px] rounded-lg overflow-hidden border border-light-dark dark:border-gray-700">
                     <Image
                       src={step.image}
@@ -187,12 +187,15 @@ export default function SpeedSection() {
                   </div>
                 </div>
 
-                {/* Content - Text wraps to the right and underneath */}
-                <div className="flex-1 min-w-0">
+                {/* Content - flows around the image like Word document */}
+                <div>
                   <p className="text-base md:text-lg text-light-dark dark:text-gray-300 leading-relaxed">
                     {step.description}
                   </p>
                 </div>
+                
+                {/* Clear float to prevent layout issues */}
+                <div className="clear-both"></div>
               </div>
             </motion.div>
           ))}
