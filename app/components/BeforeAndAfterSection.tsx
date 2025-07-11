@@ -218,8 +218,8 @@ export default function BeforeAndAfterSection() {
                 {/* Before/After Slider */}
                 <div
                   ref={isActive ? containerRef : null}
-                  className={`relative w-full aspect-[2/1] rounded-xl overflow-hidden shadow-2xl cursor-grab active:cursor-grabbing border-2 border-gray-300 dark:border-gray-600 ${
-                    isActive ? 'ring-4 ring-primary-500' : ''
+                  className={`relative w-full aspect-[2/1] rounded-xl overflow-hidden shadow-2xl cursor-grab active:cursor-grabbing border border-light-dark dark:border-gray-700 ${
+                    isActive ? '' : ''
                   }`}
                   style={{ background: pair.beforeColor }}
                   onMouseDown={isActive ? (e) => {

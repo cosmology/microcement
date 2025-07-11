@@ -5,7 +5,7 @@ import { useRef, useEffect, useState } from "react"
 import { globalNavigation } from "@/lib/navigation"
 
 const LINES = [
-  { text: "Transform.", from: "left" },
+  { text: "Transform Spaces.", from: "left" },
   { text: "Sustainably.", from: "right" },
   { text: "Stylishly.", from: "left" },
   { text: "Fast.", from: "right" },
@@ -23,12 +23,21 @@ export default function HeroSection() {
     function onScroll() {
       if (!sectionRef.current) return
       
+      const scrollY = window.scrollY
+      const isAtTop = scrollY < 100 // More generous threshold for top of page
+      
       const newStates = LINES.map((_, i) => {
         const line = lineRefs.current[i]
         if (!line) return { visible: false, out: false }
         const rect = line.getBoundingClientRect()
-        const visible = rect.top < window.innerHeight * 0.7
-        const out = rect.top < 100
+        
+        // Special handling for first line (Transform) - always visible at top
+        if (i === 0 && isAtTop) {
+          return { visible: true, out: false }
+        }
+        
+        const visible = rect.top < window.innerHeight * 0.8
+        const out = rect.top < 50
         return { visible, out }
       })
       setLineStates(newStates)
@@ -50,8 +59,12 @@ export default function HeroSection() {
     }
     
     window.addEventListener("scroll", onScroll, { passive: true })
+    window.addEventListener("resize", onScroll, { passive: true })
     onScroll()
-    return () => window.removeEventListener("scroll", onScroll)
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      window.removeEventListener("resize", onScroll)
+    }
   }, [hasAutoNavigated])
 
   return (
@@ -61,7 +74,7 @@ export default function HeroSection() {
       style={{ scrollSnapAlign: "start" }}
     >
       <div className="w-full max-w-4xl flex flex-col items-center justify-center text-center relative z-10">
-        <div className="text-5xl md:text-7xl font-bold text-gray-900 dark:text-white leading-relaxed flex flex-col gap-4 w-full">
+        <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 dark:text-white leading-tight sm:leading-relaxed flex flex-col gap-2 sm:gap-4 w-full">
           {LINES.map((line, i) => {
             let initialX = line.from === "left" ? -120 : 120
             let animateX = lineStates[i].visible ? 0 : initialX
@@ -85,7 +98,7 @@ export default function HeroSection() {
                   i === 1 ? "text-gray-700 dark:text-gray-300" : "",
                   i === 2 ? "text-gray-600 dark:text-gray-400" : "",
                   i === 3 ? "text-gray-800 dark:text-gray-200" : "",
-                  "block w-full",
+                  "block w-full break-words",
                 ].join(" ")}
                 style={{ willChange: "transform, opacity" }}
               >
