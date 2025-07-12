@@ -93,6 +93,20 @@ jobs:
           else
             ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
           fi
+
+      - name: Build and run API server
+        run: |
+          docker build -t my-api ./api
+          docker run -d --name api-server -p 4000:4000 my-api
+      - name: Wait for API server to be ready
+        run: |
+          for i in {1..30}; do
+            nc -z localhost 4000 && echo "API is up!" && exit 0
+            echo "Waiting for API server..."
+            sleep 2
+          done
+          echo "API server did not start in time" && exit 1
+
       - name: Build with Next.js
         run: ${{ steps.detect-package-manager.outputs.runner }} next build
       - name: Upload artifact
