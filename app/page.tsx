@@ -28,7 +28,6 @@ export default function Home() {
 
   return (
     <div className="relative">
-      {/* <StickyNav /> */}
       <NavigationSection />
       <main className="relative">
         <HeroSection />
