@@ -4,11 +4,13 @@ import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ThemeToggle } from "@/components/theme-toggle"
 import Image from "next/image"
+import { paths } from "@/lib/config"
 
 const galleryDropdown = [
   { name: "Before & After", href: "#before-after" },
   { name: "Featured", href: "#featured" },
   { name: "Textures", href: "#textures" },
+  { name: "Upload", href: "/microcement/upload" }, // Use centralized config // href: paths.uploadPage
 ]
 
 const navLinks = [
@@ -161,15 +163,61 @@ export default function NavigationSection() {
               <div className="flex-shrink-0">
                 <ThemeToggle />
               </div>
-              {/* Hamburger for mobile */}
+              {/* Morphing Hamburger/X for mobile */}
               <button
                 className="md:hidden flex items-center justify-center p-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-light-dark"
                 onClick={() => setMobileOpen((v) => !v)}
-                aria-label="Open menu"
+                aria-label={mobileOpen ? "Close menu" : "Open menu"}
               >
-                <svg className="w-6 h-6 text-light-dark dark:text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
+                <motion.svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 28 28"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-7 h-7 text-light-dark dark:text-white"
+                >
+                  {/* Top line */}
+                  <motion.line
+                    x1="5" y1="8" x2="23" y2="8"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                    initial={false}
+                    animate={mobileOpen ? {
+                      y1: 20, y2: 20, rotate: 45
+                    } : {
+                      y1: 8, y2: 8, rotate: 0
+                    }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    style={{ originX: 0.5, originY: 0.5 }}
+                  />
+                  {/* Middle line */}
+                  <motion.line
+                    x1="5" y1="14" x2="23" y2="14"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                    initial={false}
+                    animate={mobileOpen ? {
+                      opacity: 0,
+                      x1: 14, x2: 14
+                    } : {
+                      opacity: 1,
+                      x1: 5, x2: 23
+                    }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                  {/* Bottom line */}
+                  <motion.line
+                    x1="5" y1="20" x2="23" y2="20"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                    initial={false}
+                    animate={mobileOpen ? {
+                      y1: 8, y2: 8, rotate: -45
+                    } : {
+                      y1: 20, y2: 20, rotate: 0
+                    }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    style={{ originX: 0.5, originY: 0.5 }}
+                  />
+                </motion.svg>
               </button>
             </div>
           </div>

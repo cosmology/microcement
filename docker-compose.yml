@@ -14,6 +14,7 @@ services:
     environment:
       - NODE_ENV=development
       - NEXT_TELEMETRY_DISABLED=1
+      - PROJECT_PATH=/microcement
     command: npm run dev
     profiles:
       - dev
@@ -28,6 +29,7 @@ services:
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
+      - PROJECT_PATH=/microcement
     restart: unless-stopped
     profiles:
       - prod
@@ -44,6 +46,7 @@ services:
     environment:
       - NODE_ENV=development
       - NEXT_TELEMETRY_DISABLED=1
+      - PROJECT_PATH=/microcement
     command: sh -c "npm install -g pnpm && pnpm install && pnpm dev"
     profiles:
       - dev-simple 
