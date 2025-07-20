@@ -1,47 +1,9 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useState, useMemo } from "react"
 import Image from "next/image"
-
-const textures = [
-  {
-    name: "Smooth Finish",
-    description: "Ultra-smooth surface perfect for modern minimalist designs",
-    image: "/microcement/placeholder.svg?height=300&width=300",
-    color: "Light Gray",
-  },
-  {
-    name: "Fine Texture",
-    description: "Subtle texture that adds depth while maintaining elegance",
-    image: "/microcement/placeholder.svg?height=300&width=300",
-    color: "Warm White",
-  },
-  {
-    name: "Medium Grain",
-    description: "Balanced texture ideal for high-traffic commercial spaces",
-    image: "/microcement/placeholder.svg?height=300&width=300",
-    color: "Charcoal",
-  },
-  {
-    name: "Rustic Finish",
-    description: "Natural, organic texture for industrial and rustic aesthetics",
-    image: "/microcement/placeholder.svg?height=300&width=300",
-    color: "Earth Tone",
-  },
-  {
-    name: "Polished",
-    description: "High-gloss finish that reflects light beautifully",
-    image: "/microcement/placeholder.svg?height=300&width=300",
-    color: "Pure White",
-  },
-  {
-    name: "Matte Stone",
-    description: "Stone-like appearance with natural variations",
-    image: "/microcement/placeholder.svg?height=300&width=300",
-    color: "Slate Gray",
-  },
-]
+import { useTranslations } from 'next-intl';
 
 export default function TextureSamples() {
   const sectionRef = useRef<HTMLDivElement>(null)
@@ -49,6 +11,47 @@ export default function TextureSamples() {
   const subheaderRef = useRef<HTMLParagraphElement>(null)
   const texturesRefs = useRef<(HTMLDivElement | null)[]>([])
   const ctaRef = useRef<HTMLDivElement>(null)
+  const t = useTranslations('Textures');
+
+  // Use useMemo to prevent recreation of textures array on every render
+  const textures = useMemo(() => [
+    {
+      name: t('smooth.name'),
+      description: t('smooth.description'),
+      image: "/microcement/placeholder.svg?height=300&width=300",
+      color: t('smooth.color'),
+    },
+    {
+      name: t('fine.name'),
+      description: t('fine.description'),
+      image: "/microcement/placeholder.svg?height=300&width=300",
+      color: t('fine.color'),
+    },
+    {
+      name: t('medium.name'),
+      description: t('medium.description'),
+      image: "/microcement/placeholder.svg?height=300&width=300",
+      color: t('medium.color'),
+    },
+    {
+      name: t('rustic.name'),
+      description: t('rustic.description'),
+      image: "/microcement/placeholder.svg?height=300&width=300",
+      color: t('rustic.color'),
+    },
+    {
+      name: t('polished.name'),
+      description: t('polished.description'),
+      image: "/microcement/placeholder.svg?height=300&width=300",
+      color: t('polished.color'),
+    },
+    {
+      name: t('matte.name'),
+      description: t('matte.description'),
+      image: "/microcement/placeholder.svg?height=300&width=300",
+      color: t('matte.color'),
+    },
+  ], [t]);
 
   // State for each animated element
   const [headerState, setHeaderState] = useState({ visible: false, out: false })
@@ -87,7 +90,7 @@ export default function TextureSamples() {
     window.addEventListener("scroll", onScroll, { passive: true })
     onScroll()
     return () => window.removeEventListener("scroll", onScroll)
-  }, [])
+  }, [textures])
 
   // Animation helper
   function getAnim(state: { visible: boolean; out: boolean }) {
@@ -107,7 +110,7 @@ export default function TextureSamples() {
           transition={{ duration: 0.7, ease: "easeOut" }}
           className="text-4xl md:text-5xl font-light text-center text-gray-900 dark:text-white mb-4"
         >
-          Texture Samples
+          {t('title')}
         </motion.h2>
 
         <motion.p
@@ -117,7 +120,7 @@ export default function TextureSamples() {
           transition={{ duration: 0.7, ease: "easeOut" }}
           className="text-xl text-center text-gray-600 dark:text-gray-300 mb-16 max-w-3xl mx-auto"
         >
-          Choose from our range of customizable textures and finishes to match your design vision
+          {t('subtitle')}
         </motion.p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -159,10 +162,10 @@ export default function TextureSamples() {
           className="text-center mt-12"
         >
           <p className="text-lg text-gray-700 dark:text-gray-300 mb-6">
-            Want to see samples in person? Request a texture sample kit to feel the quality yourself.
+            {t('cta.description')}
           </p>
           <button className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-8 py-3 rounded-lg font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors duration-200">
-            Request Sample Kit
+            {t('cta.button')}
           </button>
         </motion.div>
       </div>

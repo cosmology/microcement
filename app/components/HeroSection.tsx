@@ -1,19 +1,23 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useState, useMemo } from "react"
 import { globalNavigation } from "@/lib/navigation"
-
-const LINES = [
-  { text: "Transform Spaces.", from: "left" },
-  { text: "Sustainably.", from: "right" },
-  { text: "Stylishly.", from: "left" },
-  { text: "Fast.", from: "right" },
-]
+import { useTranslations } from 'next-intl';
 
 export default function HeroSection() {
   const sectionRef = useRef<HTMLDivElement>(null)
   const lineRefs = useRef<(HTMLDivElement | null)[]>([])
+  const t = useTranslations('Hero');
+  
+  // Use useMemo to prevent recreation of LINES array on every render
+  const LINES = useMemo(() => [
+    { text: t('line1'), from: "left" },
+    { text: t('line2'), from: "right" },
+    { text: t('line3'), from: "left" },
+    { text: t('line4'), from: "right" },
+  ], [t]);
+  
   const [lineStates, setLineStates] = useState(
     LINES.map(() => ({ visible: false, out: false }))
   )
@@ -65,7 +69,7 @@ export default function HeroSection() {
       window.removeEventListener("scroll", onScroll)
       window.removeEventListener("resize", onScroll)
     }
-  }, [hasAutoNavigated])
+  }, [hasAutoNavigated, LINES])
 
   return (
     <section
@@ -116,9 +120,7 @@ export default function HeroSection() {
           transition={{ duration: 0.7, ease: "easeOut" }}
           className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 leading-relaxed max-w-3xl mx-auto pt-24"
         >
-          Micro-cement is more than a surface solution — it's a design revolution. Whether you're updating a home,
-          retail space, or showroom, our innovative finishes combine elegance with efficiency and eco-conscious
-          performance.
+          {t('description')}
         </motion.p>
       </div>
     </section>

@@ -2,11 +2,13 @@
 
 import { motion } from "framer-motion"
 import { useRef, useEffect, useState } from "react"
+import { useTranslations } from 'next-intl';
 
 export default function LuxurySection() {
   const sectionRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLHeadingElement>(null)
   const paraRef = useRef<HTMLDivElement>(null)
+  const t = useTranslations('Luxury');
 
   // State for each animated element
   const [headerState, setHeaderState] = useState({ visible: false, out: false })
@@ -83,7 +85,7 @@ export default function LuxurySection() {
           transition={{ duration: 0.7, ease: "easeOut" }}
           className="text-4xl md:text-5xl font-light text-center mb-12 text-gray-900 dark:text-white"
         >
-          Luxury Redefined
+          {t('title')}
         </motion.h2>
 
         <motion.div
@@ -94,9 +96,7 @@ export default function LuxurySection() {
           className="max-w-4xl mx-auto"
         >
           <p className="text-xl text-gray-700 dark:text-gray-300 leading-relaxed">
-            While concrete can feel heavy and industrial, micro-cement delivers a refined, tactile finish that feels
-            both minimal and high-end. With a range of customizable colors and textures, it elevates any design language
-            — from modern to rustic.
+            {t('description')}
           </p>
         </motion.div>
       </div>

@@ -1,8 +1,9 @@
 "use client"
 
-import { useRef, useState, useEffect } from "react"
+import { useRef, useState, useEffect, useMemo } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
+import { useTranslations } from 'next-intl';
 
 interface BeforeAfterPair {
   id: number
@@ -12,29 +13,6 @@ interface BeforeAfterPair {
   afterUrl?: string
   title: string
 }
-
-const beforeAfterPairs: BeforeAfterPair[] = [
-  { 
-    id: 1, 
-    beforeColor: "#f8f9fa", 
-    afterColor: "#1a1a1a", 
-    beforeUrl: "/microcement/images/gallery/b&a/bath_before.jpg",
-    afterUrl: "/microcement/images/gallery/b&a/bath_after.jpg",
-    title: "Bathroom Countertops" 
-  },
-  { 
-    id: 2, 
-    beforeColor: "#ced4da", 
-    afterColor: "#525252", 
-    beforeUrl: "/microcement/images/gallery/b&a/sunset-salon-before.png",
-    afterUrl: "/microcement/images/gallery/b&a/sunset-salon-after.png",
-    title: "Commercial Space" 
-  },
-  { id: 3, beforeColor: "#e9ecef", afterColor: "#2d2d2d", title: "Kitchen Countertops" },
-  { id: 4, beforeColor: "#dee2e6", afterColor: "#404040", title: "Bathroom Walls" },
-  { id: 5, beforeColor: "#adb5bd", afterColor: "#666666", title: "Living Room Floor" },
-  { id: 6, beforeColor: "#6c757d", afterColor: "#808080", title: "Outdoor Patio" },
-]
 
 export default function BeforeAndAfterSection() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -48,6 +26,31 @@ export default function BeforeAndAfterSection() {
   const [containerCenter, setContainerCenter] = useState(0)
   const [headerState, setHeaderState] = useState({ visible: false, out: false })
   const [forceIntro, setForceIntro] = useState(false)
+  const t = useTranslations('BeforeAfter');
+
+  // Use useMemo to prevent recreation of beforeAfterPairs array on every render
+  const beforeAfterPairs: BeforeAfterPair[] = useMemo(() => [
+    { 
+      id: 1, 
+      beforeColor: "#f8f9fa", 
+      afterColor: "#1a1a1a", 
+      beforeUrl: "/microcement/images/gallery/b&a/bath_before.jpg",
+      afterUrl: "/microcement/images/gallery/b&a/bath_after.jpg",
+      title: t('items.bathroom.title')
+    },
+    { 
+      id: 2, 
+      beforeColor: "#ced4da", 
+      afterColor: "#525252", 
+      beforeUrl: "/microcement/images/gallery/b&a/sunset-salon-before.png",
+      afterUrl: "/microcement/images/gallery/b&a/sunset-salon-after.png",
+      title: t('items.commercial.title')
+    },
+    { id: 3, beforeColor: "#e9ecef", afterColor: "#2d2d2d", title: t('items.kitchen.title') },
+    { id: 4, beforeColor: "#dee2e6", afterColor: "#404040", title: t('items.bathroomWalls.title') },
+    { id: 5, beforeColor: "#adb5bd", afterColor: "#666666", title: t('items.livingRoom.title') },
+    { id: 6, beforeColor: "#6c757d", afterColor: "#808080", title: t('items.patio.title') },
+  ], [t]);
 
   const currentPair = beforeAfterPairs[currentIndex]
 
@@ -189,7 +192,7 @@ export default function BeforeAndAfterSection() {
             y: (headerState.visible && !headerState.out) || forceIntro ? 0 : (headerState.out ? 0 : 40)
           }}
         >
-          Before & After Gallery
+          {t('title')}
         </motion.h2>
         
         {/* Carousel Container - Increased height to accommodate title and shadows */}
@@ -303,10 +306,10 @@ export default function BeforeAndAfterSection() {
                   {isActive && (
                     <>
                       <div className="absolute top-4 left-4 bg-white/90 dark:bg-gray-800/90 px-3 py-1 rounded-full text-sm font-medium text-gray-900 dark:text-white">
-                        Before
+                        {t('labels.before')}
                       </div>
                       <div className="absolute top-4 right-4 bg-white/90 dark:bg-gray-800/90 px-3 py-1 rounded-full text-sm font-medium text-gray-900 dark:text-white">
-                        After
+                        {t('labels.after')}
                       </div>
                     </>
                   )}

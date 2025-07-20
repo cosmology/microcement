@@ -1,39 +1,9 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useState, useMemo } from "react"
 import Image from "next/image"
-
-const processSteps = [
-  {
-    id: "prep",
-    title: "Surface Preparation",
-    image: "/microcement/images/process/prep.png",
-    description: "Our expert team begins with thorough surface preparation, ensuring the existing substrate is clean, stable, and ready to receive the micro-cement. This critical step involves cleaning, repairing any damage, and applying the necessary primers to create the perfect foundation for a flawless finish.",
-    imageAlt: "Surface preparation process for micro-cement application"
-  },
-  {
-    id: "primer",
-    title: "Primer Application",
-    image: "/microcement/images/process/primer.png",
-    description: "We apply specialized primers that create a strong bond between the existing surface and the micro-cement. This step is essential for ensuring long-term durability and preventing any delamination or cracking. The primer also helps to seal the surface and provide uniform absorption.",
-    imageAlt: "Primer application for micro-cement bonding"
-  },
-  {
-    id: "microcement",
-    title: "Micro-Cement Application",
-    image: "/microcement/images/process/microcement.png",
-    description: "The micro-cement is expertly applied in multiple thin layers, couple base layers and multiple color ones, each one carefully troweled to create the desired texture and finish. Our skilled applicators work with precision to achieve seamless joints and consistent coverage, ensuring a beautiful, durable surface that will last for years.",
-    imageAlt: "Micro-cement application process"
-  },
-  {
-    id: "sealer",
-    title: "Sealer & Protection",
-    image: "/microcement/images/process/sealer.png",
-    description: "Finally, we apply multiple coats of high-quality sealers that protect the micro-cement from stains, moisture, and wear while enhancing its natural beauty. This protective layer ensures your surface remains beautiful and functional for years to come, with minimal maintenance required.",
-    imageAlt: "Sealer application for micro-cement protection"
-  }
-]
+import { useTranslations } from 'next-intl';
 
 export default function SpeedSection() {
   const sectionRef = useRef<HTMLDivElement>(null)
@@ -42,6 +12,39 @@ export default function SpeedSection() {
   const leftContentRef = useRef<HTMLDivElement>(null)
   const rightContentRef = useRef<HTMLDivElement>(null)
   const processRefs = useRef<(HTMLDivElement | null)[]>([])
+  const t = useTranslations('Speed');
+
+  // Use useMemo to prevent recreation of processSteps array on every render
+  const processSteps = useMemo(() => [
+    {
+      id: "prep",
+      title: t('step1.title'),
+      image: "/microcement/images/process/prep.png",
+      description: t('step1.description'),
+      imageAlt: "Surface preparation process for micro-cement application"
+    },
+    {
+      id: "primer",
+      title: t('step2.title'),
+      image: "/microcement/images/process/primer.png",
+      description: t('step2.description'),
+      imageAlt: "Primer application for micro-cement bonding"
+    },
+    {
+      id: "microcement",
+      title: t('step3.title'),
+      image: "/microcement/images/process/microcement.png",
+      description: t('step3.description'),
+      imageAlt: "Micro-cement application process"
+    },
+    {
+      id: "sealer",
+      title: t('step4.title'),
+      image: "/microcement/images/process/sealer.png",
+      description: t('step4.description'),
+      imageAlt: "Sealer application for micro-cement protection"
+    }
+  ], [t]);
 
   // State for each animated element
   const [headerState, setHeaderState] = useState({ visible: false })
@@ -80,7 +83,7 @@ export default function SpeedSection() {
     window.addEventListener("scroll", onScroll, { passive: true })
     onScroll()
     return () => window.removeEventListener("scroll", onScroll)
-  }, [])
+  }, [processSteps])
 
   // Animation helper - removed fade away effect
   function getAnim(state: { visible: boolean }) {
@@ -100,7 +103,7 @@ export default function SpeedSection() {
           transition={{ duration: 0.7, ease: "easeOut" }}
           className="text-4xl md:text-5xl font-light text-center mb-12 dark:text-white"
         >
-          Speed & Efficiency
+          {t('title')}
         </motion.h2>
 
         <motion.div
@@ -111,10 +114,10 @@ export default function SpeedSection() {
           className="flex flex-col md:flex-row justify-center items-center mb-12 space-y-4 md:space-y-0 md:space-x-8"
         >
           <h3 className="text-2xl md:text-3xl font-light text-light-dark dark:text-gray-200">
-            Installation in Hours, Not Days
+            {t('installationTitle')}
           </h3>
           <h3 className="text-2xl md:text-3xl font-light text-light-dark dark:text-gray-200">
-            Minimal Disruption
+            {t('disruptionTitle')}
           </h3>
         </motion.div>
 
@@ -128,10 +131,7 @@ export default function SpeedSection() {
             className="space-y-6"
           >
             <p className="text-lg text-light-dark dark:text-gray-300 leading-relaxed">
-              Traditional remodels can take weeks, with noise, dust, and downtime. Our micro-cement application is
-              efficient and non-invasive — typically completed in 3–5 days. There's no need to tear out existing
-              finishes, which means faster transformations and less disruption to your daily life or business
-              operations.
+              {t('step1.description')}
             </p>
           </motion.div>
 
@@ -143,11 +143,10 @@ export default function SpeedSection() {
             className="space-y-6"
           >
             <h4 className="text-xl font-semibold text-light-dark dark:text-white">
-              Quick Application
+              {t('step2.title')}
             </h4>
             <p className="text-lg text-light-dark dark:text-gray-300 leading-relaxed">
-              No need to shut down your café, leave your home, or relocate your staff. Our quick-dry systems and
-              low-odor materials allow you to return to your space almost immediately after completion.
+              {t('step2.description')}
             </p>
           </motion.div>
         </div>
