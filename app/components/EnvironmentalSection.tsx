@@ -1,7 +1,8 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useState, useMemo } from "react"
+import { useTranslations } from 'next-intl';
 
 // Animation constants
 const ANIMATION_DURATION = 1
@@ -18,6 +19,7 @@ export default function EnvironmentalSection() {
   const paraRef = useRef<HTMLDivElement>(null)
   const ecoHeaderRef = useRef<HTMLHeadingElement>(null)
   const ecoParaRef = useRef<HTMLParagraphElement>(null)
+  const t = useTranslations('Environmental');
 
   // State for each element
   const [headerState, setHeaderState] = useState({ visible: false, out: false })
@@ -93,7 +95,7 @@ export default function EnvironmentalSection() {
           transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
           className="text-4xl md:text-5xl font-light text-center mb-12 text-gray-900 dark:text-white"
         >
-          Environmental Benefits
+          {t('title')}
         </motion.h2>
 
         <motion.h3
@@ -103,7 +105,7 @@ export default function EnvironmentalSection() {
           transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
           className="text-3xl md:text-4xl font-light text-center text-gray-800 dark:text-gray-200 mb-12"
         >
-          Sustainable. Responsible. Beautiful.
+          {t('subtitle')}
         </motion.h3>
 
         <motion.div
@@ -114,10 +116,7 @@ export default function EnvironmentalSection() {
           className="max-w-4xl mx-auto mb-16"
         >
           <p className="text-xl text-gray-700 dark:text-gray-300 leading-relaxed text-center">
-            Unlike traditional renovation materials that require extensive resources and generate significant waste, 
-            micro-cement is applied directly over existing surfaces. This approach reduces material consumption by up to 80% 
-            and eliminates the need for demolition, making it one of the most environmentally responsible choices for 
-            surface renovation.
+            {t('ecoDescription')}
           </p>
         </motion.div>
 
@@ -130,7 +129,7 @@ export default function EnvironmentalSection() {
               transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
               className="text-2xl font-light text-gray-900 dark:text-white mb-6"
             >
-              Eco-Friendly Composition
+              {t('ecoHeader')}
             </motion.h4>
 
             <motion.p
@@ -140,9 +139,7 @@ export default function EnvironmentalSection() {
               transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
               className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed"
             >
-              Our micro-cement formulations use natural minerals and low-VOC binders, ensuring minimal environmental 
-              impact during both production and application. The material is free from harmful chemicals and meets 
-              strict environmental standards, making it safe for homes, commercial spaces, and sensitive environments.
+              {t('ecoDescription')}
             </motion.p>
           </div>
 
@@ -156,10 +153,10 @@ export default function EnvironmentalSection() {
               className="bg-white dark:bg-gray-700 p-6 rounded-lg border border-gray-200 dark:border-gray-600"
             >
               <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                Reduced Waste
+                {t('renewableHeader')}
               </h5>
               <p className="text-gray-700 dark:text-gray-300">
-                Up to 60% less CO2 emissions compared to traditional tile and stone installations.
+                {t('renewableDescription')}
               </p>
             </motion.div>
 
@@ -171,10 +168,10 @@ export default function EnvironmentalSection() {
               className="bg-white dark:bg-gray-700 p-6 rounded-lg border border-gray-200 dark:border-gray-600"
             >
               <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                Longevity
+                {t('durabilityHeader')}
               </h5>
               <p className="text-gray-700 dark:text-gray-300">
-                Applied directly over existing surfaces, eliminating demolition waste and material disposal.
+                {t('durabilityDescription')}
               </p>
             </motion.div>
 
@@ -186,10 +183,10 @@ export default function EnvironmentalSection() {
               className="bg-white dark:bg-gray-700 p-6 rounded-lg border border-gray-200 dark:border-gray-600"
             >
               <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                Long-Term Durability
+                {t('durabilityHeader')}
               </h5>
               <p className="text-gray-700 dark:text-gray-300">
-                Lasts decades without replacement, reducing the need for frequent renovations and material consumption.
+                {t('durabilityDescription')}
               </p>
             </motion.div>
           </div>

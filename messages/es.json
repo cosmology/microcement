@@ -1,0 +1,239 @@
+{
+  "Index": {
+    "title": "Microcemento - Transforma Espacios de Forma Sostenible",
+    "description": "Soluciones innovadoras de micro-cemento para espacios modernos. Instalación sostenible, elegante y rápida."
+  },
+  "Navigation": {
+    "ecoFriendly": "Ecológico",
+    "speed": "Velocidad",
+    "seamlessFinishes": "Acabados Sin Costuras",
+    "gallery": "Galería",
+    "benefits": "Beneficios",
+    "luxury": "Lujo",
+    "beforeAfter": "Antes y Después",
+    "featured": "Destacados",
+    "textures": "Texturas",
+    "upload": "Subir"
+  },
+  "Hero": {
+    "line1": "Transforma Espacios.",
+    "line2": "Sosteniblemente.",
+    "line3": "Elegantemente.",
+    "line4": "Rápidamente.",
+    "description": "El micro-cemento es más que una solución de superficie — es una revolución del diseño. Ya sea que estés actualizando una casa, espacio comercial o showroom, nuestros acabados innovadores combinan elegancia con eficiencia y rendimiento ecológico."
+  },
+  "Environmental": {
+    "title": "Beneficios Ambientales",
+    "subtitle": "Sostenible. Responsable. Hermoso.",
+    "ecoHeader": "Composición Ecológica",
+    "ecoDescription": "Nuestro micro-cemento está formulado con materiales ambientalmente conscientes, reduciendo la huella de carbono mientras mantiene un rendimiento excepcional.",
+    "renewableHeader": "Recursos Renovables",
+    "renewableDescription": "Hecho de materiales naturales y renovables que se obtienen y procesan de manera responsable con un impacto ambiental mínimo.",
+    "durabilityHeader": "Durabilidad a Largo Plazo",
+    "durabilityDescription": "Construido para durar décadas, reduciendo la necesidad de reemplazos frecuentes y minimizando el desperdicio con el tiempo."
+  },
+  "Comparison": {
+    "title": "¿Por qué Micro-Cemento vs. Materiales Tradicionales?",
+    "subtitle": "Elegante. Sin Costuras. Sorprendentemente Versátil.",
+    "description": "A diferencia de las baldosas o la madera, el micro-cemento crea superficies continuas — sin líneas de lechada, juntas o interrupciones. Es impermeable, duradero y adaptable a casi cualquier superficie: pisos, paredes, encimeras, escaleras, duchas — incluso muebles."
+  },
+  "Speed": {
+    "title": "Velocidad y Eficiencia",
+    "installationTitle": "Instalación en Horas, No Días",
+    "disruptionTitle": "Interrupción Mínima",
+    "step1": {
+      "title": "Preparación de Superficie",
+      "description": "Limpieza rápida y imprimación de superficies existentes"
+    },
+    "step2": {
+      "title": "Aplicación",
+      "description": "Proceso de aplicación de micro-cemento rápido y eficiente"
+    },
+    "step3": {
+      "title": "Curado",
+      "description": "Curado rápido para uso inmediato"
+    },
+    "step4": {
+      "title": "Sellado",
+      "description": "Sellado protector final para acabado duradero"
+    }
+  },
+  "Gallery": {
+    "title": "Galería de Aplicaciones",
+    "subtitle": "Descubre las infinitas posibilidades del micro-cemento en diferentes espacios y aplicaciones",
+    "viewDetails": "Ver Detalles",
+    "categories": {
+      "all": "Todos",
+      "kitchen": "Cocina",
+      "bathroom": "Baño",
+      "livingSpace": "Espacio de Vida",
+      "commercial": "Comercial",
+      "architectural": "Arquitectónico",
+      "exterior": "Exterior",
+      "furniture": "Muebles"
+    },
+    "items": {
+      "kitchen": {
+        "title": "Encimeras de Cocina Modernas",
+        "description": "Encimeras de micro-cemento sin costuras con fregadero integrado"
+      },
+      "bathroom": {
+        "title": "Paredes de Baño de Lujo",
+        "description": "Paredes de ducha de micro-cemento impermeables con acabado carbón"
+      },
+      "living": {
+        "title": "Suelo de Sala Industrial",
+        "description": "Suelo de micro-cemento con aspecto de hormigón pulido"
+      },
+      "retail": {
+        "title": "Pared Destacada de Tienda",
+        "description": "Pared de acento de micro-cemento texturizada en boutique"
+      },
+      "restaurant": {
+        "title": "Barra de Restaurante",
+        "description": "Superficie de barra de micro-cemento duradera con color personalizado"
+      },
+      "staircase": {
+        "title": "Escalera Minimalista",
+        "description": "Escaleras de micro-cemento continuas con iluminación integrada"
+      },
+      "patio": {
+        "title": "Superficie de Patio Exterior",
+        "description": "Acabado de patio de micro-cemento resistente a la intemperie"
+      },
+      "furniture": {
+        "title": "Pieza de Mueble Personalizada",
+        "description": "Mesa de comedor de micro-cemento con borde natural"
+      }
+    }
+  },
+  "BeforeAfter": {
+    "title": "Transformaciones Antes y Después",
+    "labels": {
+      "before": "Antes",
+      "after": "Después"
+    },
+    "items": {
+      "bathroom": {
+        "title": "Encimeras de Baño"
+      },
+      "commercial": {
+        "title": "Espacio Comercial"
+      },
+      "kitchen": {
+        "title": "Encimeras de Cocina"
+      },
+      "bathroomWalls": {
+        "title": "Paredes de Baño"
+      },
+      "livingRoom": {
+        "title": "Suelo de Sala"
+      },
+      "patio": {
+        "title": "Patio Exterior"
+      }
+    }
+  },
+  "Featured": {
+    "title": "Proyectos Destacados",
+    "subtitle": "Transformaciones reales que muestran la versatilidad y belleza del micro-cemento",
+    "projects": {
+      "salon": {
+        "title": "Salón de Belleza",
+        "location": "Sunset West Hollywood, Los Ángeles",
+        "description": "Un proyecto de 2 días para un prestigioso salón de belleza de West Hollywood con mínima interrupción del negocio."
+      },
+      "bathroom": {
+        "title": "Encimera de Baño Personalizada",
+        "location": "San Diego, CA",
+        "description": "Un proyecto de renovación de encimera de baño de un día sobre una superficie enlucida existente de 50 años. El cliente quería un aspecto moderno y limpio con un color personalizado e instalación rápida."
+      },
+      "home": {
+        "title": "Casa Familiar Moderna",
+        "location": "Beverly Hills, CA",
+        "description": "Renovación completa de casa con micro-cemento en cocina, baños y áreas de vida para una estética moderna cohesiva."
+      }
+    },
+    "features": {
+      "quickInstallation": "Instalación rápida",
+      "durableFinish": "Acabado duradero",
+      "topcreteGallery": "Galería destacada Topcrete",
+      "ecoFriendly": "Materiales ecológicos",
+      "ecoCemento": "Eco-cemento",
+      "customColor": "Coincidencia de color personalizada",
+      "waterproof": "Superficies impermeables",
+      "easyMaintenance": "Mantenimiento fácil",
+      "customTextures": "Texturas personalizadas"
+    }
+  },
+  "Textures": {
+    "title": "Muestras de Texturas",
+    "subtitle": "Elige de nuestra gama de texturas y acabados personalizables para que coincidan con tu visión de diseño",
+    "smooth": {
+      "name": "Acabado Suave",
+      "description": "Superficie ultra-suave perfecta para diseños minimalistas modernos",
+      "color": "Gris Claro"
+    },
+    "fine": {
+      "name": "Textura Fina",
+      "description": "Textura sutil que añade profundidad manteniendo la elegancia",
+      "color": "Blanco Cálido"
+    },
+    "medium": {
+      "name": "Grano Medio",
+      "description": "Textura equilibrada ideal para espacios comerciales de alto tráfico",
+      "color": "Carbón"
+    },
+    "rustic": {
+      "name": "Acabado Rústico",
+      "description": "Textura natural y orgánica para estéticas industriales y rústicas",
+      "color": "Tono Tierra"
+    },
+    "polished": {
+      "name": "Pulido",
+      "description": "Acabado de alto brillo que refleja la luz bellamente",
+      "color": "Blanco Puro"
+    },
+    "matte": {
+      "name": "Piedra Mate",
+      "description": "Apariencia similar a la piedra con variaciones naturales",
+      "color": "Gris Pizarra"
+    },
+    "cta": {
+      "description": "¿Quieres ver muestras en persona? Solicita un kit de muestras de texturas para sentir la calidad tú mismo.",
+      "button": "Solicitar Kit de Muestras"
+    }
+  },
+  "Luxury": {
+    "title": "Lujo Redefinido",
+    "description": "Mientras que el hormigón puede sentirse pesado e industrial, el micro-cemento ofrece un acabado refinado y táctil que se siente tanto minimalista como de alta gama. Con una gama de colores y texturas personalizables, eleva cualquier lenguaje de diseño — desde moderno hasta rústico."
+  },
+  "Benefits": {
+    "title": "¿Quién se Beneficia del Micro-Cemento?",
+    "homeowners": {
+      "title": "Propietarios",
+      "description": "Transforma tus espacios de vida con acabados elegantes y duraderos que añaden valor y estilo a tu hogar."
+    },
+    "contractors": {
+      "title": "Contratistas",
+      "description": "Ofrece a tus clientes soluciones premium con tiempos de instalación más rápidos y resultados superiores."
+    },
+    "designers": {
+      "title": "Diseñadores de Interiores",
+      "description": "Crea diseños impresionantes y sin costuras con micro-cemento versátil que se adapta a cualquier visión estética."
+    },
+    "businesses": {
+      "title": "Propietarios de Negocios",
+      "description": "Mejora tus espacios comerciales con acabados profesionales y duraderos que impresionan a clientes y empleados."
+    }
+  },
+  "CTA": {
+    "title": "¿Listo para Transformar tu Espacio?",
+    "description": "Reserva una consulta hoy para ver cómo el micro-cemento puede elevar tu espacio — rápidamente, limpiamente y de manera sostenible.",
+    "button": "Reservar Consulta"
+  },
+  "Upload": {
+    "title": "Subir una Imagen",
+    "description": "Usa el formulario de abajo para subir una imagen. Tamaño máximo: 200kB. Formatos aceptados: jpg, jpeg, png, webp, gif."
+  }
+} 

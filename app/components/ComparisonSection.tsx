@@ -1,32 +1,35 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useRef, useEffect, useState } from "react"
-
-const comparisonElements = [
-  {
-    id: "header",
-    type: "h2",
-    content: "Why Micro-Cement vs. Traditional Materials",
-    className: "text-4xl md:text-5xl font-light text-gray-900 dark:text-white mb-8"
-  },
-  {
-    id: "subheader", 
-    type: "h3",
-    content: "Sleek. Seamless. Surprisingly Versatile.",
-    className: "text-3xl md:text-4xl font-light text-gray-800 dark:text-gray-200 mb-12"
-  },
-  {
-    id: "paragraph",
-    type: "p",
-    content: "Unlike tiles or wood, micro-cement creates continuous surfaces — no grout lines, joints, or interruptions. It's waterproof, durable, and adaptable to almost any surface: floors, walls, countertops, stairs, showers — even furniture.",
-    className: "text-xl text-gray-700 dark:text-gray-300 leading-relaxed"
-  }
-]
+import { useRef, useEffect, useState, useMemo } from "react"
+import { useTranslations } from 'next-intl';
 
 export default function ComparisonSection() {
   const sectionRef = useRef<HTMLDivElement>(null)
   const elementsRefs = useRef<(HTMLDivElement | null)[]>([])
+  const t = useTranslations('Comparison');
+
+  // Use useMemo to prevent recreation of comparisonElements array on every render
+  const comparisonElements = useMemo(() => [
+    {
+      id: "header",
+      type: "h2",
+      content: t('title'),
+      className: "text-4xl md:text-5xl font-light text-gray-900 dark:text-white mb-8"
+    },
+    {
+      id: "subheader", 
+      type: "h3",
+      content: t('subtitle'),
+      className: "text-3xl md:text-4xl font-light text-gray-800 dark:text-gray-200 mb-12"
+    },
+    {
+      id: "paragraph",
+      type: "p",
+      content: t('description'),
+      className: "text-xl text-gray-700 dark:text-gray-300 leading-relaxed"
+    }
+  ], [t]);
 
   // State for each animated element
   const [elementsStates, setElementsStates] = useState(
@@ -60,7 +63,7 @@ export default function ComparisonSection() {
     window.addEventListener("scroll", onScroll, { passive: true })
     onScroll()
     return () => window.removeEventListener("scroll", onScroll)
-  }, [])
+  }, [comparisonElements])
 
   // Listen for navigation events
   useEffect(() => {
