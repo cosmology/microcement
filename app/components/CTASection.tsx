@@ -10,7 +10,7 @@ export default function CTASection() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="text-4xl md:text-5xl font-bold text-center mb-8 text-white"
+          className="text-4xl md:text-5xl font-light text-center mb-8 text-white"
         >
           Ready to Transform Your Space?
         </motion.h2>

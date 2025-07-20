@@ -4,6 +4,9 @@
 
 @layer base {
   :root {
+    /* Font variables */
+    --font-roboto: 'Roboto', sans-serif;
+    
     /* Light theme variables */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
@@ -57,11 +60,34 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-roboto), 'Roboto', sans-serif;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
   }
 }
 
 @layer components {
   .hr-divider {
     @apply h-px bg-light-dark dark:bg-gray-700 border-0 mt-4 mb-6;
+  }
+}
+
+/* Navigation font sizes */
+@layer utilities {
+  .text-nav-xs {
+    font-size: 0.75rem;
+  }
+  .text-nav-sm {
+    font-size: 0.875rem;
+  }
+  .text-nav-base {
+    font-size: 1rem;
+  }
+  .text-nav-lg {
+    font-size: 1.125rem;
   }
 }

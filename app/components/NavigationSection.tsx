@@ -10,7 +10,7 @@ const galleryDropdown = [
   { name: "Before & After", href: "#before-after" },
   { name: "Featured", href: "#featured" },
   { name: "Textures", href: "#textures" },
-  { name: "Upload", href: "/microcement/upload" }, // Use centralized config // href: paths.uploadPage
+  { name: "Upload", href: paths.uploadPage }, // Use centralized config
 ]
 
 const navLinks = [

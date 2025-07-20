@@ -91,7 +91,7 @@ export default function EnvironmentalSection() {
           initial={{ opacity: 0, y: INITIAL_Y_OFFSET }}
           animate={getAnim(headerState)}
           transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
-          className="text-4xl md:text-5xl font-bold text-center mb-12 text-gray-900 dark:text-white"
+          className="text-4xl md:text-5xl font-light text-center mb-12 text-gray-900 dark:text-white"
         >
           Environmental Benefits
         </motion.h2>
@@ -101,7 +101,7 @@ export default function EnvironmentalSection() {
           initial={{ opacity: 0, y: INITIAL_Y_OFFSET }}
           animate={getAnim(subheaderState)}
           transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
-          className="text-3xl md:text-4xl font-bold text-center text-gray-800 dark:text-gray-200 mb-12"
+          className="text-3xl md:text-4xl font-light text-center text-gray-800 dark:text-gray-200 mb-12"
         >
           Sustainable. Responsible. Beautiful.
         </motion.h3>
@@ -128,7 +128,7 @@ export default function EnvironmentalSection() {
               initial={{ opacity: 0, y: INITIAL_Y_OFFSET }}
               animate={getAnim(ecoHeaderState)}
               transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
-              className="text-2xl font-bold text-gray-900 dark:text-white mb-6"
+              className="text-2xl font-light text-gray-900 dark:text-white mb-6"
             >
               Eco-Friendly Composition
             </motion.h4>

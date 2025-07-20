@@ -8,13 +8,13 @@ const comparisonElements = [
     id: "header",
     type: "h2",
     content: "Why Micro-Cement vs. Traditional Materials",
-    className: "text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-8"
+    className: "text-4xl md:text-5xl font-light text-gray-900 dark:text-white mb-8"
   },
   {
     id: "subheader", 
     type: "h3",
     content: "Sleek. Seamless. Surprisingly Versatile.",
-    className: "text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-200 mb-12"
+    className: "text-3xl md:text-4xl font-light text-gray-800 dark:text-gray-200 mb-12"
   },
   {
     id: "paragraph",

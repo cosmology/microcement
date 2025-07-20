@@ -79,7 +79,7 @@ const galleryElements = [
     id: "header",
     type: "h2",
     content: "Gallery of Applications",
-    className: "text-4xl md:text-5xl font-bold text-center text-gray-900 dark:text-white mb-4"
+    className: "text-4xl md:text-5xl font-light text-center text-gray-900 dark:text-white mb-4"
   },
   {
     id: "subheader",
