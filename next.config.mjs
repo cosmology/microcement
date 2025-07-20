@@ -13,7 +13,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  output: 'standalone',
+  output: 'export',
   basePath: "/microcement",
   assetPrefix: "/microcement",
   transpilePackages: ['geist'],
