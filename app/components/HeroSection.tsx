@@ -74,7 +74,7 @@ export default function HeroSection() {
       style={{ scrollSnapAlign: "start" }}
     >
       <div className="w-full max-w-4xl flex flex-col items-center justify-center text-center relative z-10">
-        <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 dark:text-white leading-tight sm:leading-relaxed flex flex-col gap-2 sm:gap-4 w-full">
+        <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-light text-gray-900 dark:text-white leading-tight sm:leading-relaxed flex flex-col gap-2 sm:gap-4 w-full">
           {LINES.map((line, i) => {
             let initialX = line.from === "left" ? -120 : 120
             let animateX = lineStates[i].visible ? 0 : initialX

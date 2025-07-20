@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useScroll } from "framer-motion"
-import StickyNav from "./components/StickyNav"
 import HeroSection from "./components/HeroSection"
 import BeforeAndAfterSection from "./components/BeforeAndAfterSection"
 import EnvironmentalSection from "./components/EnvironmentalSection"

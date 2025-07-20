@@ -105,7 +105,7 @@ export default function TextureSamples() {
           initial={{ opacity: 0, y: 40 }}
           animate={getAnim(headerState)}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          className="text-4xl md:text-5xl font-bold text-center text-gray-900 dark:text-white mb-4"
+          className="text-4xl md:text-5xl font-light text-center text-gray-900 dark:text-white mb-4"
         >
           Texture Samples
         </motion.h2>

@@ -2,13 +2,13 @@ import type { Metadata } from "next"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 
-import { Nunito_Sans } from 'next/font/google'
+import { Roboto } from 'next/font/google'
  
-const nunito = Nunito_Sans({
+const roboto = Roboto({
   subsets: ['latin'],
+  weight: ['300', '400', '500', '700'],
+  variable: '--font-roboto',
 })
-
-// const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Microcement - Transform Spaces Sustainably",
@@ -22,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={nunito.className}>
+      <body className={roboto.className}>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"

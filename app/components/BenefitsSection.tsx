@@ -99,7 +99,7 @@ export default function BenefitsSection() {
           initial={{ opacity: 0, y: 40 }}
           animate={getAnim(headerState, forceIntro)}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          className="text-4xl md:text-5xl font-bold text-center text-gray-900 dark:text-white mb-16"
+          className="text-4xl md:text-5xl font-light text-center text-gray-900 dark:text-white mb-16"
         >
           Who Benefits from Micro-Cement?
         </motion.h2>
@@ -114,7 +114,7 @@ export default function BenefitsSection() {
               transition={{ duration: 0.7, ease: "easeOut" }}
               className="bg-white dark:bg-gray-700 p-8 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm"
             >
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              <h3 className="text-2xl font-light text-gray-900 dark:text-white mb-4">
                 {benefit.title}
               </h3>
               <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">

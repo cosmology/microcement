@@ -98,7 +98,7 @@ export default function SpeedSection() {
           initial={{ opacity: 0, y: 40 }}
           animate={getAnim(headerState)}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          className="text-4xl md:text-5xl font-bold text-center mb-12 dark:text-white"
+          className="text-4xl md:text-5xl font-light text-center mb-12 dark:text-white"
         >
           Speed & Efficiency
         </motion.h2>
@@ -110,10 +110,10 @@ export default function SpeedSection() {
           transition={{ duration: 0.7, ease: "easeOut", delay: 0.2 }}
           className="flex flex-col md:flex-row justify-center items-center mb-12 space-y-4 md:space-y-0 md:space-x-8"
         >
-          <h3 className="text-2xl md:text-3xl font-bold text-light-dark dark:text-gray-200">
+          <h3 className="text-2xl md:text-3xl font-light text-light-dark dark:text-gray-200">
             Installation in Hours, Not Days
           </h3>
-          <h3 className="text-2xl md:text-3xl font-bold text-light-dark dark:text-gray-200">
+          <h3 className="text-2xl md:text-3xl font-light text-light-dark dark:text-gray-200">
             Minimal Disruption
           </h3>
         </motion.div>
@@ -165,7 +165,7 @@ export default function SpeedSection() {
             >
               {/* Left-Aligned Title */}
               <div>
-                <h4 className="text-xl md:text-2xl font-bold text-light-dark dark:text-white">
+                <h4 className="text-xl md:text-2xl font-light text-light-dark dark:text-white">
                   {step.title}
                 </h4>
                 <hr className="hr-divider" />

@@ -10,6 +10,10 @@ const config: Config = {
   ],
   theme: {
   	extend: {
+  		fontFamily: {
+  			sans: ['var(--font-roboto)', 'Roboto', 'sans-serif'],
+  			roboto: ['var(--font-roboto)', 'Roboto', 'sans-serif'],
+  		},
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
@@ -61,11 +65,11 @@ const config: Config = {
   				border: 'hsl(var(--sidebar-border))',
   				ring: 'hsl(var(--sidebar-ring))'
   			},
-  			light: {
-  				DEFAULT: "#cecec5",
-  				dark: "#b0b09e",   // darker variation
-  				light: "#e5e5db",  // lighter variation
-  			},
+  			// Light theme colors
+  			'light-main': '#cecec5',
+  			'light-dark': '#b0b09e',
+  			'light-light': '#e5e5db',
+  			'light-lightest': '#F9FAFB',
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
@@ -93,17 +97,6 @@ const config: Config = {
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out'
-  		},
-  		backgroundColor: {
-  			'light-main': '#cecec5',
-  			'light-dark': '#b0b09e',
-  			'light-light': '#e5e5db',
-  		},
-  		textColor: {
-  			'light-main': '#b0b09e',
-  			'light-dark': '#7c7c6a',
-  			'light-light': '#e5e5db',
-  			'light-lightest': '#F9FAFB',
   		},
 		screens: {
 			'sm': '640px',
