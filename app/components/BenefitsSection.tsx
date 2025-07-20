@@ -1,30 +1,30 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useRef, useEffect, useState } from "react"
-
-const benefits = [
-  {
-    title: "Homeowners",
-    description:
-      "Design-forward individuals who crave sleek, modern surfaces — especially in kitchens, bathrooms, or open living spaces. Micro-cement gives homes a seamless, custom look without the cost or mess of a traditional remodel.",
-  },
-  {
-    title: "Business Owners + Commercial Spaces",
-    description:
-      "Retailers, hoteliers, café owners, and showroom designers can create dramatic, high-end environments that leave lasting impressions — all without closing shop for weeks. Durable and low-maintenance, it's a smart choice for high-traffic spaces that demand both form and function.",
-  },
-  {
-    title: "Designers + Architects",
-    description:
-      "Innovative professionals looking for a creative, customizable material that plays well with modern and minimalist design schemes. Micro-cement offers flexibility, adaptability, and artistic freedom.",
-  },
-]
+import { useRef, useEffect, useState, useMemo } from "react"
+import { useTranslations } from 'next-intl';
 
 export default function BenefitsSection() {
   const sectionRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLHeadingElement>(null)
   const benefitsRefs = useRef<(HTMLDivElement | null)[]>([])
+  const t = useTranslations('Benefits');
+
+  // Use useMemo to prevent recreation of benefits array on every render
+  const benefits = useMemo(() => [
+    {
+      title: t('homeowners.title'),
+      description: t('homeowners.description'),
+    },
+    {
+      title: t('businesses.title'),
+      description: t('businesses.description'),
+    },
+    {
+      title: t('designers.title'),
+      description: t('designers.description'),
+    },
+  ], [t]);
 
   // State for each animated element
   const [headerState, setHeaderState] = useState({ visible: false, out: false })
@@ -61,7 +61,7 @@ export default function BenefitsSection() {
     window.addEventListener("scroll", onScroll, { passive: true })
     onScroll()
     return () => window.removeEventListener("scroll", onScroll)
-  }, [])
+  }, [benefits])
 
   // Listen for navigation events
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function BenefitsSection() {
           transition={{ duration: 0.7, ease: "easeOut" }}
           className="text-4xl md:text-5xl font-light text-center text-gray-900 dark:text-white mb-16"
         >
-          Who Benefits from Micro-Cement?
+          {t('title')}
         </motion.h2>
 
         <div className="space-y-12">

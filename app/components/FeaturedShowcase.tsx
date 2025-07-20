@@ -1,58 +1,58 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useState, useMemo } from "react"
 import Image from "next/image"
-
-const featuredProjects = [
-  {
-    id: 1,
-    title: "Hair Salon",
-    location: "Sunset West Hollywood, Los Angeles",
-    image: "/microcement/images/featured/west-hollywood-sunset-hair-salon.png",
-    description:
-      "A 2 day project turn around for a prestigious West Hollywood hair salon with minimal business disruption.",
-    features: ["Quick installation", "Durable finish", "Topcrete featured gallery", "Eco-friendly materials", "Eco-cemento"],
-  },
-  {
-    id: 2,
-    title: "Custom Bath Countertop",
-    location: "San Diego, CA",
-    image: "/microcement/images/gallery/b&a/bath_after.jpg",
-    description:
-      "A one day face-lift bathroom countertop project over existing 50 year old plastered surface. The client wanted a modern, clean look with a custom color with fast installation.",
-    features: ["Quick installation", "Custom color matching", "Eco-friendly materials"],
-  },
-  {
-    id: 3,
-    title: "Modern Family Home",
-    location: "Beverly Hills, CA",
-    image: "https://www.idealwork.com/wp-content/uploads/2017/08/slider_Appartamento_Belgio_MT1.jpg",
-    description:
-      "Complete home renovation featuring micro-cement in kitchen, bathrooms, and living areas for a cohesive modern aesthetic.",
-    features: ["Waterproof surfaces", "Easy maintenance", "Custom textures", "Eco-friendly materials"],
-  },
-]
-
-const showcaseElements = [
-  {
-    id: "header",
-    type: "h2",
-    content: "Featured Projects",
-    className: "text-4xl md:text-5xl font-light text-center text-gray-900 dark:text-white mb-4"
-  },
-  {
-    id: "subheader",
-    type: "p", 
-    content: "Real transformations that showcase the versatility and beauty of micro-cement",
-    className: "text-xl text-center text-gray-600 dark:text-gray-300 mb-16 max-w-3xl mx-auto"
-  }
-]
+import { useTranslations } from 'next-intl';
 
 export default function FeaturedShowcase() {
   const sectionRef = useRef<HTMLDivElement>(null)
   const elementsRefs = useRef<(HTMLDivElement | null)[]>([])
   const projectsRefs = useRef<(HTMLDivElement | null)[]>([])
+  const t = useTranslations('Featured');
+  
+  // Use useMemo to prevent recreation of arrays on every render
+  const featuredProjects = useMemo(() => [
+    {
+      id: 1,
+      title: t('projects.salon.title'),
+      location: t('projects.salon.location'),
+      image: "/microcement/images/featured/west-hollywood-sunset-hair-salon.png",
+      description: t('projects.salon.description'),
+      features: [t('features.quickInstallation'), t('features.durableFinish'), t('features.topcreteGallery'), t('features.ecoFriendly'), t('features.ecoCemento')],
+    },
+    {
+      id: 2,
+      title: t('projects.bathroom.title'),
+      location: t('projects.bathroom.location'),
+      image: "/microcement/images/gallery/b&a/bath_after.jpg",
+      description: t('projects.bathroom.description'),
+      features: [t('features.quickInstallation'), t('features.customColor'), t('features.ecoFriendly')],
+    },
+    {
+      id: 3,
+      title: t('projects.home.title'),
+      location: t('projects.home.location'),
+      image: "https://www.idealwork.com/wp-content/uploads/2017/08/slider_Appartamento_Belgio_MT1.jpg",
+      description: t('projects.home.description'),
+      features: [t('features.waterproof'), t('features.easyMaintenance'), t('features.customTextures'), t('features.ecoFriendly')],
+    },
+  ], [t]);
+
+  const showcaseElements = useMemo(() => [
+    {
+      id: "header",
+      type: "h2",
+      content: t('title'),
+      className: "text-4xl md:text-5xl font-light text-center text-gray-900 dark:text-white mb-4"
+    },
+    {
+      id: "subheader",
+      type: "p", 
+      content: t('subtitle'),
+      className: "text-xl text-center text-gray-600 dark:text-gray-300 mb-16 max-w-3xl mx-auto"
+    }
+  ], [t]);
   
   // State for each animated element
   const [elementsStates, setElementsStates] = useState(
@@ -101,7 +101,7 @@ export default function FeaturedShowcase() {
     window.addEventListener("scroll", onScroll, { passive: true })
     onScroll()
     return () => window.removeEventListener("scroll", onScroll)
-  }, [])
+  }, [showcaseElements, featuredProjects])
 
   // Listen for navigation events
   useEffect(() => {

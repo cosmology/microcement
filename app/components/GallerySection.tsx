@@ -1,99 +1,102 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useState, useMemo } from "react"
 import Image from "next/image"
-
-const galleryItems = [
-  {
-    id: 1,
-    title: "Modern Kitchen Countertops",
-    category: "Kitchen",
-    image: "/microcement/images/gallery/kitchen-countertops.png",
-    description: "Seamless micro-cement countertops with integrated sink",
-  },
-  {
-    id: 2,
-    title: "Luxury Bathroom Walls",
-    category: "Bathroom",
-    image: "/microcement/images/gallery/bathroom-walls.png",
-    description: "Waterproof micro-cement shower walls in charcoal finish",
-  },
-  {
-    id: 3,
-    title: "Industrial Living Room Floor",
-    category: "Living Space",
-    image: "/microcement/images/gallery/living-room-floor.png",
-    description: "Polished concrete-look micro-cement flooring",
-  },
-  {
-    id: 4,
-    title: "Retail Store Feature Wall",
-    category: "Commercial",
-    image: "/microcement/images/gallery/retail-wall.png",
-    description: "Textured micro-cement accent wall in boutique store",
-  },
-  {
-    id: 5,
-    title: "Restaurant Bar Counter",
-    category: "Commercial",
-    image: "/microcement/images/gallery/restaurant-bar.png",
-    description: "Durable micro-cement bar surface with custom color",
-  },
-  {
-    id: 6,
-    title: "Minimalist Staircase",
-    category: "Architectural",
-    image: "/microcement/images/gallery/staircase.png",
-    description: "Continuous micro-cement stairs with integrated lighting",
-  },
-  {
-    id: 7,
-    title: "Outdoor Patio Surface",
-    category: "Exterior",
-    image: "/microcement/images/gallery/outdoor-patio.png",
-    description: "Weather-resistant micro-cement patio finish",
-  },
-  {
-    id: 8,
-    title: "Custom Furniture Piece",
-    category: "Furniture",
-    image: "/microcement/images/gallery/custom-furniture.png",
-    description: "Micro-cement dining table with natural edge",
-  },
-]
-
-const categories = [
-  "All",
-  "Kitchen",
-  "Bathroom",
-  "Living Space",
-  "Commercial",
-  "Architectural",
-  "Exterior",
-  "Furniture",
-]
-
-const galleryElements = [
-  {
-    id: "header",
-    type: "h2",
-    content: "Gallery of Applications",
-    className: "text-4xl md:text-5xl font-light text-center text-gray-900 dark:text-white mb-4"
-  },
-  {
-    id: "subheader",
-    type: "p", 
-    content: "Discover the endless possibilities of micro-cement across different spaces and applications",
-    className: "text-xl text-center text-gray-600 dark:text-gray-300 mb-12 max-w-3xl mx-auto"
-  }
-]
+import { useTranslations } from 'next-intl';
 
 export default function GallerySection() {
   const sectionRef = useRef<HTMLDivElement>(null)
   const elementsRefs = useRef<(HTMLDivElement | null)[]>([])
   const [selectedCategory, setSelectedCategory] = useState("All")
-  const [selectedImage, setSelectedImage] = useState<(typeof galleryItems)[0] | null>(null)
+  const [selectedImage, setSelectedImage] = useState<any>(null)
+  const t = useTranslations('Gallery');
+
+  // Use useMemo to prevent recreation of arrays on every render
+  const galleryItems = useMemo(() => [
+    {
+      id: 1,
+      title: t('items.kitchen.title'),
+      category: t('categories.kitchen'),
+      image: "/microcement/images/gallery/kitchen-countertops.png",
+      description: t('items.kitchen.description'),
+    },
+    {
+      id: 2,
+      title: t('items.bathroom.title'),
+      category: t('categories.bathroom'),
+      image: "/microcement/images/gallery/bathroom-walls.png",
+      description: t('items.bathroom.description'),
+    },
+    {
+      id: 3,
+      title: t('items.living.title'),
+      category: t('categories.livingSpace'),
+      image: "/microcement/images/gallery/living-room-floor.png",
+      description: t('items.living.description'),
+    },
+    {
+      id: 4,
+      title: t('items.retail.title'),
+      category: t('categories.commercial'),
+      image: "/microcement/images/gallery/retail-wall.png",
+      description: t('items.retail.description'),
+    },
+    {
+      id: 5,
+      title: t('items.restaurant.title'),
+      category: t('categories.commercial'),
+      image: "/microcement/images/gallery/restaurant-bar.png",
+      description: t('items.restaurant.description'),
+    },
+    {
+      id: 6,
+      title: t('items.staircase.title'),
+      category: t('categories.architectural'),
+      image: "/microcement/images/gallery/staircase.png",
+      description: t('items.staircase.description'),
+    },
+    {
+      id: 7,
+      title: t('items.patio.title'),
+      category: t('categories.exterior'),
+      image: "/microcement/images/gallery/outdoor-patio.png",
+      description: t('items.patio.description'),
+    },
+    {
+      id: 8,
+      title: t('items.furniture.title'),
+      category: t('categories.furniture'),
+      image: "/microcement/images/gallery/custom-furniture.png",
+      description: t('items.furniture.description'),
+    },
+  ], [t]);
+
+  const categories = useMemo(() => [
+    t('categories.all'),
+    t('categories.kitchen'),
+    t('categories.bathroom'),
+    t('categories.livingSpace'),
+    t('categories.commercial'),
+    t('categories.architectural'),
+    t('categories.exterior'),
+    t('categories.furniture'),
+  ], [t]);
+
+  const galleryElements = useMemo(() => [
+    {
+      id: "header",
+      type: "h2",
+      content: t('title'),
+      className: "text-4xl md:text-5xl font-light text-center text-gray-900 dark:text-white mb-4"
+    },
+    {
+      id: "subheader",
+      type: "p", 
+      content: t('subtitle'),
+      className: "text-xl text-center text-gray-600 dark:text-gray-300 mb-12 max-w-3xl mx-auto"
+    }
+  ], [t]);
 
   // State for each animated element
   const [elementsStates, setElementsStates] = useState(
@@ -104,7 +107,7 @@ export default function GallerySection() {
   const [forceIntro, setForceIntro] = useState(false)
 
   const filteredItems =
-    selectedCategory === "All" ? galleryItems : galleryItems.filter((item) => item.category === selectedCategory)
+    selectedCategory === t('categories.all') ? galleryItems : galleryItems.filter((item) => item.category === selectedCategory)
 
   useEffect(() => {
     function onScroll() {
@@ -130,7 +133,7 @@ export default function GallerySection() {
     window.addEventListener("scroll", onScroll, { passive: true })
     onScroll()
     return () => window.removeEventListener("scroll", onScroll)
-  }, [])
+  }, [galleryElements])
 
   // Listen for navigation events
   useEffect(() => {
@@ -226,7 +229,7 @@ export default function GallerySection() {
                     whileHover={{ opacity: 1, scale: 1 }}
                     className="text-white font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                   >
-                    View Details
+                    {t('viewDetails')}
                   </motion.div>
                 </div>
               </div>
