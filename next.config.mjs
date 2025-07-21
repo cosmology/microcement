@@ -10,7 +10,7 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'www.idealwork.com', // Matches a specific hostname
         port: '', // Leave empty if no specific port is required
-        pathname: '/wp-content/**', // Matches any path within this S3 bucket
+        pathname: '/wp-content/uploads/**',
       },
     ],
   },
