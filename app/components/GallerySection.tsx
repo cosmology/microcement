@@ -18,56 +18,56 @@ export default function GallerySection() {
       id: 1,
       title: t('items.kitchen.title'),
       category: t('categories.kitchen'),
-      image: "/microcement/images/gallery/kitchen-countertops.png",
+      image: "/images/gallery/kitchen-countertops.png",
       description: t('items.kitchen.description'),
     },
     {
       id: 2,
       title: t('items.bathroom.title'),
       category: t('categories.bathroom'),
-      image: "/microcement/images/gallery/bathroom-walls.png",
+      image: "/images/gallery/bathroom-walls.png",
       description: t('items.bathroom.description'),
     },
     {
       id: 3,
       title: t('items.living.title'),
       category: t('categories.livingSpace'),
-      image: "/microcement/images/gallery/living-room-floor.png",
+      image: "/images/gallery/living-room-floor.png",
       description: t('items.living.description'),
     },
     {
       id: 4,
       title: t('items.retail.title'),
       category: t('categories.commercial'),
-      image: "/microcement/images/gallery/retail-wall.png",
+      image: "/images/gallery/retail-wall.png",
       description: t('items.retail.description'),
     },
     {
       id: 5,
       title: t('items.restaurant.title'),
       category: t('categories.commercial'),
-      image: "/microcement/images/gallery/restaurant-bar.png",
+      image: "/images/gallery/restaurant-bar.png",
       description: t('items.restaurant.description'),
     },
     {
       id: 6,
       title: t('items.staircase.title'),
       category: t('categories.architectural'),
-      image: "/microcement/images/gallery/staircase.png",
+      image: "/images/gallery/staircase.png",
       description: t('items.staircase.description'),
     },
     {
       id: 7,
       title: t('items.patio.title'),
       category: t('categories.exterior'),
-      image: "/microcement/images/gallery/outdoor-patio.png",
+      image: "/images/gallery/outdoor-patio.png",
       description: t('items.patio.description'),
     },
     {
       id: 8,
       title: t('items.furniture.title'),
       category: t('categories.furniture'),
-      image: "/microcement/images/gallery/custom-furniture.png",
+      image: "/images/gallery/custom-furniture.png",
       description: t('items.furniture.description'),
     },
   ], [t]);
@@ -216,7 +216,7 @@ export default function GallerySection() {
             >
               <div className="relative overflow-hidden">
                 <Image
-                  src={item.image || "/microcement/placeholder.svg"}
+                  src={item.image || "/placeholder.svg"}
                   alt={item.title}
                   width={600}
                   height={400}
@@ -262,7 +262,7 @@ export default function GallerySection() {
             >
               <div className="relative">
                 <Image
-                  src={selectedImage.image || "/microcement/placeholder.svg"}
+                  src={selectedImage.image || "/placeholder.svg"}
                   alt={selectedImage.title}
                   width={800}
                   height={600}

@@ -105,14 +105,14 @@ export default function NavigationSection() {
             {/* Logo or Brand */}
             <a href="#" className={`font-bold ${navFont} text-light-dark dark:text-white`}>
               <Image
-                src="/microcement/images/logo-horizontal.jpg"
+                src="/images/logo-horizontal.jpg"
                 alt="Microcement"
                 width={120}
                 height={50}
                 className="hidden sm:block h-8 w-auto"
               />
               <Image
-                src="/microcement/images/logo.jpg"
+                src="/images/logo.jpg"
                 alt="Microcement"
                 width={80}
                 height={80}

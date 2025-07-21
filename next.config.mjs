@@ -1,26 +1,14 @@
 import createNextIntlPlugin from 'next-intl/plugin';
 
-const withNextIntl = createNextIntlPlugin({
-  experimental: {
-    createMessagesDeclaration: './messages/en.json'
-  }
-});
+const withNextIntl = createNextIntlPlugin();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   images: {
-    unoptimized: true,
+    domains: ['www.idealwork.com'],
   },
-  output: 'standalone',
-  basePath: "/microcement",
-  assetPrefix: "/microcement",
-  transpilePackages: ['geist'],
-}
+  // No basePath, no assetPrefix, no output: 'export'
+  // Add any other config you need here
+};
 
 export default withNextIntl(nextConfig);

@@ -34,16 +34,16 @@ export default function BeforeAndAfterSection() {
       id: 1, 
       beforeColor: "#f8f9fa", 
       afterColor: "#1a1a1a", 
-      beforeUrl: "/microcement/images/gallery/b&a/bath_before.jpg",
-      afterUrl: "/microcement/images/gallery/b&a/bath_after.jpg",
+      beforeUrl: "/images/gallery/b&a/bath_before.jpg",
+      afterUrl: "/images/gallery/b&a/bath_after.jpg",
       title: t('items.bathroom.title')
     },
     { 
       id: 2, 
       beforeColor: "#ced4da", 
       afterColor: "#525252", 
-      beforeUrl: "/microcement/images/gallery/b&a/sunset-salon-before.png",
-      afterUrl: "/microcement/images/gallery/b&a/sunset-salon-after.png",
+      beforeUrl: "/images/gallery/b&a/sunset-salon-before.png",
+      afterUrl: "/images/gallery/b&a/sunset-salon-after.png",
       title: t('items.commercial.title')
     },
     { id: 3, beforeColor: "#e9ecef", afterColor: "#2d2d2d", title: t('items.kitchen.title') },

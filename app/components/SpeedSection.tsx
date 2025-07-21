@@ -17,33 +17,33 @@ export default function SpeedSection() {
   // Use useMemo to prevent recreation of processSteps array on every render
   const processSteps = useMemo(() => [
     {
-      id: "prep",
+      key: 'step1',
+      image: "/images/process/prep.png",
+      alt: t('step1.title'),
       title: t('step1.title'),
-      image: "/microcement/images/process/prep.png",
       description: t('step1.description'),
-      imageAlt: "Surface preparation process for micro-cement application"
     },
     {
-      id: "primer",
+      key: 'step2',
+      image: "/images/process/primer.png",
+      alt: t('step2.title'),
       title: t('step2.title'),
-      image: "/microcement/images/process/primer.png",
       description: t('step2.description'),
-      imageAlt: "Primer application for micro-cement bonding"
     },
     {
-      id: "microcement",
+      key: 'step3',
+      image: "/images/process/microcement.png",
+      alt: t('step3.title'),
       title: t('step3.title'),
-      image: "/microcement/images/process/microcement.png",
       description: t('step3.description'),
-      imageAlt: "Micro-cement application process"
     },
     {
-      id: "sealer",
+      key: 'step4',
+      image: "/images/process/sealer.png",
+      alt: t('step4.title'),
       title: t('step4.title'),
-      image: "/microcement/images/process/sealer.png",
       description: t('step4.description'),
-      imageAlt: "Sealer application for micro-cement protection"
-    }
+    },
   ], [t]);
 
   // State for each animated element
@@ -155,7 +155,7 @@ export default function SpeedSection() {
         <div className="space-y-16">
           {processSteps.map((step, index) => (
             <motion.div
-              key={step.id}
+              key={step.key}
               ref={el => (processRefs.current[index] = el)}
               initial={{ opacity: 0, y: 50 }}
               animate={getAnim(processStates[index])}
@@ -178,7 +178,7 @@ export default function SpeedSection() {
                   <div className="w-[120px] h-[180px] lg:w-[200px] lg:h-[300px] rounded-lg overflow-hidden border border-light-dark dark:border-gray-700">
                     <Image
                       src={step.image}
-                      alt={step.imageAlt}
+                      alt={step.alt}
                       width={200}
                       height={300}
                       className="object-cover w-full h-full"
