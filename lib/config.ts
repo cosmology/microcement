@@ -1,6 +1,9 @@
 // Centralized configuration for the project
 
-// Export commonly used paths (all root-relative, no PROJECT_PATH logic)
+export const config = {
+  uploadedUrl: '/uploads',
+};
+
 export const paths = {
   upload: '/api/upload-image',
   home: '/',
