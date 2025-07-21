@@ -7,9 +7,9 @@ import { useTranslations } from 'next-intl';
 // Animation constants
 const ANIMATION_DURATION = 1
 const ANIMATION_EASING = "easeOut"
-const ANIMATION_Y_OFFSET = 20
+const ANIMATION_Y_OFFSET = -40
 const INITIAL_Y_OFFSET = 40
-const SCROLL_VISIBILITY_THRESHOLD = 0.8
+const SCROLL_VISIBILITY_THRESHOLD = 1
 const SCROLL_OUT_THRESHOLD = 50
 
 export default function EnvironmentalSection() {
@@ -77,7 +77,7 @@ export default function EnvironmentalSection() {
   function getAnim(state: { visible: boolean; out: boolean }) {
     return {
       opacity: state.visible && !state.out ? 1 : 0,
-      y: state.out ? -ANIMATION_Y_OFFSET : state.visible ? 0 : ANIMATION_Y_OFFSET,
+      y: state.visible && !state.out ? 0 : ANIMATION_Y_OFFSET,
     }
   }
 
