@@ -127,7 +127,7 @@ export default function TextureSamples() {
           {textures.map((texture, index) => (
             <motion.div
               key={texture.name}
-              ref={el => (texturesRefs.current[index] = el)}
+              ref={el => { texturesRefs.current[index] = el; }}
               initial={{ opacity: 0, y: 40 }}
               animate={getAnim(texturesStates[index])}
               transition={{ duration: 0.7, ease: "easeOut" }}

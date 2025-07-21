@@ -152,7 +152,7 @@ export default function FeaturedShowcase() {
           return (
             <motion.div
               key={element.id}
-              ref={el => (elementsRefs.current[index] = el)}
+              ref={el => { elementsRefs.current[index] = el; }}
               initial={{ opacity: 0, y: 40 }}
               animate={getAnim(elementsStates[index], forceIntro)}
               transition={{ duration: 0.7, ease: "easeOut" }}
@@ -172,7 +172,7 @@ export default function FeaturedShowcase() {
           {featuredProjects.map((project, index) => (
             <motion.div
               key={project.id}
-              ref={el => (projectsRefs.current[index] = el)}
+              ref={el => { projectsRefs.current[index] = el; }}
               initial={{ opacity: 0, y: 50 }}
               animate={getProjectAnim(projectsStates[index], forceIntro)}
               transition={{ duration: 0.8, delay: index * 0.2 }}
