@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { useScroll } from "framer-motion"
 import { useTranslations } from 'next-intl';
-import StickyNav from "./StickyNav"
 import HeroSection from "./HeroSection"
 import BeforeAndAfterSection from "./BeforeAndAfterSection"
 import EnvironmentalSection from "./EnvironmentalSection"
