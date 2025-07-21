@@ -18,37 +18,37 @@ export default function TextureSamples() {
     {
       name: t('smooth.name'),
       description: t('smooth.description'),
-      image: "/microcement/placeholder.svg?height=300&width=300",
+      image: "/images/placeholder.svg?height=300&width=300",
       color: t('smooth.color'),
     },
     {
       name: t('fine.name'),
       description: t('fine.description'),
-      image: "/microcement/placeholder.svg?height=300&width=300",
+      image: "/images/placeholder.svg?height=300&width=300",
       color: t('fine.color'),
     },
     {
       name: t('medium.name'),
       description: t('medium.description'),
-      image: "/microcement/placeholder.svg?height=300&width=300",
+      image: "/images/placeholder.svg?height=300&width=300",
       color: t('medium.color'),
     },
     {
       name: t('rustic.name'),
       description: t('rustic.description'),
-      image: "/microcement/placeholder.svg?height=300&width=300",
+      image: "/images/placeholder.svg?height=300&width=300",
       color: t('rustic.color'),
     },
     {
       name: t('polished.name'),
       description: t('polished.description'),
-      image: "/microcement/placeholder.svg?height=300&width=300",
+      image: "/images/placeholder.svg?height=300&width=300",
       color: t('polished.color'),
     },
     {
       name: t('matte.name'),
       description: t('matte.description'),
-      image: "/microcement/placeholder.svg?height=300&width=300",
+      image: "/images/placeholder.svg?height=300&width=300",
       color: t('matte.color'),
     },
   ], [t]);
