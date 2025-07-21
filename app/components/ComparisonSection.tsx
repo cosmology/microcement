@@ -102,7 +102,7 @@ export default function ComparisonSection() {
           return (
             <motion.div
               key={element.id}
-              ref={el => (elementsRefs.current[index] = el)}
+              ref={el => { elementsRefs.current[index] = el; }}
               initial={{ opacity: 0, y: 40 }}
               animate={getAnim(elementsStates[index], forceIntro)}
               transition={{ duration: 0.7, ease: "easeOut" }}
