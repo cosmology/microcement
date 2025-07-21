@@ -175,12 +175,8 @@ export default function NavigationSection() {
             </ul>
             {/* Right side controls - Theme Toggle, Hamburger, and Language Toggle */}
             <div className="flex items-center gap-2">
-              {/* Theme Toggle */}
-              <div className="flex-shrink-0">
-                <ThemeToggle />
-              </div>
-              {/* Language Dropdown */}
-              <div className="relative">
+                            {/* Language Dropdown */}
+                            <div className="relative">
                 <button
                   className="px-2 py-1 rounded border border-light-dark dark:border-gray-700 bg-white dark:bg-gray-800 text-light-dark dark:text-white hover:bg-light-main dark:hover:bg-gray-700 transition-colors flex items-center gap-1"
                   onClick={() => setLangOpen(v => !v)}
@@ -207,6 +203,10 @@ export default function NavigationSection() {
                     ))}
                   </ul>
                 )}
+              </div>
+              {/* Theme Toggle */}
+              <div className="flex-shrink-0">
+                <ThemeToggle />
               </div>
               {/* Morphing Hamburger/X for mobile */}
               <button
