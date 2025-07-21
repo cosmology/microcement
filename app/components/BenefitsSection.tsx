@@ -108,7 +108,7 @@ export default function BenefitsSection() {
           {benefits.map((benefit, index) => (
             <motion.div
               key={benefit.title}
-              ref={el => (benefitsRefs.current[index] = el)}
+              ref={(el: HTMLDivElement | null) => { benefitsRefs.current[index] = el; }}
               initial={{ opacity: 0, y: 40 }}
               animate={getAnim(benefitsStates[index], forceIntro)}
               transition={{ duration: 0.7, ease: "easeOut" }}
