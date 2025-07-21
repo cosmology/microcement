@@ -242,7 +242,7 @@ export default function BeforeAndAfterSection() {
                       handleDrag(touchEv as any);
                     }
                     const onTouchEnd = () => {
-                      document.removeEventListener('touchmove', onTouchMove, { passive: false });
+                      document.removeEventListener('touchmove', onTouchMove);
                       document.removeEventListener('touchend', onTouchEnd);
                     }
                     document.addEventListener('touchmove', onTouchMove, { passive: false });
