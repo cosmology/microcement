@@ -36,7 +36,7 @@ export default function HomeClient() {
     return `/${langCode}${rest === '' ? '/' : rest}`;
   }
 
-  const pathname = usePathname();
+  const pathname = usePathname() || '/';
   const locale = pathname.split('/')[1]; // 'en', 'es', 'sr'
 
   return (
