@@ -236,16 +236,17 @@ export default function BeforeAndAfterSection() {
                     document.addEventListener('mouseup', onMouseUp)
                   } : undefined}
                   onTouchStart={isActive ? (e) => {
-                    const onTouchMove = (ev: TouchEvent) => {
-                      ev.preventDefault()
-                      handleDrag(ev as any)
+                    const onTouchMove = (ev: Event) => {
+                      const touchEv = ev as TouchEvent;
+                      touchEv.preventDefault();
+                      handleDrag(touchEv as any);
                     }
                     const onTouchEnd = () => {
-                      document.removeEventListener('touchmove', onTouchMove, { passive: false })
-                      document.removeEventListener('touchend', onTouchEnd)
+                      document.removeEventListener('touchmove', onTouchMove, { passive: false });
+                      document.removeEventListener('touchend', onTouchEnd);
                     }
-                    document.addEventListener('touchmove', onTouchMove, { passive: false })
-                    document.addEventListener('touchend', onTouchEnd)
+                    document.addEventListener('touchmove', onTouchMove, { passive: false });
+                    document.addEventListener('touchend', onTouchEnd);
                   } : undefined}
                 >
                   {/* Before Image/Color Background */}

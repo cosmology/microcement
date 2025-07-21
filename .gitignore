@@ -31,3 +31,6 @@ dist-ssr
 frontend/tsconfig.tsbuildinfo
 frontend/tsconfig.tsbuildinfo
 .qodo
+
+# pnpm
+.pnpm-store/
