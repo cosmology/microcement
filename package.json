@@ -61,7 +61,8 @@
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.6",
     "zod": "^3.24.1",
-    "formidable": "^3.5.4"
+    "formidable": "^3.5.4",
+    "@vercel/functions": "latest"
   },
   "devDependencies": {
     "@types/formidable": "^3.4.5",
