@@ -156,7 +156,7 @@ export default function SpeedSection() {
           {processSteps.map((step, index) => (
             <motion.div
               key={step.key}
-              ref={el => (processRefs.current[index] = el)}
+              ref={el => { processRefs.current[index] = el; }}
               initial={{ opacity: 0, y: 50 }}
               animate={getAnim(processStates[index])}
               transition={{ duration: 0.7, ease: "easeOut", delay: index * 0.1 }}

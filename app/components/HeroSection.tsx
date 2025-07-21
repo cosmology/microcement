@@ -89,7 +89,7 @@ export default function HeroSection() {
             return (
               <motion.div
                 key={i}
-                ref={el => (lineRefs.current[i] = el)}
+                ref={el => { lineRefs.current[i] = el; }}
                 initial={{ x: initialX, opacity: 0, y: 0 }}
                 animate={{ x: animateX, opacity, y: animateY }}
                 transition={{
