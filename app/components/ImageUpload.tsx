@@ -1,5 +1,5 @@
 import React, { useState, ChangeEvent, FormEvent } from 'react';
-import { paths, config } from '@/lib/config';
+import { paths } from '@/lib/config';
 
 const API_URL = paths.upload; // Use centralized config
 const MAX_SIZE = 200 * 1024; // 200kB
