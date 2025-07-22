@@ -15,6 +15,7 @@ import SpeedSection from "../components/SpeedSection"
 import BenefitsSection from "../components/BenefitsSection"
 import CTASection from "../components/CTASection"
 import NavigationSection from "../components/NavigationSection"
+import { GeoLocationSection } from "../components/GeoLocationSection";
 
 export default function Home() {
   const { scrollYProgress } = useScroll()
@@ -32,6 +33,7 @@ export default function Home() {
       <NavigationSection />
       <main className="relative">
         <HeroSection />
+        <GeoLocationSection />
         <EnvironmentalSection />
         <ComparisonSection />
         <SpeedSection />

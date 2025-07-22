@@ -22,15 +22,17 @@ export function GeoLocationSection() {
   const currencySymbol = getParam('currencySymbol');
   const languages = getParam('languages');
 
-  if (!country && !city && !region) return null;
+//   if (!country && !city && !region) return null;
 
   return (
     <div style={{ fontSize: '0.75rem', color: '#888', marginLeft: '1rem', whiteSpace: 'nowrap' }}>
-      {city && <span>{city}, </span>}
+        Ivan Prokic
+        {city && <span>{city}, </span>}
+      {/* 
       {region && <span>{region}, </span>}
       {country && <span>{country}</span>}
       {currencyCode && <span> &middot; {currencySymbol} ({currencyCode})</span>}
-      {languages && <span> &middot; {languages}</span>}
+      {languages && <span> &middot; {languages}</span>} */}
     </div>
   );
 } 
