@@ -30,27 +30,34 @@ function getLocaleFromCountry(country: string) {
   return 'en'; // fallback
 }
 
+// run only on homepage
+export const config = {
+  matcher: '/',
+}
+
 export async function middleware(req: NextRequest) {
   const { nextUrl: url } = req
   const geo = geolocation(req)
   const country = geo.country || 'US'
-  const city = geo.city || 'San Diego'
+  const city = geo.city || 'San Francisco'
   const region = geo.countryRegion || 'CA'
 
-  // Find country info from countries.json
-  const countryInfo = countriesTyped.find((x) => x.cca2 === country)
-  let currencyCode = 'USD', currency = { name: 'US Dollar', symbol: '$' }, languages = 'English';
+  const countryInfo = countriesTyped.find((x) => x.cca2 === country);
+
+  let currencyCode = 'USD';
+  let currency = { symbol: '$', name: 'US Dollar' };
+  let languages = 'English';
+
   if (countryInfo) {
-    currencyCode = Object.keys(countryInfo.currencies)[0]
-    currency = countryInfo.currencies[currencyCode]
-    languages = Object.values(countryInfo.languages).join(', ')
+    const codes = Object.keys(countryInfo.currencies);
+    if (codes.length > 0) {
+      currencyCode = codes[0];
+      currency = countryInfo.currencies[currencyCode];
+    }
+    languages = Object.values(countryInfo.languages).join(', ');
   }
 
-  // Set locale based on country
-  const locale = getLocaleFromCountry(country.trim().toUpperCase());
-
-  // Add geolocation/currency/language info to query params
-  url.searchParams.set('country', country)
+  url.searchParams.set('country', country);
   url.searchParams.set('city', city)
   url.searchParams.set('region', region)
   url.searchParams.set('currencyCode', currencyCode)
@@ -58,26 +65,9 @@ export async function middleware(req: NextRequest) {
   url.searchParams.set('name', currency.name)
   url.searchParams.set('languages', languages)
 
-  // Log for debugging
-  console.log({ geo, country, city, region, currencyCode, currency, languages, locale })
-
-  // Supported locales
-  const supportedLocales = ['en', 'es', 'sr'];
-  const pathname = url.pathname;
-
-  // If the path does not start with a supported locale, redirect to the detected locale
-  if (!supportedLocales.some(l => pathname.startsWith(`/${l}`))) {
-    url.pathname = `/${locale}${pathname}`;
-    return NextResponse.redirect(url);
-  }
-
-  // Otherwise, let next-intl handle the rest
-  return createMiddleware({
-    locales: supportedLocales,
-    defaultLocale: 'en'
-  })(req);
+  return NextResponse.rewrite(url)
 }
 
-export const config = {
-  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)'],
-}; 
+// export const config = {
+//   matcher: ['/((?!api|_next|_vercel|.*\\..*).*)'],
+// }; 
