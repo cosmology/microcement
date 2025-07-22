@@ -8,6 +8,7 @@ import { paths } from "@/lib/config"
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
+import { GeoLocationSection } from "./GeoLocationSection";
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -119,6 +120,7 @@ export default function NavigationSection() {
                 className="block sm:hidden h-8 w-auto"
               />
             </a>
+            <GeoLocationSection />
             {/* Desktop Nav */}
             <ul className={`hidden md:flex items-center gap-2 sm:gap-4 md:gap-6 ${navFont}`}>
               {navLinks.map((link) =>
