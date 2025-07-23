@@ -8,12 +8,21 @@ interface Currency {
   name: string;
   symbol: string;
 }
+
 interface Country {
   cca2: string;
   currencies: Record<string, Currency>;
   languages: Record<string, string>;
   flag: string;
 }
+
+interface GeolocationData {
+  country?: string;
+  city?: string;
+  countryRegion?: string;
+  ip?: string;
+}
+
 // Cast countries to Country[]
 const countriesTyped = countries as unknown as Country[];
 
@@ -30,34 +39,44 @@ function getLocaleFromCountry(country: string) {
   return 'en'; // fallback
 }
 
-// run only on homepage
-export const config = {
-  matcher: '/',
-}
-
 export async function middleware(req: NextRequest) {
   const { nextUrl: url } = req
-  const geo = geolocation(req)
-  const country = geo.country || 'US'
-  const city = geo.city || 'San Francisco'
-  const region = geo.countryRegion || 'CA'
+  const geo: GeolocationData = geolocation(req)
+  
+  // Mock data for development (remove in production)
+  const mockGeo: GeolocationData = {
+    country: 'US',
+    city: 'San Francisco',
+    countryRegion: 'CA',
+    ip: '127.0.0.1'
+  };
+  
+  // Use mock data if geolocation is empty (development)
+  const effectiveGeo = Object.keys(geo).length === 0 ? mockGeo : geo;
+  
+  const country = effectiveGeo.country || 'US'
+  const city = effectiveGeo.city || 'San Diego'
+  const region = effectiveGeo.countryRegion || 'CA'
 
-  const countryInfo = countriesTyped.find((x) => x.cca2 === country);
-
+  // Find country info from countries.json with proper type guard
+  const countryInfo: Country | undefined = countriesTyped.find((x: Country) => x.cca2 === country)
+  
+  // Default values with proper typing
   let currencyCode = 'USD';
-  let currency = { symbol: '$', name: 'US Dollar' };
+  let currency: Currency = { name: 'US Dollar', symbol: '$' };
   let languages = 'English';
-
-  if (countryInfo) {
-    const codes = Object.keys(countryInfo.currencies);
-    if (codes.length > 0) {
-      currencyCode = codes[0];
-      currency = countryInfo.currencies[currencyCode];
-    }
+  
+  if (countryInfo && countryInfo.currencies && Object.keys(countryInfo.currencies).length > 0) {
+    currencyCode = Object.keys(countryInfo.currencies)[0];
+    currency = countryInfo.currencies[currencyCode];
     languages = Object.values(countryInfo.languages).join(', ');
   }
 
-  url.searchParams.set('country', country);
+  // Set locale based on country
+  const locale = getLocaleFromCountry(country.trim().toUpperCase());
+
+  // Add geolocation/currency/language info to query params
+  url.searchParams.set('country', country)
   url.searchParams.set('city', city)
   url.searchParams.set('region', region)
   url.searchParams.set('currencyCode', currencyCode)
@@ -65,9 +84,26 @@ export async function middleware(req: NextRequest) {
   url.searchParams.set('name', currency.name)
   url.searchParams.set('languages', languages)
 
-  return NextResponse.rewrite(url)
+  // Log for debugging
+  console.log({ geo, country, city, region, currencyCode, currency, languages, locale })
+
+  // Supported locales
+  const supportedLocales = ['en', 'es', 'sr'];
+  const pathname = url.pathname;
+
+  // If the path does not start with a supported locale, redirect to the detected locale
+  if (!supportedLocales.some(l => pathname.startsWith(`/${l}`))) {
+    url.pathname = `/${locale}${pathname}`;
+    return NextResponse.redirect(url);
+  }
+
+  // Otherwise, let next-intl handle the rest
+  return createMiddleware({
+    locales: supportedLocales,
+    defaultLocale: 'en'
+  })(req);
 }
 
-// export const config = {
-//   matcher: ['/((?!api|_next|_vercel|.*\\..*).*)'],
-// }; 
+export const config = {
+  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)'],
+}; 
