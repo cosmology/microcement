@@ -46,7 +46,7 @@ export async function middleware(req: NextRequest) {
   // Mock data for development (remove in production)
   const mockGeo: GeolocationData = {
     country: 'US',
-    city: 'San Francisco',
+    city: 'San Diego',
     countryRegion: 'CA',
     ip: '127.0.0.1'
   };
@@ -60,6 +60,8 @@ export async function middleware(req: NextRequest) {
 
   // Find country info from countries.json with proper type guard
   const countryInfo: Country | undefined = countriesTyped.find((x: Country) => x.cca2 === country)
+
+  console.log("countryInfo: ", countryInfo)
   
   // Default values with proper typing
   let currencyCode = 'USD';
@@ -104,6 +106,7 @@ export async function middleware(req: NextRequest) {
   })(req);
 }
 
+// Run middleware on ALL paths EXCEPT"
 export const config = {
   matcher: ['/((?!api|_next|_vercel|.*\\..*).*)'],
 }; 
