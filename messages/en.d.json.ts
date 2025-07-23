@@ -19,10 +19,10 @@ const messages = {
     "upload": "Upload"
   },
   "Hero": {
-    "line1": "Transform Spaces.",
-    "line2": "Sustainably.",
-    "line3": "Stylishly.",
-    "line4": "Fast.",
+    "line1": "Transform Spaces",
+    "line2": "Sustainably",
+    "line3": "Stylishly",
+    "line4": "Fast",
     "description": "Micro-cement is more than a surface solution — it's a design revolution. Whether you're updating a home, retail space, or showroom, our innovative finishes combine elegance with efficiency and eco-conscious performance."
   },
   "Environmental": {

@@ -16,10 +16,10 @@
     "upload": "Subir"
   },
   "Hero": {
-    "line1": "Transforma Espacios.",
-    "line2": "Sosteniblemente.",
-    "line3": "Elegantemente.",
-    "line4": "Rápidamente.",
+    "line1": "Transforma Espacios",
+    "line2": "Sosteniblemente",
+    "line3": "Elegantemente",
+    "line4": "Rápidamente",
     "description": "El micro-cemento es más que una solución de superficie — es una revolución del diseño. Ya sea que estés actualizando una casa, espacio comercial o showroom, nuestros acabados innovadores combinan elegancia con eficiencia y rendimiento ecológico."
   },
   "Environmental": {
@@ -43,19 +43,19 @@
     "disruptionTitle": "Interrupción Mínima",
     "step1": {
       "title": "Preparación de Superficie",
-      "description": "Limpieza rápida y imprimación de superficies existentes"
+      "description": "Nuestro equipo experto comienza con una preparación minuciosa de la superficie, asegurando que el sustrato existente esté limpio, estable y listo para recibir el microcemento. Este paso crítico implica limpiar, reparar cualquier daño y aplicar las imprimaciones necesarias para crear la base perfecta para un acabado impecable."
     },
     "step2": {
       "title": "Aplicación",
-      "description": "Proceso de aplicación de micro-cemento rápido y eficiente"
+      "description": "Aplicamos imprimaciones especializadas que crean una fuerte adhesión entre la superficie existente y el microcemento. Este paso es esencial para garantizar la durabilidad a largo plazo y prevenir cualquier delaminación o agrietamiento. La imprimación también ayuda a sellar la superficie y proporcionar una absorción uniforme."
     },
     "step3": {
       "title": "Curado",
-      "description": "Curado rápido para uso inmediato"
+      "description": "El microcemento se aplica expertamente en múltiples capas delgadas, un par de capas base y varias de color, cada una cuidadosamente alisada para crear la textura y el acabado deseados. Nuestros aplicadores expertos trabajan con precisión para lograr juntas sin costuras y una cobertura uniforme, asegurando una superficie hermosa y duradera que perdurará por años."
     },
     "step4": {
       "title": "Sellado",
-      "description": "Sellado protector final para acabado duradero"
+      "description": "Finalmente, aplicamos varias capas de selladores de alta calidad que protegen el microcemento de manchas, humedad y desgaste, mientras realzan su belleza natural. Esta capa protectora asegura que tu superficie permanezca hermosa y funcional durante años, con un mantenimiento mínimo requerido."
     }
   },
   "Gallery": {

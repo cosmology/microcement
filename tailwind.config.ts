@@ -67,7 +67,7 @@ const config: Config = {
   			},
   			// Light theme colors
   			'light-main': '#cecec5',
-  			'light-dark': '#b0b09e',
+  			'light-dark': '#8c8c7e',
   			'light-light': '#e5e5db',
   			'light-lightest': '#F9FAFB',
   		},
