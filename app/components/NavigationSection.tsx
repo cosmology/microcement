@@ -102,7 +102,7 @@ export default function NavigationSection() {
           variants={navVariants}
           className="fixed top-0 left-0 right-0 z-50 w-full bg-light-light dark:bg-gray-900 border-b border-light-dark dark:border-gray-700 backdrop-blur-md"
         >
-          <div className="max-w-7xl mx-auto flex items-center justify-between h-12 sm:h-14 md:h-16 px-2 sm:px-4 md:px-8">
+          <div className="max-w-7xl mx-auto flex items-center justify-between h-12 sm:h-14 md:h-16 px-8 py-10">
             {/* Logo or Brand */}
             <a href="#" className={`font-bold ${navFont} text-light-dark dark:text-white`}>
               <Image
@@ -212,59 +212,112 @@ export default function NavigationSection() {
               </div>
               {/* Morphing Hamburger/X for mobile */}
               <button
-                className="md:hidden flex items-center justify-center p-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-light-dark"
+                className="md:hidden flex items-center justify-center p-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-light-dark relative"
                 onClick={() => setMobileOpen((v) => !v)}
                 aria-label={mobileOpen ? "Close menu" : "Open menu"}
               >
                 <motion.svg
-                  width="28"
-                  height="28"
-                  viewBox="0 0 28 28"
+                  width="32"
+                  height="32"
+                  viewBox="0 0 32 32"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
-                  className="w-7 h-7 text-light-dark dark:text-white"
+                  className="w-8 h-8 text-light-dark dark:text-white"
                 >
-                  {/* Top line */}
+                  {/* Top line - fades out */}
                   <motion.line
-                    x1="5" y1="8" x2="23" y2="8"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                    initial={false}
-                    animate={mobileOpen ? {
-                      y1: 20, y2: 20, rotate: 45
-                    } : {
-                      y1: 8, y2: 8, rotate: 0
-                    }}
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    style={{ originX: 0.5, originY: 0.5 }}
-                  />
-                  {/* Middle line */}
-                  <motion.line
-                    x1="5" y1="14" x2="23" y2="14"
+                    x1="3" y1="9" x2="29" y2="9"
                     stroke="currentColor" strokeWidth="2" strokeLinecap="round"
                     initial={false}
                     animate={mobileOpen ? {
                       opacity: 0,
-                      x1: 14, x2: 14
+                      transition: { duration: 0.2, ease: "easeOut", delay: 0.1 }
                     } : {
                       opacity: 1,
-                      x1: 5, x2: 23
+                      transition: { duration: 0.3, ease: "easeOut", delay: 0.2 }
                     }}
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
-                  {/* Bottom line */}
+                  {/* Middle line - fades out */}
                   <motion.line
-                    x1="5" y1="20" x2="23" y2="20"
+                    x1="3" y1="16" x2="29" y2="16"
                     stroke="currentColor" strokeWidth="2" strokeLinecap="round"
                     initial={false}
                     animate={mobileOpen ? {
-                      y1: 8, y2: 8, rotate: -45
+                      opacity: 0,
+                      transition: { duration: 0.2, ease: "easeOut", delay: 0.2 }
                     } : {
-                      y1: 20, y2: 20, rotate: 0
+                      opacity: 1,
+                      transition: { duration: 0.3, ease: "easeOut", delay: 0.1 }
                     }}
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    style={{ originX: 0.5, originY: 0.5 }}
+                  />
+                  {/* Bottom line - fades out */}
+                  <motion.line
+                    x1="3" y1="23" x2="29" y2="23"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                    initial={false}
+                    animate={mobileOpen ? {
+                      opacity: 0,
+                      transition: { duration: 0.2, ease: "easeOut", delay: 0.3 }
+                    } : {
+                      opacity: 1,
+                      transition: { duration: 0.3, ease: "easeOut" }
+                    }}
                   />
                 </motion.svg>
+                {/* Top diagonal line - starts at middle, rotates counter-clockwise */}
+                <motion.div
+                  className="absolute w-4 h-0.5 bg-light-dark dark:bg-white rounded-full"
+                  style={{ 
+                    top: '50%', 
+                    left: '50%', 
+                    transformOrigin: 'center',
+                    transform: 'translate(-50%, -50%)'
+                  }}
+                  initial={{ opacity: 0, rotate: 0 }}
+                  animate={mobileOpen ? {
+                    opacity: 1,
+                    rotate: -45,
+                    transition: { 
+                      duration: 0.4, 
+                      ease: "easeOut", 
+                      delay: 0.4
+                    }
+                  } : {
+                    opacity: 0,
+                    rotate: 0,
+                    transition: { 
+                      duration: 0.3, 
+                      ease: "easeOut"
+                    }
+                  }}
+                />
+                {/* Bottom diagonal line - starts at middle, rotates clockwise */}
+                <motion.div
+                  className="absolute w-4 h-0.5 bg-light-dark dark:bg-white rounded-full"
+                  style={{ 
+                    top: '50%', 
+                    left: '50%', 
+                    transformOrigin: 'center',
+                    transform: 'translate(-50%, -50%)'
+                  }}
+                  initial={{ opacity: 0, rotate: 0 }}
+                  animate={mobileOpen ? {
+                    opacity: 1,
+                    rotate: 45,
+                    transition: { 
+                      duration: 0.4, 
+                      ease: "easeOut", 
+                      delay: 0.4
+                    }
+                  } : {
+                    opacity: 0,
+                    rotate: 0,
+                    transition: { 
+                      duration: 0.3, 
+                      ease: "easeOut"
+                    }
+                  }}
+                />
               </button>
             </div>
           </div>

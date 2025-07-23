@@ -1,75 +1,56 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useRef, useEffect, useState, useMemo } from "react"
+import { useRef, useEffect, useState, useMemo, useCallback } from "react"
 import { globalNavigation } from "@/lib/navigation"
 import { useTranslations } from 'next-intl';
+import { AnimatePresence } from "framer-motion"
 
 export default function HeroSection() {
   const sectionRef = useRef<HTMLDivElement>(null)
-  const lineRefs = useRef<(HTMLDivElement | null)[]>([])
   const t = useTranslations('Hero');
   
-  // Use useMemo to prevent recreation of LINES array on every render
-  const LINES = useMemo(() => [
-    { text: t('line1'), from: "left" },
-    { text: t('line2'), from: "right" },
-    { text: t('line3'), from: "left" },
-    { text: t('line4'), from: "right" },
-  ], [t]);
-  
-  const [lineStates, setLineStates] = useState(
-    LINES.map(() => ({ visible: false, out: false }))
-  )
-  const [hasAutoNavigated, setHasAutoNavigated] = useState(false)
+  // The lines
+  const mainLine = t('line1') // "Transform Spaces."
+  const animatedLines = [t('line2'), t('line3'), t('line4')]
 
+  // Animation state
+  const [mainIn, setMainIn] = useState(false)
+  const [currentLine, setCurrentLine] = useState(0)
+  const [showAnimated, setShowAnimated] = useState(true)
+  const [rainfall, setRainfall] = useState(false)
+
+  // Animate main line in on mount
   useEffect(() => {
-    function onScroll() {
-      if (!sectionRef.current) return
-      
-      const scrollY = window.scrollY
-      const isAtTop = scrollY < 100 // More generous threshold for top of page
-      
-      const newStates = LINES.map((_, i) => {
-        const line = lineRefs.current[i]
-        if (!line) return { visible: false, out: false }
-        const rect = line.getBoundingClientRect()
-        
-        // Special handling for first line (Transform) - always visible at top
-        if (i === 0 && isAtTop) {
-          return { visible: true, out: false }
-        }
-        
-        const visible = rect.top < window.innerHeight * 0.8
-        const out = rect.top < 50
-        return { visible, out }
-      })
-      setLineStates(newStates)
+    setMainIn(true)
+  }, [])
 
-      // Check if all lines are faded out and EnvironmentalSection is partially visible
-      const allLinesOut = newStates.every(state => state.out)
-      const environmentalSection = document.querySelector('#environmental')
-      
-      if (allLinesOut && environmentalSection && !hasAutoNavigated) {
-        const envRect = environmentalSection.getBoundingClientRect()
-        const envPartiallyVisible = envRect.top < window.innerHeight && envRect.bottom > 0
-        
-        if (envPartiallyVisible) {
-          // Auto-navigate to EnvironmentalSection
-          globalNavigation.triggerNavigation('environmental')
-          setHasAutoNavigated(true)
-        }
-      }
-    }
-    
-    window.addEventListener("scroll", onScroll, { passive: true })
-    window.addEventListener("resize", onScroll, { passive: true })
-    onScroll()
+  // Rotating animated lines
+  useEffect(() => {
+    if (!showAnimated) return
+    let inTimeout: NodeJS.Timeout, outTimeout: NodeJS.Timeout, nextTimeout: NodeJS.Timeout
+    setRainfall(false)
+    // Animate in
+    inTimeout = setTimeout(() => {
+      setRainfall(true)
+      // Animate out after 1.2s
+      outTimeout = setTimeout(() => {
+        setRainfall(false)
+        // Next line after rainfall
+        nextTimeout = setTimeout(() => {
+          setCurrentLine((prev: number) => (prev + 1) % animatedLines.length)
+        }, 400)
+      }, 1200)
+    }, 1600)
     return () => {
-      window.removeEventListener("scroll", onScroll)
-      window.removeEventListener("resize", onScroll)
+      clearTimeout(inTimeout)
+      clearTimeout(outTimeout)
+      clearTimeout(nextTimeout)
     }
-  }, [hasAutoNavigated, LINES])
+  }, [currentLine, showAnimated])
+
+  // Helper to split line into letters
+  const splitLetters = useCallback((line: string) => line.toUpperCase().split("").map((char, i) => ({ char, i })), [])
 
   return (
     <section
@@ -78,45 +59,52 @@ export default function HeroSection() {
       style={{ scrollSnapAlign: "start" }}
     >
       <div className="w-full max-w-4xl flex flex-col items-center justify-center text-center relative z-10">
-        <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-light text-gray-900 dark:text-white leading-tight sm:leading-relaxed flex flex-col gap-2 sm:gap-4 w-full">
-          {LINES.map((line, i) => {
-            let initialX = line.from === "left" ? -120 : 120
-            let animateX = lineStates[i].visible ? 0 : initialX
-            let animateY = lineStates[i].out ? -20 : 0
-            let opacity = lineStates[i].visible ? 1 : 1
-            if (lineStates[i].out) opacity = 0
-
-            return (
-              <motion.div
-                key={i}
-                ref={el => { lineRefs.current[i] = el; }}
-                initial={{ x: initialX, opacity: 0, y: 0 }}
-                animate={{ x: animateX, opacity, y: animateY }}
-                transition={{
-                  type: "spring",
-                  stiffness: 60,
-                  damping: 20,
-                  duration: 0.6,
-                }}
-                className={[
-                  i === 1 ? "text-gray-700 dark:text-gray-300" : "",
-                  i === 2 ? "text-gray-600 dark:text-gray-400" : "",
-                  i === 3 ? "text-gray-800 dark:text-gray-200" : "",
-                  "block w-full break-words",
-                ].join(" ")}
-                style={{ willChange: "transform, opacity" }}
-              >
-                {line.text}
-              </motion.div>
-            )
-          })}
+        {/* Main line slides in from top and stays */}
+        <motion.div
+          className="font-light text-gray-900 dark:text-white mb-8"
+          style={{ fontSize: 'clamp(2rem, 7vw, 4rem)', lineHeight: 1.05 }}
+          initial={{ opacity: 0, y: -80 }}
+          animate={mainIn ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+        >
+          {mainLine.toUpperCase()}
+        </motion.div>
+        {/* Animated lines, one at a time, rotating */}
+        <div className="flex flex-col w-full items-center justify-center"
+             style={{ minHeight: 'clamp(2.2rem, 4vw, 4.5rem)' }}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentLine}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              variants={{
+                hidden: { transition: { staggerChildren: 0.05 } },
+                visible: { transition: { staggerChildren: 0.05 } },
+                exit: { transition: { staggerChildren: 0.05 } },
+              }}
+              className="block w-full break-words font-light"
+              style={{ fontSize: 'clamp(2rem, 7vw, 4rem)', minHeight: 'clamp(2rem, 4vw, 4rem)', lineHeight: 1.05, position: 'relative', left: 0, right: 0 }}
+            >
+              {splitLetters(animatedLines[currentLine]).map(({ char, i }) => (
+                <motion.span
+                  key={i}
+                  variants={{
+                    hidden: { opacity: 0, y: -50 },
+                    visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 80, damping: 16 } },
+                    exit: { opacity: 0, y: 50, transition: { duration: 0.4, ease: "easeIn" } },
+                  }}
+                  style={{ display: 'inline-block', whiteSpace: char === ' ' ? 'pre' : 'normal' }}
+                >
+                  {char}
+                </motion.span>
+              ))}
+            </motion.div>
+          </AnimatePresence>
         </div>
         <motion.p
           initial={{ opacity: 0, y: 30 }}
-          animate={{
-            opacity: lineStates[3].visible && !lineStates[3].out ? 1 : 0,
-            y: lineStates[3].visible && !lineStates[3].out ? 0 : 30,
-          }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: "easeOut" }}
           className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 leading-relaxed max-w-3xl mx-auto pt-24"
         >
