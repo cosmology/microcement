@@ -93,6 +93,10 @@ export async function middleware(req: NextRequest) {
   const supportedLocales = ['en', 'es', 'sr'];
   const pathname = url.pathname;
 
+  if (req.nextUrl.pathname.startsWith('/test')) {
+    return NextResponse.next();
+  }
+
   // If the path does not start with a supported locale, redirect to the detected locale
   if (!supportedLocales.some(l => pathname.startsWith(`/${l}`))) {
     url.pathname = `/${locale}${pathname}`;

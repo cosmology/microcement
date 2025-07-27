@@ -85,7 +85,7 @@ export default function EnvironmentalSection() {
     <section 
       id="environmental" 
       ref={sectionRef} 
-      className="py-20 bg-gray-50 dark:bg-gray-800 px-6"
+      className="py-20 px-6"
     >
       <div className="max-w-6xl mx-auto">
         <motion.h2

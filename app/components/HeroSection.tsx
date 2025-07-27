@@ -55,8 +55,8 @@ export default function HeroSection() {
   return (
     <section
       ref={sectionRef}
-      className="relative min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 px-6 overflow-hidden transition-colors duration-200"
-      style={{ scrollSnapAlign: "start" }}
+      className="relative min-h-screen w-full flex items-center justify-center px-6 overflow-hidden transition-colors duration-200"
+      style={{ scrollSnapAlign: "start", opacity: 0.5 }}
     >
       <div className="w-full max-w-4xl flex flex-col items-center justify-center text-center relative z-10">
         {/* Main line slides in from top and stays */}
@@ -73,7 +73,7 @@ export default function HeroSection() {
         <div className="flex flex-col w-full items-center justify-center"
              style={{ minHeight: 'clamp(2.2rem, 4vw, 4.5rem)' }}>
           <AnimatePresence mode="wait">
-            <motion.div
+              <motion.div
               key={currentLine}
               initial="hidden"
               animate="visible"
@@ -88,18 +88,18 @@ export default function HeroSection() {
             >
               {splitLetters(animatedLines[currentLine]).map(({ char, i }) => (
                 <motion.span
-                  key={i}
+                key={i}
                   variants={{
                     hidden: { opacity: 0, y: -50 },
                     visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 80, damping: 16 } },
                     exit: { opacity: 0, y: 50, transition: { duration: 0.4, ease: "easeIn" } },
                   }}
                   style={{ display: 'inline-block', whiteSpace: char === ' ' ? 'pre' : 'normal' }}
-                >
+              >
                   {char}
                 </motion.span>
               ))}
-            </motion.div>
+              </motion.div>
           </AnimatePresence>
         </div>
         <motion.p

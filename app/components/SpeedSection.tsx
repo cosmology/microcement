@@ -94,7 +94,7 @@ export default function SpeedSection() {
   }
 
   return (
-    <section id="speed" ref={sectionRef} className="py-20 bg-light-light dark:bg-gray-900 px-6">
+    <section id="speed" ref={sectionRef} className="py-20 px-6">
       <div className="max-w-6xl mx-auto">
         <motion.h2
           ref={headerRef}
@@ -176,21 +176,21 @@ export default function SpeedSection() {
                 {/* Image - positioned with text wrapping */}
                 <div className="float-left mr-8 mb-4" style={{ shapeOutside: 'margin-box' }}>
                   <div className="w-[120px] h-[180px] lg:w-[200px] lg:h-[300px] rounded-lg overflow-hidden border border-light-dark dark:border-gray-700">
-                    <Image
-                      src={step.image}
+                  <Image
+                    src={step.image}
                       alt={step.alt}
-                      width={200}
-                      height={300}
-                      className="object-cover w-full h-full"
-                    />
-                  </div>
+                    width={200}
+                    height={300}
+                    className="object-cover w-full h-full"
+                  />
                 </div>
+              </div>
 
                 {/* Content - flows around the image like Word document */}
                 <div>
-                  <p className="text-base md:text-lg text-light-dark dark:text-gray-300 leading-relaxed">
-                    {step.description}
-                  </p>
+                <p className="text-base md:text-lg text-light-dark dark:text-gray-300 leading-relaxed">
+                  {step.description}
+                </p>
                 </div>
                 
                 {/* Clear float to prevent layout issues */}
