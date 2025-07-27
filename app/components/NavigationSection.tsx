@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState, useRef, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { ThemeToggle } from "@/components/theme-toggle"
-import Image from "next/image"
-import { paths } from "@/lib/config"
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ThemeToggle } from "@/components/theme-toggle";
+import Image from "next/image";
+import { paths } from "@/lib/config";
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
@@ -206,16 +206,16 @@ export default function NavigationSection() {
                   </ul>
                 )}
               </div>
-              {/* Theme Toggle */}
+            {/* Theme Toggle */}
               <div className="flex-shrink-0">
-                <ThemeToggle />
-              </div>
+              <ThemeToggle />
+            </div>
               {/* Morphing Hamburger/X for mobile */}
-              <button
+            <button
                 className="md:hidden flex items-center justify-center p-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-light-dark relative"
-                onClick={() => setMobileOpen((v) => !v)}
+              onClick={() => setMobileOpen((v) => !v)}
                 aria-label={mobileOpen ? "Close menu" : "Open menu"}
-              >
+            >
                 <motion.svg
                   width="32"
                   height="32"
@@ -318,7 +318,7 @@ export default function NavigationSection() {
                     }
                   }}
                 />
-              </button>
+            </button>
             </div>
           </div>
           {/* Mobile Menu */}

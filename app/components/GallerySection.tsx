@@ -14,62 +14,62 @@ export default function GallerySection() {
 
   // Use useMemo to prevent recreation of arrays on every render
   const galleryItems = useMemo(() => [
-    {
-      id: 1,
+  {
+    id: 1,
       title: t('items.kitchen.title'),
       category: t('categories.kitchen'),
       image: "/images/gallery/kitchen-countertops.png",
       description: t('items.kitchen.description'),
-    },
-    {
-      id: 2,
+  },
+  {
+    id: 2,
       title: t('items.bathroom.title'),
       category: t('categories.bathroom'),
       image: "/images/gallery/bathroom-walls.png",
       description: t('items.bathroom.description'),
-    },
-    {
-      id: 3,
+  },
+  {
+    id: 3,
       title: t('items.living.title'),
       category: t('categories.livingSpace'),
       image: "/images/gallery/living-room-floor.png",
       description: t('items.living.description'),
-    },
-    {
-      id: 4,
+  },
+  {
+    id: 4,
       title: t('items.retail.title'),
       category: t('categories.commercial'),
       image: "/images/gallery/retail-wall.png",
       description: t('items.retail.description'),
-    },
-    {
-      id: 5,
+  },
+  {
+    id: 5,
       title: t('items.restaurant.title'),
       category: t('categories.commercial'),
       image: "/images/gallery/restaurant-bar.png",
       description: t('items.restaurant.description'),
-    },
-    {
-      id: 6,
+  },
+  {
+    id: 6,
       title: t('items.staircase.title'),
       category: t('categories.architectural'),
       image: "/images/gallery/staircase.png",
       description: t('items.staircase.description'),
-    },
-    {
-      id: 7,
+  },
+  {
+    id: 7,
       title: t('items.patio.title'),
       category: t('categories.exterior'),
       image: "/images/gallery/outdoor-patio.png",
       description: t('items.patio.description'),
-    },
-    {
-      id: 8,
+  },
+  {
+    id: 8,
       title: t('items.furniture.title'),
       category: t('categories.furniture'),
       image: "/images/gallery/custom-furniture.png",
       description: t('items.furniture.description'),
-    },
+  },
   ], [t]);
 
   const categories = useMemo(() => [
@@ -84,18 +84,18 @@ export default function GallerySection() {
   ], [t]);
 
   const galleryElements = useMemo(() => [
-    {
-      id: "header",
-      type: "h2",
+  {
+    id: "header",
+    type: "h2",
       content: t('title'),
       className: "text-4xl md:text-5xl font-light text-center text-gray-900 dark:text-white mb-4"
-    },
-    {
-      id: "subheader",
-      type: "p", 
+  },
+  {
+    id: "subheader",
+    type: "p", 
       content: t('subtitle'),
-      className: "text-xl text-center text-gray-600 dark:text-gray-300 mb-12 max-w-3xl mx-auto"
-    }
+    className: "text-xl text-center text-gray-600 dark:text-gray-300 mb-12 max-w-3xl mx-auto"
+  }
   ], [t]);
 
   // State for each animated element
