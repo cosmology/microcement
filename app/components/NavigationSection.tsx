@@ -26,7 +26,6 @@ const galleryDropdown = [
 const navLinks = [
   { name: "Eco Friendly", href: "#environmental" },
   { name: "Speed", href: "#speed" },
-  { name: "Seamless Finishes", href: "#seamless" },
   {
     name: "Gallery",
     dropdown: galleryDropdown,

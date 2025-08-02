@@ -7,26 +7,26 @@
     /* Font variables */
     --font-roboto: 'Roboto', sans-serif;
     
-    /* Light theme variables */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
+    /* Light theme variables - New color scheme */
+    --background: 45 20% 95%; /* BLANCO ROTO #f5f3ed */
+    --foreground: 30 8% 40%; /* ACERO #6a645e */
+    --card: 35 15% 85%; /* LINO #ccc1b1 */
+    --card-foreground: 30 8% 40%; /* ACERO #6a645e */
+    --popover: 45 20% 95%; /* BLANCO ROTO #f5f3ed */
+    --popover-foreground: 30 8% 40%; /* ACERO #6a645e */
+    --primary: 30 8% 40%; /* ACERO #6a645e */
+    --primary-foreground: 45 20% 95%; /* BLANCO ROTO #f5f3ed */
+    --secondary: 35 15% 85%; /* LINO #ccc1b1 */
+    --secondary-foreground: 30 8% 40%; /* ACERO #6a645e */
+    --muted: 35 15% 85%; /* LINO #ccc1b1 */
+    --muted-foreground: 30 8% 40%; /* ACERO #6a645e */
+    --accent: 35 15% 85%; /* LINO #ccc1b1 */
+    --accent-foreground: 30 8% 40%; /* ACERO #6a645e */
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 47.4% 11.2%;
+    --destructive-foreground: 45 20% 95%; /* BLANCO ROTO #f5f3ed */
+    --border: 35 15% 85%; /* LINO #ccc1b1 */
+    --input: 35 15% 85%; /* LINO #ccc1b1 */
+    --ring: 30 8% 40%; /* ACERO #6a645e */
     --radius: 0.5rem;
   }
 
