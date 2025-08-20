@@ -154,7 +154,7 @@ export default function HomeClient() {
 
   return (
     <div className="relative">
-      {/* {!preloadDone && <Preloader onComplete={() => setPreloadDone(true)} />} */}
+      {!preloadDone && <Preloader onComplete={() => setPreloadDone(true)} />}
       <NavigationSection />
       <ScrollScene 
         sceneStage={sceneStage} 
@@ -181,7 +181,7 @@ export default function HomeClient() {
         <div ref={comparison} className="min-h-screen opacity-90">
           <ComparisonSection />
         </div>
-        <div ref={speed} className="min-h-screen">
+        <div ref={speed} className="min-h-screen opacity-90">
           <SpeedSection />
         </div>
         <div ref={gallery} className="min-h-screen opacity-90">

@@ -94,7 +94,11 @@ export default function SpeedSection() {
   }
 
   return (
-    <section id="speed" ref={sectionRef} className="py-20 px-6">
+    <section id="speed" 
+      ref={sectionRef} 
+      className="py-20 bg-white dark:bg-gray-900 px-6"
+      style={{ scrollSnapAlign: "start"}}
+    >
       <div className="max-w-6xl mx-auto">
         <motion.h2
           ref={headerRef}
