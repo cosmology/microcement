@@ -152,9 +152,10 @@ export default function HomeClient() {
 
   if (!mounted) return null
 
-  return (
+    return (
     <div className="relative">
-      {!preloadDone && <Preloader onComplete={() => setPreloadDone(true)} />}
+ 
+      {/* {!preloadDone && <Preloader onComplete={() => setPreloadDone(true)} />} */}
       <NavigationSection />
       <ScrollScene 
         sceneStage={sceneStage} 

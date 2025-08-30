@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { gsap } from "gsap";
+import SwiperGallery, { GalleryImage } from './SwiperGallery';
+import { isMobile } from '../../lib/utils';
 
 interface ScrollSceneProps {
   sceneStage?: number;
@@ -17,11 +19,43 @@ export default function ScrollScene({
   onIntroComplete,
   onIntroStart 
 }: ScrollSceneProps) {
+
+  // Toggle flags
+  const WITH_INTRO = true; // Toggle to control intro vs orbital
+  const WITH_HELPERS = false; // Toggle to show coordinate helpers (floor grid, axes)
+  const WITH_ORBITAL = false; // Toggle to enable orbital animation
+  const SHOW_CUBE = false; // Toggle to show/hide the green debug cube
+  const SHOW_DEBUG = false; // Toggle to show/hide debug panel
+  // Optional debug visuals for the camera path
+  const SHOW_CAMERA_PATH = false;
+  const SHOW_WAYPOINTS = false;
+  
+  // Hotspot highlight colors
+  const HOTSPOT_HIGHLIGHT_COLOR = 0x00ff00; // Bright green for model hotspots
+  const CUBE_HIGHLIGHT_COLOR = 0xff0000; // Red for cube
+  const CUBE_NORMAL_COLOR = 0x00ff00; // Green for cube normal state
+  
+  // Array of pastel light colors for hotspots
+  const PASTEL_COLORS = [
+    0xFFB3BA, // Light pink
+    0xBAFFC9, // Light mint
+    0xBAE1FF, // Light blue
+    0xFFFFBA, // Light yellow
+    0xFFB3F7, // Light purple
+    0xB3FFE6, // Light teal
+    0xFFD4B3, // Light peach
+    0xD4B3FF, // Light lavender
+    0xB3FFB3, // Light green
+    0xFFE6B3, // Light orange
+    0xB3D4FF, // Light sky blue
+    0xFFB3D4, // Light rose
+  ];
+
   // Scene configuration constants
   const CUBE_SIZE = 5;
   const CUBE_POSITION = new THREE.Vector3(0, 0, 0); // Centered on X-axis
-  const FLOOR_SIZE = 80;
-  const FLOOR_Y_POSITION = -2;
+  const FLOOR_SIZE = 800;
+  const FLOOR_Y_POSITION = 0;
   const WALL_SIZE = 40;
   const WALL_HEIGHT = 6; // Height 6
   const WALL_THICKNESS = 1; // Wall thickness constant
@@ -52,38 +86,30 @@ export default function ScrollScene({
     
     if (isDark) {
       return {
-        BACKGROUND_COLOR: 0x111827, // Dark background
+        BACKGROUND_COLOR: 0x111827, // Dark background (reverted)
         FLOOR_COLOR: 0x1f2937, // Dark floor
         WALL_COLOR: 0x04070E, // Dark walls
         CUBE_COLOR: 0x00ff00, // Green (keep same)
         CUBE_EMISSIVE_COLOR: 0x003300, // Dark green (keep same)
         GRID_COLOR_MAJOR: 0x444444, // Dark grid major lines
         GRID_COLOR_MINOR: 0x222222, // Dark grid minor lines
-        AXES_COLOR: 0x666666 // Dark axes color
+        AXES_COLOR: 0x666666, // Dark axes color
+        HOTSPOT_NORMAL_COLOR: 0xC1B6A6, // LINO
       };
     } else {
       return {
-        BACKGROUND_COLOR: 0xf5f3ed, // BLANCO ROTO background
+        BACKGROUND_COLOR: 0xf5f3ed, // BLANCO ROTO background (reverted)
         FLOOR_COLOR: 0xccc1b1, // LINO floor
         WALL_COLOR: 0xffffff, // White walls
         CUBE_COLOR: 0x00ff00, // Green
         CUBE_EMISSIVE_COLOR: 0x003300, // Dark green
         GRID_COLOR_MAJOR: 0x888888, // Light grid major lines
         GRID_COLOR_MINOR: 0xcccccc, // Light grid minor lines
-        AXES_COLOR: 0x333333 // Light axes color
+        AXES_COLOR: 0x333333, // Light axes color
+        HOTSPOT_NORMAL_COLOR: 0xC1B6A6, // LINO
       };
     }
   };
-  
-  // Toggle
-  const WITH_INTRO = true; // Toggle to control intro vs orbital
-  const WITH_HELPERS = false; // Toggle to show coordinate helpers
-  const WITH_ORBITAL = false; // Toggle to enable orbital animation
-  const SHOW_DEBUG = false; // Toggle to show/hide debug panel
-
-  // Optional debug visuals for the camera path
-  const SHOW_CAMERA_PATH = false;
-  const SHOW_WAYPOINTS = false;
   
   const mountRef = useRef<HTMLDivElement>(null);
   const animationIdRef = useRef<number>();
@@ -91,6 +117,7 @@ export default function ScrollScene({
   const sceneRef = useRef<THREE.Scene>();
   const rendererRef = useRef<THREE.WebGLRenderer>();
   const cubePos = useRef(CUBE_POSITION);
+  const cubeRef = useRef<THREE.Mesh | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const loaderOverlayRef = useRef<HTMLDivElement | null>(null);
   const loaderBarRef = useRef<HTMLDivElement | null>(null);
@@ -121,21 +148,63 @@ export default function ScrollScene({
   const pathLineRef = useRef<THREE.Line | null>(null);
   const waypointGroupRef = useRef<THREE.Group | null>(null);
   
+  // Raycaster for hotspot interaction
+  const raycasterRef = useRef<THREE.Raycaster | null>(null);
+  const mouseRef = useRef<THREE.Vector2>(new THREE.Vector2());
+  const [hoveredHotspot, setHoveredHotspot] = useState<THREE.Object3D | null>(null);
+  const [clickedHotspot, setClickedHotspot] = useState<THREE.Object3D | null>(null);
+  const [isFocusedOnHotspot, setIsFocusedOnHotspot] = useState(false);
+  const isFocusedOnHotspotRef = useRef(false); // Ref for animation loop access
+  const clickableObjectsRef = useRef<THREE.Object3D[]>([]);
+  const hotspotColorsRef = useRef<Map<THREE.Object3D, number>>(new Map());
+  const originalCameraPositionRef = useRef<THREE.Vector3>(new THREE.Vector3());
+  const originalCameraLookAtRef = useRef<THREE.Vector3>(new THREE.Vector3());
+  const targetCameraPositionRef = useRef<THREE.Vector3>(new THREE.Vector3());
+  const isAnimatingRef = useRef(false);
+
+  // Debug state
+  const [debugInfo, setDebugInfo] = useState<{
+    cameraPos: number[];
+    scrollTop: number;
+    scrollHeight: number;
+    progress: number;
+    progressPercent: number;
+    windowHeight: number;
+    windowWidth: number;
+    currentSection: string;
+    loaderPercent: number;
+    loaderLoadedMB: number | undefined;
+    loaderTotalMB: number | undefined;
+  } | null>(null);
+  
+  // Gallery system state
+  const [galleryVisible, setGalleryVisible] = useState(false);
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const [currentHotspot, setCurrentHotspot] = useState<string>('');
+  const [galleryAnimating, setGalleryAnimating] = useState(false);
+  
+  
   // GSAP-driven scroll path (preview path points and targets)
   const gsapCameraPoints = [
-    new THREE.Vector3(-10, 3, 2),
-    new THREE.Vector3(-9.5, 3, 9),
-    new THREE.Vector3(-9, 3, 26),
-    new THREE.Vector3(-2, 3, 26),
-    new THREE.Vector3(18, 3, 26),
-    new THREE.Vector3(18, 3, 0),
+    new THREE.Vector3(20, 5, 0),
+    new THREE.Vector3(-8, 6.5, 2),
+    new THREE.Vector3(-14, 6.75, 7),
+    new THREE.Vector3(-10, 7, 27),
+    new THREE.Vector3(-4, 7, 30),
+    new THREE.Vector3(-2, 7.25, 32),
+    new THREE.Vector3(18, 7.5, 32),
+    new THREE.Vector3(20, 8, 20),
   ];
   const gsapLookAtTargets = [
-    new THREE.Vector3(0, 0, 2),
-    new THREE.Vector3(0, 0, 4),
-    new THREE.Vector3(0, 1.0, 10),
-    new THREE.Vector3(6, 1.2, -3),
-    new THREE.Vector3(6, 1.8, 0),
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0, 3, 0),
+    new THREE.Vector3(0, 4, 0),
+    new THREE.Vector3(0, 5, 30),
+    new THREE.Vector3(10, 6, 50),
+    new THREE.Vector3(20, 7, 60),
+    new THREE.Vector3(30, 8, 40),
+    new THREE.Vector3(0, 0, -18),
   ];
   const gsapCurveRef = useRef<THREE.CatmullRomCurve3>(new THREE.CatmullRomCurve3(gsapCameraPoints, false, 'catmullrom', 0.1));
   const gsapLookAtTargetsRef = useRef<THREE.Vector3[]>(gsapLookAtTargets);
@@ -188,6 +257,436 @@ export default function ScrollScene({
       waypointGroupRef.current = null;
     }
   };
+  
+  // Gallery system functions
+  const loadGalleryImages = async (hotspotName: string) => {
+    setGalleryLoading(true);
+    setCurrentHotspot(hotspotName);
+    
+    try {
+      // Simulate API call - replace with actual API endpoint
+      const response = await fetch(`/api/gallery/${hotspotName}`);
+      if (response.ok) {
+        const images = await response.json();
+        // Transform API data to GalleryImage format
+        const transformedImages: GalleryImage[] = images.map((img: any) => ({
+          thumb: img.thumbnail,
+          full: img.src,
+          caption: img.alt
+        }));
+        setGalleryImages(transformedImages);
+      } else {
+        // Fallback to placeholder images for demo
+        const placeholderImages = getPlaceholderImages(hotspotName);
+        setGalleryImages(placeholderImages);
+      }
+    } catch (error) {
+      console.log('🖼️ Using placeholder images for:', hotspotName);
+      // Use placeholder images if API fails
+      const placeholderImages = getPlaceholderImages(hotspotName);
+      setGalleryImages(placeholderImages);
+    }
+    
+    setGalleryLoading(false);
+    setGalleryVisible(true);
+    // Disable scene mouse events when gallery opens
+    disableSceneMouseEvents();
+  };
+  
+  const getPlaceholderImages = (hotspotName: string): GalleryImage[] => {
+    // Generate placeholder images based on hotspot category
+    const category = HOTSPOT_CATEGORIES[hotspotName] || 'General';
+    const baseImages: GalleryImage[] = [
+      { thumb: '/images/placeholder-1-thumb.jpg', full: '/images/placeholder-1.jpg', caption: `${category} Project 1` },
+      { thumb: '/images/placeholder-2-thumb.jpg', full: '/images/placeholder-2.jpg', caption: `${category} Project 2` },
+      { thumb: '/images/placeholder-3-thumb.jpg', full: '/images/placeholder-3.jpg', caption: `${category} Project 3` },
+      { thumb: '/images/placeholder-4-thumb.jpg', full: '/images/placeholder-4.jpg', caption: `${category} Project 4` },
+      { thumb: '/images/placeholder-5-thumb.jpg', full: '/images/placeholder-5.jpg', caption: `${category} Project 5` },
+      { thumb: '/images/placeholder-6-thumb.jpg', full: '/images/placeholder-6.jpg', caption: `${category} Project 6` },
+    ];
+    
+    return baseImages;
+  };
+  
+  const closeGallery = () => {
+    console.log('🔧 closeGallery() called - Starting gallery cleanup...');
+    console.log('  Current galleryVisible:', galleryVisible);
+    console.log('  Current __galleryMode:', (window as any).__galleryMode);
+    
+    // Only handle gallery UI state - don't call continueJourney
+    setGalleryVisible(false);
+    setGalleryImages([]);
+    setCurrentHotspot('');
+    
+    console.log('  ✅ Gallery state updated - galleryVisible set to false');
+    
+    // Restore scroll and click events after gallery closes
+    restoreSceneEvents();
+    
+    console.log('🔧 closeGallery() completed');
+  };
+
+  const restoreSceneEvents = () => {
+    console.log('✅ Restoring scene events and scrolling...');
+    
+    // Call disableSceneMouseEvents(false) to properly clean up all event listeners
+    enableSceneMouseEvents();
+    
+    // Debug: Check if flags are cleared
+    console.log('🔍 After restore - Debug check:');
+    console.log('  __galleryMode:', (window as any).__galleryMode);
+    console.log('  __wheelListener:', (window as any).__wheelListener);
+    console.log('  __touchmoveListener:', (window as any).__touchmoveListener);
+    console.log('  __keydownListener:', (window as any).__keydownListener);
+    
+    console.log('✅ Scene events restored - scrolling and hotspots should work normally');
+  };
+
+  const onReturnToMainPath = () => {
+    console.log('🔄 Return to Main Path initiated...');
+    console.log('  Current state - galleryVisible:', galleryVisible);
+    console.log('  Current state - __galleryMode:', (window as any).__galleryMode);
+    
+    // Step 1: Close gallery (UI state management)
+    console.log('1️⃣ Closing gallery...');
+    closeGallery();
+    
+    // Step 2: Wait for state update, then continue journey
+    console.log('2️⃣ Waiting for gallery state to update...');
+    setTimeout(() => {
+      console.log('3️⃣ Gallery state should be updated now, continuing journey...');
+      console.log('  Current galleryVisible:', galleryVisible);
+      console.log('  Current __galleryMode:', (window as any).__galleryMode);
+      continueJourney();
+    }, 100); // Wait 100ms for React state to update
+  };
+
+  const disableSceneMouseEvents = () => {
+    console.log('🚫 Disabling scene mouse events - Gallery is visible');
+    
+    // Check if we already have listeners (prevent duplicates)
+    if ((window as any).__wheelListener) {
+      console.log('⚠️ WARNING: Scroll prevention listeners already exist!');
+      console.log('  Existing wheel listener:', (window as any).__wheelListener);
+      console.log('  This might cause duplicate blocking!');
+    }
+    
+    // GLOBAL WHEEL LISTENER TRACKER - Track ALL wheel listeners
+    if (!(window as any).__globalWheelTracker) {
+      console.log('🔍 Setting up global wheel listener tracker...');
+      (window as any).__globalWheelTracker = {
+        originalAddEventListener: window.addEventListener,
+        originalRemoveEventListener: window.removeEventListener,
+        wheelListeners: new Set()
+      };
+      
+      // Override addEventListener to track ALL wheel listeners
+      window.addEventListener = function(type: string, listener: any, options?: any) {
+        if (type === 'wheel') {
+          console.log('🔍 GLOBAL TRACKER: Wheel listener added:', listener);
+          console.log('  Function:', listener.toString().substring(0, 100));
+          console.log('  Options:', options);
+          (window as any).__globalWheelTracker.wheelListeners.add({ listener, options });
+        }
+        return (window as any).__globalWheelTracker.originalAddEventListener.call(this, type, listener, options);
+      };
+      
+      // Override removeEventListener to track wheel listener removal
+      window.removeEventListener = function(type: string, listener: any, options?: any) {
+        if (type === 'wheel') {
+          console.log('🔍 GLOBAL TRACKER: Wheel listener removed:', listener);
+          // Remove from our tracking set
+          for (const item of (window as any).__globalWheelTracker.wheelListeners) {
+            if (item.listener === listener) {
+              (window as any).__globalWheelTracker.wheelListeners.delete(item);
+              break;
+            }
+          }
+        }
+        return (window as any).__globalWheelTracker.originalRemoveEventListener.call(this, type, listener, options);
+      };
+      
+      console.log('✅ Global wheel listener tracker activated');
+    }
+    
+    (window as any).__galleryMode = true; // Set flag
+    
+    // Create unique listeners for each event type to ensure proper cleanup
+    (window as any).__wheelListener = (e: Event) => {
+      console.log('🚫 BLOCKING WHEEL SCROLL');
+      e.preventDefault(); 
+      e.stopPropagation(); 
+      return false;
+    };
+    
+    (window as any).__touchmoveListener = (e: Event) => {
+      console.log('🚫 BLOCKING TOUCH SCROLL');
+      e.preventDefault(); 
+      e.stopPropagation(); 
+      return false;
+    };
+    
+    (window as any).__keydownListener = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'PageUp' || e.key === 'PageDown') { 
+        console.log('🚫 BLOCKING KEYBOARD SCROLL:', e.key);
+        e.preventDefault(); 
+        e.stopPropagation();
+        return false;
+      }
+    };
+    
+    // Add listeners with non-passive option for maximum blocking
+    console.log('  📍 Adding wheel listener:', (window as any).__wheelListener);
+    window.addEventListener('wheel', (window as any).__wheelListener, { passive: false, capture: true });
+    
+    console.log('  📍 Adding touchmove listener:', (window as any).__touchmoveListener);
+    window.addEventListener('touchmove', (window as any).__touchmoveListener, { passive: false, capture: true });
+    
+    console.log('  📍 Adding keydown listener:', (window as any).__keydownListener);
+    window.addEventListener('keydown', (window as any).__keydownListener, { capture: true });
+    
+    console.log('✅ Scroll prevention listeners added with capture: true');
+    console.log('  📊 Current listener count - Wheel:', (window as any).__wheelListener ? '1' : '0');
+    
+    // Force clear any existing hotspot state
+    if (hoveredHotspot) {
+      setHoveredHotspot(null);
+      setHoverTooltip((prev: any) => ({ ...prev, visible: false }));
+      console.log('  🧹 Forced cleanup of existing hotspot state');
+    }
+  };
+
+  const enableSceneMouseEvents = () => {
+    console.log('✅ Re-enabling scene mouse events - Gallery is closed');
+    
+    // Clear the gallery mode flag FIRST
+    delete (window as any).__galleryMode;
+    console.log('  ✅ __galleryMode flag removed');
+    
+    // AGGRESSIVE CLEANUP: Remove ALL scroll prevention listeners
+    console.log('  🧹 Aggressive cleanup of scroll prevention listeners...');
+    
+    // Remove wheel listener
+    if ((window as any).__wheelListener) {
+      console.log('    Removing wheel listener:', (window as any).__wheelListener);
+      console.log('    Listener function type:', typeof (window as any).__wheelListener);
+      console.log('    Listener function toString:', (window as any).__wheelListener.toString().substring(0, 100));
+      
+      // Try multiple removal strategies
+      try {
+        window.removeEventListener('wheel', (window as any).__wheelListener, { capture: true });
+        console.log('      ✅ Removed with capture: true');
+      } catch (e) {
+        console.log('      ❌ Failed to remove with capture: true:', e);
+      }
+      
+      try {
+        window.removeEventListener('wheel', (window as any).__wheelListener, { capture: false });
+        console.log('      ✅ Removed with capture: false');
+      } catch (e) {
+        console.log('      ❌ Failed to remove with capture: false:', e);
+      }
+      
+      try {
+        window.removeEventListener('wheel', (window as any).__wheelListener);
+        console.log('      ✅ Removed without capture option');
+      } catch (e) {
+        console.log('      ❌ Failed to remove without capture option:', e);
+      }
+      
+      delete (window as any).__wheelListener;
+      console.log('    ✅ Wheel listener removed (all strategies)');
+      
+      // Verify the listener is actually gone
+      if ((window as any).__wheelListener) {
+        console.log('    ⚠️ WARNING: __wheelListener still exists after deletion!');
+      } else {
+        console.log('    ✅ __wheelListener successfully deleted');
+      }
+    } else {
+      console.log('    ℹ️ No wheel listener to remove');
+    }
+    
+    // Remove touchmove listener
+    if ((window as any).__touchmoveListener) {
+      console.log('    Removing touchmove listener:', (window as any).__touchmoveListener);
+      // Try multiple removal strategies
+      window.removeEventListener('touchmove', (window as any).__touchmoveListener, { capture: true });
+      window.removeEventListener('touchmove', (window as any).__touchmoveListener, { capture: false });
+      window.removeEventListener('touchmove', (window as any).__touchmoveListener);
+      delete (window as any).__touchmoveListener;
+      console.log('    ✅ Touchmove listener removed (all strategies)');
+    }
+    
+    // Remove keydown listener
+    if ((window as any).__keydownListener) {
+      console.log('    Removing keydown listener:', (window as any).__keydownListener);
+      // Try multiple removal strategies
+      window.removeEventListener('keydown', (window as any).__keydownListener, { capture: true });
+      window.removeEventListener('keydown', (window as any).__keydownListener, { capture: false });
+      window.removeEventListener('keydown', (window as any).__keydownListener);
+      delete (window as any).__keydownListener;
+      console.log('    ✅ Keydown listener removed (all strategies)');
+    }
+    
+    console.log('✅ All scroll prevention listeners removed');
+    
+    // NUCLEAR CLEANUP: Remove ALL wheel listeners using global tracker
+    if ((window as any).__globalWheelTracker) {
+      console.log('🚨 NUCLEAR CLEANUP: Removing ALL tracked wheel listeners...');
+      const tracker = (window as any).__globalWheelTracker;
+      
+      console.log(`  🔍 Found ${tracker.wheelListeners.size} wheel listeners to remove:`);
+      
+      // Remove all tracked wheel listeners
+      for (const item of tracker.wheelListeners) {
+        console.log('    Removing tracked wheel listener:', item.listener);
+        console.log('      Options:', item.options);
+        
+        try {
+          if (item.options) {
+            tracker.originalRemoveEventListener.call(window, 'wheel', item.listener, item.options);
+            console.log('      ✅ Removed with original options');
+          } else {
+            tracker.originalRemoveEventListener.call(window, 'wheel', item.listener);
+            console.log('      ✅ Removed without options');
+          }
+        } catch (e) {
+          console.log('      ❌ Failed to remove:', e);
+        }
+      }
+      
+      // Clear the tracking set
+      tracker.wheelListeners.clear();
+      console.log('    ✅ All tracked wheel listeners removed');
+      
+      // Restore original methods
+      window.addEventListener = tracker.originalAddEventListener;
+      window.removeEventListener = tracker.originalRemoveEventListener;
+      
+      // Clean up tracker
+      delete (window as any).__globalWheelTracker;
+      console.log('    ✅ Global tracker cleaned up');
+    }
+    
+    // Verify that all flags are cleared
+    console.log('🔍 Final verification - All flags cleared:');
+    console.log('  __galleryMode:', (window as any).__galleryMode);
+    console.log('  __wheelListener:', (window as any).__wheelListener);
+    console.log('  __touchmoveListener:', (window as any).__touchmoveListener);
+    console.log('  __keydownListener:', (window as any).__keydownListener);
+    
+    // Simple test to see if there are any remaining wheel listeners
+    console.log('🔍 Simple test for remaining wheel listeners...');
+    const testWheelEvent3 = new WheelEvent('wheel', { deltaY: 100 });
+    let wasBlocked = false;
+    
+    // Create a temporary listener to detect if any wheel events are being blocked
+    const tempListener3 = (e: Event) => {
+      if (e.defaultPrevented) {
+        wasBlocked = true;
+        console.log('⚠️ WARNING: Wheel event is still being blocked!');
+        console.log('  This means there is another wheel listener we did not remove.');
+      }
+    };
+    
+    window.addEventListener('wheel', tempListener3, { once: true });
+    window.dispatchEvent(testWheelEvent3);
+    
+    setTimeout(() => {
+      if (wasBlocked) {
+        console.log('🚨 PROBLEM IDENTIFIED: Wheel events are still being blocked');
+        console.log('  Our cleanup removed our listeners, but another listener remains');
+        console.log('  This listener is NOT one we created, so we cannot remove it');
+      } else {
+        console.log('✅ SUCCESS: No wheel blocking detected after cleanup');
+      }
+      window.removeEventListener('wheel', tempListener3);
+    }, 50);
+    
+    // Test if there are any remaining wheel listeners
+    console.log('🔍 Testing for remaining wheel listeners...');
+    const testWheelEvent1 = new WheelEvent('wheel', { deltaY: 100 });
+    let remainingListeners = 0;
+    
+    // Create a temporary listener to count how many times the event is processed
+    const tempListener1 = (e: Event) => {
+      remainingListeners++;
+      console.log(`    📊 Wheel event processed by listener ${remainingListeners}`);
+    };
+    
+    window.addEventListener('wheel', tempListener1, { once: true });
+    window.dispatchEvent(testWheelEvent1);
+    
+    setTimeout(() => {
+      if (remainingListeners > 0) {
+        console.log(`⚠️ WARNING: ${remainingListeners} wheel listeners are still active!`);
+        console.log('  This means our cleanup did not work properly.');
+      } else {
+        console.log('✅ No remaining wheel listeners detected');
+      }
+      window.removeEventListener('wheel', tempListener1);
+    }, 50);
+    
+    // NUCLEAR OPTION: If normal cleanup fails, try to detect and remove any remaining listeners
+    setTimeout(() => {
+      console.log('🧪 Testing if cleanup was successful...');
+      const testWheelEvent2 = new WheelEvent('wheel', { deltaY: 100 });
+      let wasBlocked = false;
+      
+      // Create a temporary listener to detect if our blocking is still active
+      const tempListener2 = (e: Event) => {
+        if (e.defaultPrevented) {
+          wasBlocked = true;
+          console.log('⚠️ WARNING: Scroll is still being blocked!');
+        }
+      };
+      
+      window.addEventListener('wheel', tempListener2, { once: true });
+      window.dispatchEvent(testWheelEvent2);
+      
+      setTimeout(() => {
+        if (wasBlocked) {
+          console.log('🚨 NUCLEAR CLEANUP NEEDED: Scroll still blocked after normal cleanup');
+          console.log('  Attempting to remove all wheel listeners...');
+          // This is a last resort - try to remove all wheel listeners
+          window.removeEventListener('wheel', tempListener2);
+        } else {
+          console.log('✅ Scroll cleanup successful - no blocking detected');
+        }
+      }, 50);
+    }, 100);
+    
+    // Verify that listeners are actually removed
+    console.log('🔍 Verifying listener removal:');
+    console.log('  __wheelListener:', (window as any).__wheelListener);
+    console.log('  __touchmoveListener:', (window as any).__touchmoveListener);
+    console.log('  __keydownListener:', (window as any).__keydownListener);
+    
+    // Test that hotspot detection is working again
+    console.log('🧪 Testing hotspot detection restoration...');
+    console.log('  Current hoveredHotspot:', hoveredHotspot);
+    console.log('  Current hoverTooltip visible:', hoverTooltip.visible);
+    
+    // Test scroll restoration
+    console.log('🧪 Testing scroll restoration...');
+    const testWheelEvent = new WheelEvent('wheel', { deltaY: 100 });
+    console.log('  Dispatching test wheel event...');
+    console.log('  If you see 🚫 BLOCKING WHEEL SCROLL below, listeners are still active!');
+    window.dispatchEvent(testWheelEvent);
+    
+    // Force a test to ensure the original listeners are working
+    setTimeout(() => {
+      console.log('🧪 Testing event listener restoration...');
+      // Simulate a mouse move to test if hotspot detection is working
+      const testEvent = new MouseEvent('mousemove', {
+        clientX: 100,
+        clientY: 100
+      });
+      console.log('  Dispatching test mousemove event...');
+      window.dispatchEvent(testEvent);
+    }, 100);
+  };
 
   const addPathVisuals = (curve: THREE.CatmullRomCurve3) => {
     if (!sceneRef.current) return;
@@ -214,56 +713,1126 @@ export default function ScrollScene({
       waypointGroupRef.current = group;
     }
   };
+
+  // Configuration for focal distances for each hotspot
+  // Customize these values to control how close the camera gets to each hotspot
+  // Lower values = closer camera, Higher values = farther camera
+  const HOTSPOT_FOCAL_DISTANCES: { [key: string]: number } = {
+    
+    "Hotspot_geo_accent_wall": 8,
+    "Hotspot_geo_backsplash": 5,
+    "Hotspot_geo_kitchen_cabinet": 5,
+    "Hotspot_geo_bath_countertop": 5,
+    "Hotspot_geo_floor": 10,
+    "Hotspot_geo_fireplace": 12,
+    "Hotspot_geo_coffee_table": 5,
+    "Hotspot_geo_kitchen_countertop": 5,
+    "Hotspot_geo_island": 10,
+    "Hotspot_geo_shelves": 5,
+  };
+
+  // Hotspot category mapping for display labels
+  const HOTSPOT_CATEGORIES: { [key: string]: string } = {
+    "Hotspot_geo_shelves": "Furniture",
+    "Hotspot_geo_accent_wall": "Accent Wall",
+    "Hotspot_geo_bath_countertop": "Bath Countertops",
+    "Hotspot_geo_kitchen_cabinet": "Kitchen Cabinets",
+    "Hotspot_geo_fireplace": "Fireplaces",
+    "Hotspot_geo_floor": "Floors",
+    "Hotspot_geo_kitchen_countertop": "Kitchen Countertops",
+    "Hotspot_geo_coffee_table": "Furniture",
+    "Hotspot_geo_island": "Kitchen Islands",
+    "Hotspot_geo_backsplash": "Kitchen Backsplashes",
+    "Hotspot_geo_bathroom_walls": "Bathroom Walls"
+  };
+
+  // Store the current camera position for continuous path calculation
+  // This ensures we always continue from where we are, not return to initial position
+  const currentCameraPositionRef = useRef<THREE.Vector3>(new THREE.Vector3());
   
-  // Debug state
-  const [debugInfo, setDebugInfo] = useState<{
-    cameraPos: number[];
-    scrollTop: number;
-    scrollHeight: number;
-    progress: number;
-    progressPercent: number;
-    windowHeight: number;
-    windowWidth: number;
-    currentSection: string;
-    loaderPercent: number;
-    loaderLoadedMB: number | undefined;
-    loaderTotalMB: number | undefined;
-  } | null>(null);
+  // STATE MACHINE: Track camera positions for proper journey management
+  const cameraStateRef = useRef<{
+    isOnMainPath: boolean;
+    mainPathPosition: THREE.Vector3;
+    lastHotspotPosition: THREE.Vector3 | null;
+    journeyStartPosition: THREE.Vector3;
+    currentJourneyStart: THREE.Vector3;
+    savedSplineProgress: number; // Save spline progress t value when leaving main tour
+    exactSplinePosition: THREE.Vector3 | null; // Exact position on spline for verification
+    savedLookAtTarget: THREE.Vector3 | null; // Exact lookAt target when leaving main path
+  }>({
+    isOnMainPath: true,
+    mainPathPosition: INTRO_END_POS.clone(), // Real starting position from your observation
+    lastHotspotPosition: null,
+    journeyStartPosition: INTRO_END_POS.clone(),
+    currentJourneyStart: INTRO_END_POS.clone(),
+    savedSplineProgress: 0, // Starts at main path
+    exactSplinePosition: null,
+    savedLookAtTarget: null
+  });
+
+  // NEW: Real-time camera position tracking for focused area panel
+  const [realTimeCameraPosition, setRealTimeCameraPosition] = useState<THREE.Vector3>(INTRO_END_POS.clone());
+  
+  // Hotspot hover tooltip state
+  const [hoverTooltip, setHoverTooltip] = useState<{
+    visible: boolean;
+    text: string;
+    position: { x: number; y: number };
+  }>({
+    visible: false,
+    text: '',
+    position: { x: 0, y: 0 }
+  });
+
+  // Hotspot pulse markers refs and state
+  const hotspotPulseRefs = useRef<THREE.Mesh[]>([]);
+  const pulseAnimationRef = useRef<number>();
+  const pulseMarkersCreatedRef = useRef<boolean>(false);
+
+  // Function to create purple pulsing spheres for hotspots (mobile only)
+  const createHotspotPulseMarkers = () => {
+    // Only create pulse markers on mobile devices
+    if (!isMobile.detect()) {
+      console.log('🎯 Desktop detected, skipping pulse marker creation');
+      return;
+    }
+    
+    if (!sceneRef.current || !clickableObjectsRef.current.length) return;
+    
+    // Check if pulse markers have already been created to prevent duplicates
+    if (pulseMarkersCreatedRef.current) {
+      console.log('🎯 Pulse markers already created, skipping creation');
+      return;
+    }
+    
+    // Check if pulse markers already exist in scene to prevent duplicates
+    const existingPulseGroup = sceneRef.current.getObjectByName('hotspotPulseMarkers');
+    if (existingPulseGroup) {
+      console.log('🎯 Pulse markers already exist in scene, skipping creation');
+      return;
+    }
+    
+    console.log('🎯 Creating hotspot pulse markers for mobile...');
+    
+    // Remove any existing pulse markers if they exist (safety check)
+    if (existingPulseGroup) {
+      sceneRef.current.remove(existingPulseGroup);
+      existingPulseGroup.children.forEach((child: THREE.Object3D) => {
+        if (child.geometry) child.geometry.dispose();
+        if ((child as any).material) (child as any).material.dispose();
+      });
+    }
+    
+    // Create a group to hold all pulse markers
+    const pulseGroup = new THREE.Group();
+    pulseGroup.name = 'hotspotPulseMarkers';
+    
+    // Create pulse markers for each hotspot
+    clickableObjectsRef.current.forEach((hotspot, index) => {
+      const hotspotPosition = new THREE.Vector3();
+      hotspot.getWorldPosition(hotspotPosition);
+      
+      // Create the main pulse sphere (50% smaller)
+      const pulseGeometry = new THREE.SphereGeometry(0.4, 16, 16); // Reduced from 0.8 to 0.4 (50% smaller)
+      const pulseMaterial = new THREE.MeshBasicMaterial({
+        color: 0x8B5CF6, // Purple color
+        transparent: true,
+        opacity: 0.6
+      });
+      
+      const pulseSphere = new THREE.Mesh(pulseGeometry, pulseMaterial);
+      pulseSphere.position.copy(hotspotPosition);
+      pulseSphere.position.y += 0.5; // Slightly above the hotspot
+      pulseSphere.name = `pulse_${hotspot.name}`;
+      pulseSphere.userData.hotspotName = hotspot.name;
+      pulseSphere.userData.isPulseMarker = true; // Mark as pulse marker for cursor handling
+      
+      // Fix layering: Enable depth testing and set proper render order
+      pulseSphere.renderOrder = 1000; // High render order to appear on top
+      pulseSphere.frustumCulled = false; // Ensure visibility
+      
+      // Create glow effect (50% smaller)
+      const glowGeometry = new THREE.SphereGeometry(0.5, 16, 16); // Reduced from 1.0 to 0.5 (50% smaller)
+      const glowMaterial = new THREE.MeshBasicMaterial({
+        color: 0x8B5CF6,
+        transparent: true,
+        opacity: 0.3
+      });
+      glowMaterial.depthWrite = false;
+      glowMaterial.depthTest = true; // Enable depth testing for proper layering
+      glowMaterial.blending = THREE.AdditiveBlending;
+      
+      const glowSphere = new THREE.Mesh(glowGeometry, glowMaterial);
+      glowSphere.position.copy(pulseSphere.position);
+      glowSphere.renderOrder = 1001; // Even higher render order for glow
+      glowSphere.frustumCulled = false; // Ensure visibility
+      
+      // Add both spheres to the group
+      pulseGroup.add(pulseSphere);
+      pulseGroup.add(glowSphere);
+      
+      // Store references for animation
+      hotspotPulseRefs.current[index * 2] = pulseSphere;
+      hotspotPulseRefs.current[index * 2 + 1] = glowSphere;
+      
+      // Store pulse sphere reference for click handling (but don't add to main clickable objects)
+      // This prevents conflicts with hover detection while maintaining clickability
+      
+      console.log(`🎯 Created pulse marker for ${hotspot.name} at position:`, hotspotPosition);
+    });
+    
+    // Add the pulse group to the scene
+    sceneRef.current.add(pulseGroup);
+    
+    // Mark as created to prevent duplicates
+    pulseMarkersCreatedRef.current = true;
+    
+    console.log(`✅ Created ${hotspotPulseRefs.current.length / 2} pulse markers for mobile`);
+    console.log('Pulse group added to scene:', pulseGroup);
+    
+    // Start pulse animation
+    animateHotspotPulses();
+    
+    // Add cursor pointer CSS to the document for pulse markers
+    addPulseMarkerCursorStyles();
+  };
+
+  // Function to animate the pulse markers
+  const animateHotspotPulses = () => {
+    if (!hotspotPulseRefs.current.length) return;
+    
+    const time = Date.now() * 0.003; // Slower animation
+    
+    hotspotPulseRefs.current.forEach((pulseMesh, index) => {
+      if (!pulseMesh || !pulseMesh.material) return;
+      
+      const material = pulseMesh.material as THREE.MeshBasicMaterial;
+      const baseOpacity = index % 2 === 0 ? 0.6 : 0.3; // Main sphere vs glow
+      const pulseSpeed = index % 2 === 0 ? 1 : 0.7; // Different speeds for variety
+      
+      // Create pulsing effect
+      const pulse = Math.sin(time * pulseSpeed) * 0.3 + 0.7;
+      material.opacity = baseOpacity * pulse;
+      
+      // Scale effect for main spheres only
+      if (index % 2 === 0) {
+        const scale = 0.8 + Math.sin(time * 1.2) * 0.2;
+        pulseMesh.scale.setScalar(scale);
+      }
+    });
+    
+    // Continue animation
+    pulseAnimationRef.current = requestAnimationFrame(animateHotspotPulses);
+  };
+
+  // Function to stop pulse animation
+  const stopPulseAnimation = () => {
+    if (pulseAnimationRef.current) {
+      cancelAnimationFrame(pulseAnimationRef.current);
+      pulseAnimationRef.current = undefined;
+    }
+  };
+
+  // Function to cleanup pulse markers
+  const cleanupPulseMarkers = () => {
+    if (sceneRef.current) {
+      const existingPulseGroup = sceneRef.current.getObjectByName('hotspotPulseMarkers');
+      if (existingPulseGroup) {
+        sceneRef.current.remove(existingPulseGroup);
+        existingPulseGroup.children.forEach((child: THREE.Object3D) => {
+          if (child.geometry) child.geometry.dispose();
+          if ((child as any).material) (child as any).material.dispose();
+        });
+      }
+    }
+    pulseMarkersCreatedRef.current = false;
+    hotspotPulseRefs.current = [];
+    
+    // Reset cursor to default
+    if (document.body) {
+      document.body.style.cursor = 'default';
+    }
+    
+    // Remove cursor styles
+    const cursorStyles = document.getElementById('pulse-marker-cursor-styles');
+    if (cursorStyles) {
+      cursorStyles.remove();
+      console.log('🎯 Removed pulse marker cursor styles');
+    }
+  };
+
+  // Debug function to log pulse marker status
+  const debugPulseMarkers = () => {
+    if (sceneRef.current) {
+      const pulseGroup = sceneRef.current.getObjectByName('hotspotPulseMarkers');
+      console.log('🔍 PULSE MARKERS DEBUG:', {
+        pulseGroupExists: !!pulseGroup,
+        pulseGroupVisible: pulseGroup?.visible,
+        pulseGroupChildren: pulseGroup?.children?.length || 0,
+        pulseRefsLength: hotspotPulseRefs.current.length,
+        pulseMarkersCreated: pulseMarkersCreatedRef.current,
+        clickableObjectsLength: clickableObjectsRef.current.length
+      });
+      
+      if (pulseGroup) {
+        pulseGroup.children.forEach((child: THREE.Object3D, index: number) => {
+          console.log(`  Pulse ${index}:`, {
+            name: child.name,
+            visible: child.visible,
+            material: !!child.material,
+            opacity: (child as any).material?.opacity
+          });
+        });
+      }
+    }
+  };
+
+  // Function to add cursor pointer styles for hotspots and pulse markers
+  const addPulseMarkerCursorStyles = () => {
+    // Check if styles already exist
+    if (document.getElementById('pulse-marker-cursor-styles')) return;
+    
+    const style = document.createElement('style');
+    style.id = 'pulse-marker-cursor-styles';
+    style.textContent = `
+      /* Hotspot and pulse marker cursor styles */
+      .hotspot-hover {
+        cursor: pointer !important;
+      }
+      
+      .pulse-marker-hover {
+        cursor: pointer !important;
+      }
+      
+      /* Add pointer cursor when hovering over interactive elements */
+      canvas:hover {
+        cursor: pointer;
+      }
+      
+      /* Ensure pointer cursor for all interactive 3D elements */
+      .interactive-3d-element {
+        cursor: pointer !important;
+      }
+    `;
+    
+    document.head.appendChild(style);
+    console.log('🎯 Added hotspot and pulse marker cursor styles');
+  };
+
+  // Function to ensure pulse markers are visible
+  const ensurePulseMarkersVisible = () => {
+    // Only work on mobile devices
+    if (!isMobile.detect()) return;
+    
+    if (sceneRef.current && hotspotPulseRefs.current.length > 0) {
+      const pulseGroup = sceneRef.current.getObjectByName('hotspotPulseMarkers');
+      if (pulseGroup) {
+        // Debug: Log pulse marker visibility status
+        if (!pulseGroup.visible) {
+          console.log('🔍 Pulse markers were hidden, restoring visibility');
+        }
+        
+        pulseGroup.visible = true;
+        pulseGroup.children.forEach((child: THREE.Object3D, index: number) => {
+          if (!child.visible) {
+            console.log(`🔍 Pulse marker ${index} was hidden, restoring visibility`);
+          }
+          
+          child.visible = true;
+          if ((child as any).material) {
+            (child as any).material.transparent = true;
+            (child as any).material.opacity = index % 2 === 0 ? 0.6 : 0.3;
+          }
+        });
+        
+        // Force the pulse group to be visible and in the scene
+        if (!sceneRef.current.children.includes(pulseGroup)) {
+          console.log('🔍 Pulse group was removed from scene, re-adding');
+          sceneRef.current.add(pulseGroup);
+        }
+      } else {
+        console.log('🔍 Pulse group not found in scene, pulse markers may have been removed');
+        // If pulse group is completely missing, recreate it
+        if (clickableObjectsRef.current.length > 0 && !pulseMarkersCreatedRef.current) {
+          console.log('🔍 Recreating missing pulse markers');
+          createHotspotPulseMarkers();
+        }
+      }
+    }
+  };
+
+  // Debug: Monitor galleryVisible state changes
+  useEffect(() => {
+    console.log('🔍 Gallery visibility state changed:', galleryVisible);
+    console.log('  Current __galleryMode:', (window as any).__galleryMode);
+    console.log('  Current hoveredHotspot:', hoveredHotspot);
+  }, [galleryVisible]);
+  
+  // Add a ref to track gallery state immediately (bypasses React state update delay)
+  const galleryVisibleRef = useRef(false);
+  
+  // Update ref whenever galleryVisible changes
+  useEffect(() => {
+    galleryVisibleRef.current = galleryVisible;
+    console.log('🔍 Gallery ref updated:', galleryVisibleRef.current);
+  }, [galleryVisible]);
+  
+  // Update real-time camera position every frame when focused
+  useEffect(() => {
+    if (!isFocusedOnHotspot) return;
+    
+    const updatePosition = () => {
+      if (cameraRef.current) {
+        setRealTimeCameraPosition(cameraRef.current.position.clone());
+      }
+    };
+    
+    const interval = setInterval(updatePosition, 16); // 60fps updates
+    return () => clearInterval(interval);
+  }, [isFocusedOnHotspot]);
+
+  // Update tooltip position during mouse move
+  useEffect(() => {
+    if (!hoverTooltip.visible) return;
+    
+    const handleMouseMove = (event: MouseEvent) => {
+      setHoverTooltip((prev: any) => ({
+        ...prev,
+        position: { x: event.clientX, y: event.clientY }
+      }));
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [hoverTooltip.visible]);
+  
+
+
+  // Function to move camera to hotspot with ENHANCED smooth fly-in path
+  // Features:
+  // 1. Beautiful bezier curve with slight detour for visual appeal
+  // 2. Camera view maintained at end of animation
+  // 3. Continuous path calculation from current position to new hotspots
+  const moveCameraToHotspot = (hotspot: THREE.Object3D) => {
+    if (!cameraRef.current || !sceneRef.current || !rendererRef.current) return;
+    
+    const camera = cameraRef.current;
+    
+    // 1. Find hotspot world position - THIS IS THE KEY!
+    const target = new THREE.Vector3();
+    hotspot.getWorldPosition(target);
+    
+    // Log initial camera state once when animation starts
+    console.log('🔍 INITIAL CAMERA STATE:', {
+      isOnMainPath: cameraStateRef.current.isOnMainPath,
+      mainPathPosition: cameraStateRef.current.mainPathPosition,
+      journeyStartPosition: cameraStateRef.current.journeyStartPosition
+    });
+    
+    // CRITICAL: Save the current spline progress t value when leaving the main tour
+    // This ensures we return to the exact same point on the spline
+    if (cameraStateRef.current.isOnMainPath && introCompletedRef.current) {
+      // Store the current spline progress for return journey with high precision
+      cameraStateRef.current.savedSplineProgress = parseFloat(pathProgressRef.current.t.toFixed(6));
+      
+      // ALSO save the exact camera position at this spline point for verification
+      if (gsapCurveRef.current) {
+        const exactSplinePosition = gsapCurveRef.current.getPointAt(cameraStateRef.current.savedSplineProgress);
+        cameraStateRef.current.exactSplinePosition = exactSplinePosition.clone();
+        console.log('💾 SAVED EXACT SPLINE POSITION:', exactSplinePosition);
+      }
+      
+      // CRITICAL: Save the current lookAt target for smooth return animation
+      // Method 1: Try to get the current camera's lookAt target
+      // Get the camera's forward direction and calculate where it's looking
+      const currentLookAtTarget = new THREE.Vector3();
+      camera.getWorldDirection(currentLookAtTarget);
+      
+      // Calculate a point 10 units in front of the camera (where it's looking)
+      const lookDistance = 10;
+      currentLookAtTarget.multiplyScalar(lookDistance).add(camera.position);
+      
+      console.log('💾 DEBUG: Camera forward direction:', camera.getWorldDirection(new THREE.Vector3()));
+      console.log('💾 DEBUG: Camera position:', camera.position);
+      console.log('💾 DEBUG: Calculated lookAt target:', currentLookAtTarget);
+      
+      // Method 2: If we have gsapLookAtTargets, try to get the closest one
+      let splineLookAtTarget: THREE.Vector3 | null = null;
+      console.log('💾 DEBUG: gsapLookAtTargetsRef.current exists:', !!gsapLookAtTargetsRef.current);
+      if (gsapLookAtTargetsRef.current) {
+        console.log('💾 DEBUG: gsapLookAtTargetsRef.current length:', gsapLookAtTargetsRef.current.length);
+        console.log('💾 DEBUG: gsapLookAtTargetsRef.current contents:', gsapLookAtTargetsRef.current);
+      }
+      
+      if (gsapLookAtTargetsRef.current && cameraStateRef.current.savedSplineProgress !== undefined) {
+        const lookAtIndex = Math.floor(cameraStateRef.current.savedSplineProgress * (gsapLookAtTargetsRef.current.length - 1));
+        splineLookAtTarget = gsapLookAtTargetsRef.current[Math.max(0, Math.min(lookAtIndex, gsapLookAtTargetsRef.current.length - 1))];
+        console.log('💾 SPLINE LOOKAT TARGET:', splineLookAtTarget);
+        console.log('💾 LOOKAT INDEX:', lookAtIndex, 'of', gsapLookAtTargetsRef.current.length);
+      }
+      
+      // Method 3: Fallback to cube center if available
+      const fallbackLookAtTarget = cubePos.current ? cubePos.current.clone() : null;
+      
+      // Choose the best lookAt target: current camera direction > spline > fallback
+      // Also check that the lookAt target is not too close to the camera
+      const minLookAtDistance = 2; // Minimum distance for lookAt target
+      const distanceToLookAt = currentLookAtTarget.distanceTo(camera.position);
+      
+      if (currentLookAtTarget && distanceToLookAt > minLookAtDistance) {
+        cameraStateRef.current.savedLookAtTarget = currentLookAtTarget.clone();
+        console.log('💾 SAVED CURRENT CAMERA LOOKAT TARGET:', currentLookAtTarget);
+        console.log('💾 Distance to lookAt target:', distanceToLookAt.toFixed(2));
+      } else if (splineLookAtTarget && splineLookAtTarget.distanceTo(camera.position) > minLookAtDistance) {
+        cameraStateRef.current.savedLookAtTarget = splineLookAtTarget.clone();
+        console.log('💾 SAVED SPLINE LOOKAT TARGET:', splineLookAtTarget);
+      } else if (fallbackLookAtTarget && fallbackLookAtTarget.distanceTo(camera.position) > minLookAtDistance) {
+        cameraStateRef.current.savedLookAtTarget = fallbackLookAtTarget.clone();
+        console.log('💾 SAVED FALLBACK LOOKAT TARGET:', fallbackLookAtTarget);
+      } else {
+        // Last resort: create a reasonable lookAt target in front of the camera
+        const defaultLookAt = camera.position.clone().add(new THREE.Vector3(0, 0, 10));
+        cameraStateRef.current.savedLookAtTarget = defaultLookAt;
+        console.log('💾 SAVED DEFAULT LOOKAT TARGET:', defaultLookAt);
+      }
+      
+      console.log('💾 FINAL SAVED LOOKAT TARGET:', cameraStateRef.current.savedLookAtTarget);
+      
+      console.log('💾 SAVED SPLINE PROGRESS:', (cameraStateRef.current.savedSplineProgress * 100).toFixed(3) + '%');
+      console.log('💾 CURRENT CAMERA POSITION:', camera.position);
+      console.log('💾 WILL RETURN TO SPLINE AT t =', cameraStateRef.current.savedSplineProgress);
+      console.log('💾 SPLINE T PRECISION:', cameraStateRef.current.savedSplineProgress);
+    }
+    
+    console.log('=== HOTSPOT CLICK ===');
+    console.log('🎯 HOTSPOT POSITION ANALYSIS:');
+    console.log('  Hotspot name:', hotspot.name);
+    console.log('  Hotspot type:', hotspot.type);
+    console.log('  Hotspot LOCAL position:', hotspot.position);
+    console.log('  Hotspot WORLD position:', target);
+    console.log('  Current camera position:', camera.position);
+    console.log('  Current focused state:', isFocusedOnHotspot);
+    console.log('  Distance from camera to hotspot:', camera.position.distanceTo(target));
+    
+    // Calculate start position for animation
+    const startPosition = isFocusedOnHotspot ? currentCameraPositionRef.current.clone() : camera.position.clone();
+    
+    // Get the focal distance for this specific hotspot
+    const focalDistance = HOTSPOT_FOCAL_DISTANCES[hotspot.name] || 2.0; // default to 2.0 if not configured
+    
+    // Calculate the direction from camera to hotspot
+    const cameraToHotspot = target.clone().sub(camera.position).normalize();
+    
+    // Use the opposite direction (camera should be "in front" of hotspot)
+    const offsetDirection = cameraToHotspot.clone().multiplyScalar(-1);
+    
+    // Add some upward offset for better viewing angle
+    offsetDirection.y += 0.3;
+    offsetDirection.normalize();
+    
+    // Calculate the final camera position using the configured focal distance
+    const newCamPos = target.clone().add(offsetDirection.multiplyScalar(focalDistance));
+    
+    // Ensure minimum height for good viewing angle
+    newCamPos.y = Math.max(newCamPos.y, target.y + 1.5);
+    
+    console.log('🎯 ANIMATION SETUP:', {
+      hotspot: hotspot.name,
+      focalDistance: focalDistance,
+      startPosition: startPosition,
+      endPosition: newCamPos,
+      distance: startPosition.distanceTo(newCamPos).toFixed(2) + 'm'
+    });
+    
+    // Clear any existing debug markers only when SHOW_DEBUG is true
+    if (SHOW_DEBUG && sceneRef.current) {
+      console.log('🧹 CLEANING UP EXISTING DEBUG MARKERS (SHOW_DEBUG enabled)...');
+      console.log('  Scene children before cleanup:', sceneRef.current.children.length);
+      
+      let removedCount = 0;
+      sceneRef.current.children.forEach((child: THREE.Object3D) => {
+        if (child.name === 'debug_hotspot_marker' || child.name === 'debug_camera_marker' ||
+            child.name === 'debug_intro_start_marker' || child.name === 'debug_intro_end_marker') {
+          sceneRef.current.remove(child);
+          removedCount++;
+          console.log('  Removed debug marker:', child.name);
+        }
+      });
+      
+      console.log('  Debug markers removed:', removedCount);
+      console.log('  Scene children after cleanup:', sceneRef.current.children.length);
+    } else if (!SHOW_DEBUG) {
+      console.log('🧹 DEBUG MARKER CLEANUP SKIPPED (SHOW_DEBUG disabled)');
+    }
+    
+          // Create debug spheres only when SHOW_DEBUG is true
+          if (SHOW_DEBUG && sceneRef.current) {
+            console.log('🎯 CREATING DEBUG SPHERES (SHOW_DEBUG enabled)...');
+            console.log('  Scene has children:', sceneRef.current.children.length);
+            console.log('  Target position:', target);
+            
+            // Create red sphere on the clicked hotspot
+            const hotspotMarker = new THREE.Mesh(
+              new THREE.SphereGeometry(1.5, 16, 16),
+              new THREE.MeshBasicMaterial({ 
+                color: 0xff0000, // Red color for hotspot
+                transparent: true, 
+                opacity: 0.9 
+              })
+            );
+            hotspotMarker.position.copy(target);
+            hotspotMarker.name = 'debug_hotspot_marker';
+            sceneRef.current.add(hotspotMarker);
+            
+            // Create blue sphere at the calculated camera position
+            const cameraMarker = new THREE.Mesh(
+              new THREE.SphereGeometry(1.0, 16, 16),
+              new THREE.MeshBasicMaterial({ 
+                color: 0x0066ff, // Blue color for camera target
+                transparent: true, 
+                opacity: 0.8 
+              })
+            );
+            cameraMarker.position.copy(newCamPos);
+            cameraMarker.name = 'debug_camera_marker';
+            sceneRef.current.add(cameraMarker);
+            
+            console.log('🎯 DEBUG SPHERES CREATED:');
+            console.log('  Red sphere (hotspot):', hotspotMarker.position);
+            console.log('  Blue sphere (camera target):', cameraMarker.position);
+            console.log('  Scene now has children:', sceneRef.current.children.length);
+            
+            // Force a render to show the markers
+            if (rendererRef.current && cameraRef.current) {
+              rendererRef.current.render(sceneRef.current, cameraRef.current);
+              console.log('🎯 RENDER FORCED: Debug spheres should now be visible');
+            }
+          } else if (!SHOW_DEBUG) {
+            console.log('🎯 DEBUG SPHERES SKIPPED (SHOW_DEBUG disabled)');
+          } else {
+            console.log('❌ ERROR: Scene reference is null, cannot create debug spheres');
+          }
+    
+    // CREATE SMOOTH FLY-IN CAMERA PATH
+    console.log('🚀 CREATING SMOOTH FLY-IN CAMERA PATH:');
+    
+    // Set animation state to prevent interference
+    isAnimatingRef.current = true;
+    
+    // Store the target for lookAt
+    const animationTarget = target.clone();
+    
+    // Store the target position for later verification
+    targetCameraPositionRef.current.copy(newCamPos);
+    
+    // CRITICAL: Kill any existing GSAP animations on camera position
+    if ((camera.position as any)._gsap) {
+      console.log('🚨 KILLING EXISTING GSAP ANIMATIONS');
+      gsap.killTweensOf(camera.position);
+    }
+    
+    // Create a beautiful bezier curve with slight detour for visual appeal
+    // Use current camera position for continuous path calculation
+    const startPos = camera.position.clone();
+    const endPos = newCamPos.clone();
+    
+    // Update the current camera position reference for next path calculation
+    currentCameraPositionRef.current.copy(camera.position);
+    
+    // Calculate the direction from start to end
+    const direction = endPos.clone().sub(startPos).normalize();
+    const distance = startPos.distanceTo(endPos);
+    
+    // Build cubic bezier control points (plugin-free) for a gentle arc
+    const perpendicular = new THREE.Vector3(-direction.z, 0, direction.x).normalize();
+    const controlPoint1 = startPos.clone()
+      .add(direction.clone().multiplyScalar(distance * 0.33))
+      .add(perpendicular.clone().multiplyScalar(distance * 0.15));
+    controlPoint1.y += Math.max(1.0, distance * 0.1);
+
+    const controlPoint2 = endPos.clone()
+      .sub(direction.clone().multiplyScalar(distance * 0.33))
+      .add(perpendicular.clone().multiplyScalar(-distance * 0.10));
+    controlPoint2.y += Math.max(0.5, distance * 0.08);
+
+    // Create plugin-free cubic bezier curve
+    const curve3D = new THREE.CubicBezierCurve3(
+      startPos,
+      controlPoint1,
+      controlPoint2,
+      endPos
+    );
+    
+    console.log('🎬 CREATING BEAUTIFUL BEZIER CURVE:');
+    console.log('  Start position:', startPos);
+    console.log('  ControlPoint1:', controlPoint1);
+    console.log('  ControlPoint2:', controlPoint2);
+    console.log('  End position:', endPos);
+    console.log('  Distance to travel:', startPos.distanceTo(endPos).toFixed(2) + 'm');
+    
+    // Bezier animation using GSAP tween over parameter t
+    console.log('🎬 STARTING CUBIC BEZIER (plugin-free) ANIMATION:');
+    
+    // Set animation flag and update camera state
+    isAnimatingRef.current = true;
+    cameraStateRef.current.isOnMainPath = false; // CRITICAL: Mark as NOT on main path during hotspot animation
+    
+    // Tween parameter t from 0 -> 1 and sample curve3D.getPoint(t)
+    const tweenParam = { t: 0 };
+    console.log('🎬 Creating GSAP tween with parameters:', { duration: 2.5, ease: "power2.inOut" });
+    
+    const tween = gsap.to(tweenParam, {
+      duration: 2.5,
+      t: 1,
+      ease: "power2.inOut",
+      type: "cubic",
+      onUpdate: () => {
+        const p = curve3D.getPoint(tweenParam.t);
+        camera.position.copy(p);
+        if (cameraRef.current) cameraRef.current.position.copy(p);
+        camera.lookAt(animationTarget);
+        camera.updateMatrixWorld();
+        
+        // Log progress every 20% of animation
+        if (Math.floor(tweenParam.t * 5) !== Math.floor((tweenParam.t - 0.001) * 5)) {
+          console.log(`🎬 Animation progress: ${Math.round(tweenParam.t * 100)}% - Position: ${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}`);
+        }
+        
+        // Render during animation to ensure smooth movement
+        if (rendererRef.current && sceneRef.current) {
+          rendererRef.current.render(sceneRef.current, camera);
+        }
+      },
+      onComplete: () => {
+        console.log('🎉 BEZIER ANIMATION COMPLETED!');
+        console.log('  Final camera position:', endPos);
+        console.log('  Animation target:', animationTarget);
+        
+        // Set final camera position
+        camera.position.copy(endPos);
+        if (cameraRef.current) cameraRef.current.position.copy(endPos);
+        camera.lookAt(animationTarget);
+        camera.updateMatrixWorld();
+        
+        // Update animation state
+        isAnimatingRef.current = false;
+        currentCameraPositionRef.current.copy(endPos);
+        cameraStateRef.current.isOnMainPath = false;
+        cameraStateRef.current.lastHotspotPosition = endPos.clone();
+        cameraStateRef.current.currentJourneyStart.copy(endPos);
+        setIsFocusedOnHotspot(true);
+        isFocusedOnHotspotRef.current = true;
+        
+        console.log('🎯 HOTSPOT STATE SET: isOnMainPath = false, isFocusedOnHotspot = true');
+        console.log('🎯 Camera should now show: 🎯 Branch Path');
+        
+        console.log('✅ CAMERA STATE UPDATED:');
+        console.log('  isAnimatingRef:', isAnimatingRef.current);
+        console.log('  isOnMainPath:', cameraStateRef.current.isOnMainPath);
+        console.log('  lastHotspotPosition:', cameraStateRef.current.lastHotspotPosition);
+        console.log('  currentJourneyStart:', cameraStateRef.current.currentJourneyStart);
+        
+        // Force one final render to ensure the end position is visible
+        if (rendererRef.current && sceneRef.current) {
+          rendererRef.current.render(sceneRef.current, camera);
+          console.log('🎬 Final render completed');
+        }
+        
+        // 🎨 TRIGGER GALLERY ON ANIMATION COMPLETION
+        console.log('🎨 ANIMATION COMPLETE - TRIGGERING GALLERY FOR:', hotspot.name);
+        setCurrentHotspot(hotspot.name);
+        loadGalleryImages(hotspot.name);
+        setGalleryAnimating(true);
+        
+        // Animate gallery in with staggered thumbnail animations
+        setTimeout(() => {
+          setGalleryVisible(true);
+          setGalleryAnimating(false);
+          // Disable scene mouse events when gallery opens
+          disableSceneMouseEvents();
+        }, 100); // Small delay to ensure smooth transition
+        
+        console.log('🎯 READY FOR NEXT HOTSPOT JOURNEY!');
+      }
+    });
+    
+    console.log('🚀 CUBIC BEZIER ANIMATION STARTED: Duration 2.5s, easing power2.inOut');
+    console.log('🎬 GSAP tween object created:', tween);
+    console.log('🎬 Tween properties:', { 
+      duration: tween.duration(), 
+      isActive: tween.isActive(),
+      progress: tween.progress()
+    });
+  };
+
+  // Function to return to main journey path
+  const continueJourney = () => {
+    // 🎨 CLOSE GALLERY IMMEDIATELY WHEN CONTINUE JOURNEY IS CLICKED
+    closeGallery();
+    
+    if (!cameraRef.current || !sceneRef.current || !rendererRef.current) return;
+    
+    const camera = cameraRef.current;
+    
+    console.log('🚀 RETURNING TO MAIN JOURNEY PATH:');
+    console.log('  Current focused state:', isFocusedOnHotspot);
+    console.log('  Current camera position:', camera.position);
+    console.log('  Camera state:', cameraStateRef.current);
+    
+    // Set animating state to prevent interference
+    isAnimatingRef.current = true;
+    
+    // Get the target position based on current state
+    let targetPosition: THREE.Vector3;
+    console.log('🔍 CONTINUE JOURNEY - Current State Analysis:');
+    console.log('  isOnMainPath:', cameraStateRef.current.isOnMainPath);
+    console.log('  mainPathPosition:', cameraStateRef.current.mainPathPosition);
+    console.log('  journeyStartPosition:', cameraStateRef.current.journeyStartPosition);
+    console.log('  lastHotspotPosition:', cameraStateRef.current.lastHotspotPosition);
+    
+    if (cameraStateRef.current.isOnMainPath) {
+      // We're already on main path, return to journey start
+      targetPosition = cameraStateRef.current.journeyStartPosition;
+      console.log('🎯 RETURNING to journey start position:', targetPosition);
+    } else {
+      // We're at a hotspot - GO BACK to exact spline point where we left off
+      // This ensures perfect alignment with the main tour path
+      if (cameraStateRef.current.exactSplinePosition && cameraStateRef.current.savedSplineProgress !== undefined) {
+        // Use the exact saved position for perfect precision
+        targetPosition = cameraStateRef.current.exactSplinePosition.clone();
+        console.log('🎯 RETURNING to EXACT SAVED SPLINE POSITION:', targetPosition);
+        console.log('🔄 SAVED SPLINE PROGRESS t =', cameraStateRef.current.savedSplineProgress);
+        console.log('🔄 REVERSING: From branch path back to exact saved position');
+        console.log('🔄 POSITION PRECISION: Using saved exactSplinePosition for perfect alignment');
+      } else if (cameraStateRef.current.savedSplineProgress !== undefined && gsapCurveRef.current) {
+        // Fallback: Get the point on the spline where we left off
+        targetPosition = gsapCurveRef.current.getPointAt(cameraStateRef.current.savedSplineProgress);
+        console.log('🎯 RETURNING to spline point at t =', cameraStateRef.current.savedSplineProgress);
+        console.log('🔄 SPLINE POINT:', targetPosition);
+        console.log('🔄 REVERSING: From branch path back to calculated spline position');
+        console.log('🔄 SPLINE CURVE AVAILABLE:', !!gsapCurveRef.current);
+        console.log('🔄 SPLINE POINTS COUNT:', gsapCurveRef.current.points.length);
+      } else {
+        // Final fallback to stored main path position if spline not available
+        targetPosition = cameraStateRef.current.mainPathPosition.clone();
+        console.log('🎯 FINAL FALLBACK: Returning to stored main path position:', targetPosition);
+        console.log('🔄 REVERSING: From branch path back to main scroll path');
+        console.log('🔄 SPLINE PROGRESS AVAILABLE:', cameraStateRef.current.savedSplineProgress !== undefined);
+        console.log('🔄 GSAP CURVE AVAILABLE:', !!gsapCurveRef.current);
+        console.log('🔄 EXACT POSITION AVAILABLE:', !!cameraStateRef.current.exactSplinePosition);
+      }
+    }
+    
+    // Create debug spheres for continue journey animation when SHOW_DEBUG is true
+    if (SHOW_DEBUG && sceneRef.current) {
+      console.log('🎯 CREATING CONTINUE JOURNEY DEBUG SPHERES...');
+      
+      // Create green sphere at the current position (where we're returning from)
+      const fromMarker = new THREE.Mesh(
+        new THREE.SphereGeometry(1.0, 16, 16),
+        new THREE.MeshBasicMaterial({ 
+          color: 0x00ff00, // Green color for return-from position
+          transparent: true, 
+          opacity: 0.8 
+        })
+      );
+      fromMarker.position.copy(camera.position);
+      fromMarker.name = 'debug_return_from_marker';
+      sceneRef.current.add(fromMarker);
+      
+      // Create orange sphere at the target position (where we're returning to)
+      const toMarker = new THREE.Mesh(
+        new THREE.SphereGeometry(1.2, 16, 16),
+        new THREE.MeshBasicMaterial({ 
+          color: 0xff8800, // Orange color for return-to position
+          transparent: true, 
+          opacity: 0.9 
+        })
+      );
+      toMarker.position.copy(targetPosition);
+      toMarker.name = 'debug_return_to_marker';
+      sceneRef.current.add(toMarker);
+      
+      console.log('🎯 CONTINUE JOURNEY DEBUG SPHERES CREATED:');
+      console.log('  Green sphere (return from):', fromMarker.position);
+      console.log('  Orange sphere (return to):', toMarker.position);
+    }
+    
+    // Animate camera back to the target position
+    console.log('🎬 STARTING CONTINUE JOURNEY ANIMATION:');
+    console.log('  From position:', camera.position);
+    console.log('  To position:', targetPosition);
+    console.log('  Distance:', camera.position.distanceTo(targetPosition).toFixed(3) + 'm');
+    
+    // Check if we actually need to move
+    const distance = camera.position.distanceTo(targetPosition);
+    if (distance < 0.1) {
+      console.log('⚠️ WARNING: Target position is too close to current position, no animation needed');
+      // Still complete the journey but skip animation
+      isAnimatingRef.current = false;
+      setIsFocusedOnHotspot(false);
+      isFocusedOnHotspotRef.current = false;
+      setClickedHotspot(null);
+      cameraStateRef.current.isOnMainPath = true;
+      return;
+    }
+    
+    // CRITICAL: Get the target lookAt position for smooth animation
+    let targetLookAt: THREE.Vector3;
+    if (cameraStateRef.current.savedLookAtTarget) {
+      targetLookAt = cameraStateRef.current.savedLookAtTarget.clone();
+      console.log('🎯 ANIMATING TO SAVED LOOKAT TARGET:', targetLookAt);
+    } else {
+      // Fallback: Calculate lookAt target from spline progress
+      if (cameraStateRef.current.savedSplineProgress !== undefined && gsapLookAtTargetsRef.current) {
+        const lookAtIndex = Math.floor(cameraStateRef.current.savedSplineProgress * (gsapLookAtTargetsRef.current.length - 1));
+        targetLookAt = gsapLookAtTargetsRef.current[Math.max(0, Math.min(lookAtIndex, gsapLookAtTargetsRef.current.length - 1))];
+        console.log('🎯 ANIMATING TO CALCULATED LOOKAT TARGET:', targetLookAt);
+      } else {
+        // Final fallback: Look at cube center
+        targetLookAt = cubePos.current.clone();
+        console.log('🎯 ANIMATING TO CUBE CENTER (fallback):', targetLookAt);
+      }
+    }
+    
+    // Create a timeline for synchronized position and lookAt animation
+    const timeline = gsap.timeline({
+      onUpdate: () => {
+        // Ensure both camera and cameraRef are updated
+        camera.updateMatrixWorld();
+        if (cameraRef.current) {
+          cameraRef.current.position.copy(camera.position);
+        }
+        
+        // Force render to show the animation
+        if (rendererRef.current && sceneRef.current) {
+          rendererRef.current.render(sceneRef.current, camera);
+        }
+      },
+      onComplete: () => {
+        console.log('✅ RETURNED TO MAIN JOURNEY PATH:');
+        console.log('  Final camera position:', camera.position);
+        console.log('  Final lookAt target:', targetLookAt);
+        console.log('  Target position reached:', targetPosition);
+        
+        // Reset all states
+        isAnimatingRef.current = false;
+        setIsFocusedOnHotspot(false);
+        isFocusedOnHotspotRef.current = false;
+        setClickedHotspot(null);
+        
+        // Close gallery when returning to main path
+        closeGallery();
+        
+        // Clean up debug markers only when SHOW_DEBUG is true
+        if (SHOW_DEBUG && sceneRef.current) {
+          sceneRef.current.children.forEach((child: THREE.Object3D) => {
+            if (child.name === 'debug_hotspot_marker' || child.name === 'debug_camera_marker' || 
+                child.name === 'debug_return_from_marker' || child.name === 'debug_return_to_marker' ||
+                child.name === 'debug_intro_start_marker' || child.name === 'debug_intro_end_marker') {
+              sceneRef.current.remove(child);
+              console.log('🧹 Removed debug marker:', child.name);
+            }
+          });
+        }
+        
+        // Update camera state for next journey
+        // Set back to main path mode since we're returning to the main scroll path
+        cameraStateRef.current.isOnMainPath = true;
+        
+        // CRITICAL: Verify the camera is at the expected end position
+        // Use the targetPosition from the animation, not the cleared targetCameraPositionRef
+        const expectedEndPosition = targetPosition;
+        const actualPosition = camera.position.clone();
+        const positionDifference = actualPosition.distanceTo(expectedEndPosition);
+        
+        console.log('🎯 POSITION VERIFICATION after animation:');
+        console.log('  Expected end position:', expectedEndPosition);
+        console.log('  Actual camera position:', actualPosition);
+        console.log('  Position difference:', positionDifference.toFixed(6));
+        
+        // If we have an exact saved position, use that for verification
+        if (cameraStateRef.current.exactSplinePosition) {
+          const exactPosition = cameraStateRef.current.exactSplinePosition;
+          const exactDifference = actualPosition.distanceTo(exactPosition);
+          console.log('🎯 EXACT POSITION VERIFICATION:');
+          console.log('  Saved exact position:', exactPosition);
+          console.log('  Difference from exact:', exactDifference.toFixed(6));
+          
+          // Use the exact position if we're close enough
+          if (exactDifference < 0.01) {
+            console.log('✅ Using exact saved position for perfect alignment');
+            targetPosition = exactPosition.clone();
+          }
+        }
+        
+        if (positionDifference > 0.01) { // Tighter tolerance for precision
+          console.warn('⚠️ WARNING: Camera not at expected end position!');
+          console.warn('  Forcing camera to expected position...');
+          camera.position.copy(expectedEndPosition);
+          
+          // Look at the correct target based on spline progress
+          if (cameraStateRef.current.savedSplineProgress !== undefined && gsapLookAtTargetsRef.current) {
+            // Calculate the lookAt target based on saved spline progress
+            const lookAtIndex = Math.floor(cameraStateRef.current.savedSplineProgress * (gsapLookAtTargetsRef.current.length - 1));
+            const lookAtTarget = gsapLookAtTargetsRef.current[Math.max(0, Math.min(lookAtIndex, gsapLookAtTargetsRef.current.length - 1))];
+            camera.lookAt(lookAtTarget);
+            console.log('🎯 LOOKING AT spline target:', lookAtTarget, 'at index:', lookAtIndex);
+          } else if (clickedHotspot) {
+            // Fallback: Look at the hotspot we just visited
+            const target = new THREE.Vector3();
+            clickedHotspot.getWorldPosition(target);
+            camera.lookAt(target);
+          }
+        }
+        
+        // CRITICAL: Force camera to stay at the exact end position
+        // This prevents any position overrides from the main animation loop
+        const finalPosition = expectedEndPosition.clone();
+        
+        console.log('🔧 POSITION ENFORCEMENT - BEFORE:');
+        console.log('  Target end position:', finalPosition);
+        console.log('  Camera position before force:', camera.position);
+        console.log('  CameraRef position before force:', cameraRef.current?.position);
+        
+        // Small delay to ensure GSAP animation is fully complete before position enforcement
+        setTimeout(() => {
+          // FORCE the camera to the end position
+          camera.position.set(finalPosition.x, finalPosition.y, finalPosition.z);
+          
+          // Also update the camera ref to ensure consistency
+          if (cameraRef.current) {
+            cameraRef.current.position.copy(finalPosition);
+          }
+          
+          // Update refs with the verified position
+          currentCameraPositionRef.current.copy(finalPosition);
+          
+          // Update journey start position to current position for next journey
+          cameraStateRef.current.journeyStartPosition.copy(finalPosition);
+          cameraStateRef.current.mainPathPosition.copy(finalPosition);
+          
+          console.log('🔧 POSITION ENFORCEMENT - AFTER:');
+          console.log('  Camera position after force:', camera.position);
+          console.log('  CameraRef position after force:', cameraRef.current?.position);
+          console.log('  Current journey start updated to:', currentCameraPositionRef.current);
+          
+          // CRITICAL: Double-check the position was set correctly
+          const checkPosition = camera.position.clone();
+          const isCorrect = checkPosition.distanceTo(finalPosition) < 0.01;
+          console.log('🔍 FINAL POSITION CHECK:', isCorrect ? '✅ SUCCESS' : '❌ FAILED');
+          console.log('  Expected:', finalPosition);
+          console.log('  Current journey start updated to:', currentCameraPositionRef.current);
+          
+          if (!isCorrect) {
+            console.error('🚨 POSITION SET FAILED - Forcing again...');
+            camera.position.copy(finalPosition);
+            if (cameraRef.current) {
+              cameraRef.current.position.copy(finalPosition);
+            }
+          }
+          
+          // CRITICAL: Update the real-time position state for the focused panel
+          setRealTimeCameraPosition(finalPosition.clone());
+          
+          // Animation completed successfully
+          console.log('✅ ANIMATION COMPLETED - Camera at end position:', finalPosition);
+          
+          // Force a render to ensure the position is visible
+          if (rendererRef.current) {
+            rendererRef.current.render(sceneRef.current, cameraRef.current);
+          }
+          
+          // Now clear the target position after all verification is complete
+          targetCameraPositionRef.current.set(0, 0, 0);
+        }, 50); // 50ms delay for smooth completion
+        
+        // Position monitoring is now handled by the main animation loop
+        // No need for aggressive locking that causes flickering
+      }
+    });
+    
+    // Add position animation to timeline
+    timeline.to(camera.position, {
+      duration: 2.5,
+      x: targetPosition.x,
+      y: targetPosition.y,
+      z: targetPosition.z,
+      ease: "power2.inOut"
+    }, 0); // Start at time 0
+    
+    // Add lookAt animation to timeline (synchronized with position)
+    timeline.to(camera, {
+      duration: 2.5,
+      onUpdate: function() {
+        // Smoothly interpolate lookAt target during animation
+        const progress = this.progress();
+        const currentLookAt = new THREE.Vector3();
+        camera.getWorldDirection(currentLookAt);
+        currentLookAt.multiplyScalar(10).add(camera.position);
+        
+        // Interpolate between current lookAt and target lookAt
+        const interpolatedLookAt = new THREE.Vector3();
+        // interpolatedLookAt.lerpVectors(currentLookAt, targetLookAt, progress);
+        interpolatedLookAt.lerpVectors(currentLookAt, new THREE.Vector3(0, 0, 0), progress);
+        
+        camera.lookAt(interpolatedLookAt);
+        camera.updateMatrixWorld();
+      },
+      ease: "power2.inOut"
+    }, 0); // Start at time 0 (synchronized with position)
+    
+    console.log('🎬 TIMELINE ANIMATION STARTED: Duration 2.5s, synchronized position + lookAt');
+    console.log('🎬 Position target:', targetPosition);
+    console.log('🎬 LookAt target:', targetLookAt);
+  };
+
+  // Function to setup all lighting for the scene
+  const setupSceneLighting = (scene: THREE.Scene) => {
+    // Ambient light for overall scene illumination
+    scene.add(new THREE.AmbientLight(0xffffff, 1));
+    
+    // Main directional light
+    scene.add(new THREE.DirectionalLight(0xffffff, 1, 100));
+    
+    // Hemisphere light for sky/ground color
+    scene.add(new THREE.HemisphereLight(0xccc1b1, 0x080820, 1.5));
+    
+    // Additional light source 45 degrees diagonally from cube to wall corner
+    const cubeHeight = CUBE_SIZE; // 5 units
+    const lightHeight = cubeHeight * 10; // 50 units above cube
+    const diagonalDistance = 20; // Distance from cube center to wall corner
+    
+    const diagonalLight = new THREE.DirectionalLight(0xffffff, 1.5, 10);
+    diagonalLight.position.set(
+      diagonalDistance * Math.cos(Math.PI / 4), // 45 degrees X
+      lightHeight, // 4 times cube height above
+      diagonalDistance * Math.sin(Math.PI / 4)  // 45 degrees Z
+    );
+    diagonalLight.target.position.set(10, 0, 0); // Point at cube center
+    diagonalLight.castShadow = true; // Enable shadow casting
+    diagonalLight.shadow.mapSize.width = 2048;
+    diagonalLight.shadow.mapSize.height = 2048;
+    diagonalLight.shadow.camera.near = 0.1;
+    diagonalLight.shadow.camera.far = 100;
+    diagonalLight.shadow.camera.left = -40;
+    diagonalLight.shadow.camera.right = 40;
+    diagonalLight.shadow.camera.top = 40;
+    diagonalLight.shadow.camera.bottom = -40;
+    diagonalLight.shadow.bias = -0.0001;
+    diagonalLight.shadow.color = 0x000000; // Pure black shadows
+    scene.add(diagonalLight);
+    scene.add(diagonalLight.target);
+  };
 
   // Function to create and setup the scene
   const createScene = () => {
     const scene = new THREE.Scene();
     const colors = getThemeColors();
     
-    // Lighting - Simple setup without shadows
-    scene.add(new THREE.AmbientLight(0xffffff, 1));
-    scene.add(new THREE.DirectionalLight(0xffffff, 1, 100));
-    
-    // Additional light source 45 degrees diagonally from cube to wall corner
-    const cubeHeight = CUBE_SIZE; // 5 units
-    const lightHeight = cubeHeight * 3; // 15 units above cube
-    const diagonalDistance = 20; // Distance from cube center to wall corner
-    
-    const diagonalLight = new THREE.DirectionalLight(0xffffff, 1.5, 50);
-    diagonalLight.position.set(
-      diagonalDistance * Math.cos(Math.PI / 4), // 45 degrees X
-      lightHeight, // 3 times cube height above
-      diagonalDistance * Math.sin(Math.PI / 4)  // 45 degrees Z
-    );
-    diagonalLight.target.position.set(0, 0, 0); // Point at cube center
-    diagonalLight.castShadow = true; // Enable shadow casting
-    diagonalLight.shadow.mapSize.width = 2048;
-    diagonalLight.shadow.mapSize.height = 2048;
-    diagonalLight.shadow.camera.near = 0.1;
-    diagonalLight.shadow.camera.far = 100;
-    diagonalLight.shadow.camera.left = -30;
-    diagonalLight.shadow.camera.right = 30;
-    diagonalLight.shadow.camera.top = 30;
-    diagonalLight.shadow.camera.bottom = -30;
-    diagonalLight.shadow.bias = -0.0001;
-    diagonalLight.shadow.color = 0x000000; // Pure black shadows
-    scene.add(diagonalLight);
-    scene.add(diagonalLight.target);
+    // Setup all lighting for the scene
+    setupSceneLighting(scene);
     
     // Grid Helper for coordinate system visualization (if enabled)
     if (WITH_HELPERS) {
@@ -304,12 +1873,12 @@ export default function ScrollScene({
     }
     
     // Floor
-    const floorMat = new THREE.MeshStandardMaterial({ color: colors.FLOOR_COLOR });
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR_SIZE, FLOOR_SIZE), floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = FLOOR_Y_POSITION;
-    floor.receiveShadow = true; // Enable shadow receiving
-    scene.add(floor);
+    // const floorMat = new THREE.MeshStandardMaterial({ color: colors.FLOOR_COLOR });
+    // const floor = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR_SIZE, FLOOR_SIZE), floorMat);
+    // floor.rotation.x = -Math.PI / 2;
+    // floor.position.y = FLOOR_Y_POSITION;
+    // floor.receiveShadow = true; // Enable shadow receiving
+    // scene.add(floor);
     
     // Walls
     // Removed: no walls are created or added to the scene
@@ -323,7 +1892,7 @@ export default function ScrollScene({
 
         const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
         const gltfLoader = new GLTFLoader();
-        const modelUrl = `/models/saska.glb?cb=${Date.now()}`;
+        const modelUrl = `/models/ivan.glb?cb=${Date.now()}`;
 
         // Obtain total bytes via cache-busted HEAD so percent stays accurate
         try {
@@ -376,6 +1945,159 @@ export default function ScrollScene({
                   box = new THREE.Box3().setFromObject(model);
                   const sphere = box.getBoundingSphere(new THREE.Sphere());
 
+                  // CRITICAL FIX: Collect hotspots AFTER transformations are applied
+                  // This ensures hotspots have their final world positions
+                  const clickableObjects: THREE.Object3D[] = [];
+                  const usedColors = new Set<number>();
+                  
+                  console.log('Starting hotspot collection AFTER transformations...');
+                  console.log('Total objects in model:', model.children.length);
+                  console.log('Model transformations applied:');
+                  console.log('  Scale:', model.scale);
+                  console.log('  Rotation:', model.rotation);
+                  console.log('  Position:', model.position);
+                  
+                  // DEEP INVESTIGATION: Let's see the entire model structure
+                  console.log('🔍 FULL MODEL STRUCTURE INVESTIGATION:');
+                  console.log('Model root:', model.name, 'type:', model.type);
+                  console.log('Model children count:', model.children.length);
+                  
+                  // First, let's see what's at the root level
+                  model.children.forEach((rootChild: any, rootIndex: number) => {
+                    console.log(`Root child ${rootIndex}:`, rootChild.name, 'type:', rootChild.type);
+                    console.log(`  Root child position:`, rootChild.position);
+                    console.log(`  Root child children count:`, rootChild.children.length);
+                    
+                    // Go deeper into each root child
+                    rootChild.children.forEach((deepChild: any, deepIndex: number) => {
+                      console.log(`    Deep child ${deepIndex}:`, deepChild.name, 'type:', deepChild.type);
+                      console.log(`      Deep child position:`, deepChild.position);
+                      console.log(`      Deep child children count:`, deepChild.children.length);
+                      
+                      // Go even deeper if needed
+                      deepChild.children.forEach((deeperChild: any, deeperIndex: number) => {
+                        console.log(`        Deeper child ${deeperIndex}:`, deeperChild.name, 'type:', deeperChild.type);
+                        console.log(`          Deeper child position:`, deeperChild.position);
+                      });
+                    });
+                  });
+                  
+                  // Traverse the TRANSFORMED model, not the original gltf.scene
+                  model.traverse((child: any) => {
+                    console.log('Checking transformed object:', child.name, 'type:', child.type, 'hasMaterial:', !!child.material);
+                    
+                    if (child.name.includes("Hotspot")) {  // e.g. "Hotspot_Cabinet1"
+                      console.log('Found transformed hotspot:', child.name, 'type:', child.type);
+                      clickableObjects.push(child);
+                      
+                      // Ensure the hotspot has a material
+                      if (!child.material) {
+                        console.log('Creating material for hotspot:', child.name);
+                        const colors = getThemeColors();
+                        child.material = new THREE.MeshStandardMaterial({ 
+                          color: colors.HOTSPOT_NORMAL_COLOR,
+                          // transparent: true,
+                          // opacity: 0.8  // Increased from 0.2 to 0.8 for better visibility
+                        });
+                      }
+                      
+                      // Make sure the hotspot is visible
+                      child.visible = true;
+                      child.frustumCulled = false;
+                      
+                      // Assign unique pastel color to this hotspot
+                      let assignedColor: number;
+                      do {
+                        assignedColor = PASTEL_COLORS[Math.floor(Math.random() * PASTEL_COLORS.length)];
+                      } while (usedColors.has(assignedColor));
+                      
+                      usedColors.add(assignedColor);
+                      hotspotColorsRef.current.set(child, assignedColor);
+                      
+                      // Set initial color to theme color
+                      if (child.material) {
+                        const colors = getThemeColors();
+                        (child.material as THREE.MeshStandardMaterial).color.setHex(colors.HOTSPOT_NORMAL_COLOR);
+                        console.log('Set initial color for', child.name, 'to theme color');
+                      }
+                      
+                      console.log('Transformed hotspot setup complete:', child.name, 'with color:', '#' + assignedColor.toString(16).padStart(6, '0'));
+                    }
+                  });
+                  
+                  // Store hotspots for interaction
+                  clickableObjectsRef.current = clickableObjects;
+                  
+                  // Log total hotspots found
+                  console.log('Total transformed hotspots collected:', clickableObjects.length);
+                  console.log('All transformed hotspots:', clickableObjects);
+                  
+                  // Create pulse markers for hotspots after they're loaded
+                  if (clickableObjects.length > 0) {
+                    setTimeout(() => {
+                      createHotspotPulseMarkers();
+                    }, 100); // Small delay to ensure scene is ready
+                  }
+                  
+                  // INVESTIGATE: Why do all hotspots have identical coordinates?
+                  // Let's examine the original GLTF data before any transformations
+                  console.log('🔍 INVESTIGATING ORIGINAL HOTSPOT COORDINATES:');
+                  console.log('  This will help understand why all hotspots have identical positions');
+                  
+                  // Examine the original GLTF scene before any transformations
+                  console.log('🔍 ORIGINAL GLTF SCENE (BEFORE TRANSFORMATIONS):');
+                  console.log('  Original gltf.scene children count:', gltf.scene.children.length);
+                  
+                  gltf.scene.traverse((originalChild: any) => {
+                    if (originalChild.name.includes("Hotspot")) {
+                      console.log(`  Original ${originalChild.name}:`);
+                      console.log(`    Type: ${originalChild.type}`);
+                      console.log(`    Position: ${originalChild.position.x.toFixed(3)}, ${originalChild.position.y.toFixed(3)}, ${originalChild.position.z.toFixed(3)}`);
+                      console.log(`    Scale: ${originalChild.scale.x.toFixed(3)}, ${originalChild.scale.y.toFixed(3)}, ${originalChild.scale.z.toFixed(3)}`);
+                      console.log(`    Rotation: ${originalChild.rotation.x.toFixed(3)}, ${originalChild.rotation.y.toFixed(3)}, ${originalChild.rotation.z.toFixed(3)}`);
+                      console.log(`    Matrix: ${originalChild.matrix.elements.slice(12, 15).map((x: number) => x.toFixed(3)).join(', ')}`);
+                      console.log(`    Parent: ${originalChild.parent?.name || 'No parent'}`);
+                      console.log(`    Parent type: ${originalChild.parent?.type || 'No parent'}`);
+                      
+                      // Check if this is a clone or instance
+                      console.log(`    Is clone: ${originalChild.isClone || false}`);
+                      console.log(`    UUID: ${originalChild.uuid}`);
+                    }
+                  });
+                  
+                  // Also check the GLTF data structure
+                  console.log('🔍 GLTF DATA STRUCTURE:');
+                  console.log('  GLTF scene name:', gltf.scene.name);
+                  console.log('  GLTF scene type:', gltf.scene.type);
+                  console.log('  GLTF scene position:', gltf.scene.position);
+                  console.log('  GLTF scene scale:', gltf.scene.scale);
+                  console.log('  GLTF scene rotation:', gltf.scene.rotation);
+                  console.log('  GLTF scene matrix:', gltf.scene.matrix.elements.slice(12, 15).map((x: number) => x.toFixed(3)).join(', '));
+                  
+                  // Debug: Show positions of all hotspots AFTER transformations
+                  console.log('🔍 TRANSFORMED HOTSPOT POSITIONS:');
+                  clickableObjects.forEach((hotspot, index) => {
+                    console.log(`  ${index + 1}. ${hotspot.name}:`);
+                    console.log(`     Local position: ${hotspot.position.x.toFixed(3)}, ${hotspot.position.y.toFixed(3)}, ${hotspot.position.z.toFixed(3)}`);
+                    console.log(`     World position: ${hotspot.getWorldPosition(new THREE.Vector3()).x.toFixed(3)}, ${hotspot.getWorldPosition(new THREE.Vector3()).y.toFixed(3)}, ${hotspot.getWorldPosition(new THREE.Vector3()).z.toFixed(3)}`);
+                    console.log(`     Parent: ${hotspot.parent?.name || 'No parent'}`);
+                    console.log(`     Parent matrix: ${hotspot.parent?.matrix ? hotspot.parent.matrix.elements.slice(12, 15).map((x: number) => x.toFixed(3)).join(', ') : 'No parent matrix'}`);
+                    console.log(`     Own matrix: ${hotspot.matrix.elements.slice(12, 15).map((x: number) => x.toFixed(3)).join(', ')}`);
+                    
+                    // Calculate the transformation difference
+                    const worldPos = new THREE.Vector3();
+                    hotspot.getWorldPosition(worldPos);
+                    const localPos = hotspot.position;
+                    const transformDiff = worldPos.clone().sub(localPos);
+                    console.log(`     Transform difference: ${transformDiff.x.toFixed(3)}, ${transformDiff.y.toFixed(3)}, ${transformDiff.z.toFixed(3)}`);
+                  });
+                  
+                  const colorEntries = Array.from(hotspotColorsRef.current.entries());
+                  console.log('Assigned colors:', colorEntries.map((entry: any) => 
+                    `${entry[0].name}: #${entry[1].toString(16).padStart(6, '0')}`
+                  ));
+
+                  // Apply shadows to the transformed model
                   model.traverse((child: any) => {
                     if (child instanceof THREE.Mesh) {
                       child.castShadow = true;
@@ -409,13 +2131,24 @@ export default function ScrollScene({
 
                   // Start intro now that model is loaded (second intro only)
                   if (WITH_INTRO && cameraRef.current && rendererRef.current && sceneRef.current) {
-                    // Set exact intro start frame (top view over cube)
-                    cameraRef.current.up.set(0, 1, 0);
-                    cameraRef.current.position.copy(INTRO_START_POS);
-                    cameraRef.current.lookAt(cubePos.current);
-                    cameraRef.current.updateProjectionMatrix();
-                    cameraRef.current.updateMatrixWorld();
-                    startIntroAnimation(cameraRef.current, rendererRef.current, sceneRef.current);
+                                      // Set exact intro start frame (top view over cube)
+                  cameraRef.current.up.set(0, 1, 0);
+                  cameraRef.current.position.copy(INTRO_START_POS);
+                  cameraRef.current.lookAt(cubePos.current);
+                  cameraRef.current.updateProjectionMatrix();
+                  cameraRef.current.updateMatrixWorld();
+                  
+                  // CRITICAL: Update camera state with the actual starting position
+                  cameraStateRef.current.mainPathPosition.copy(INTRO_START_POS);
+                  cameraStateRef.current.journeyStartPosition.copy(INTRO_START_POS);
+                  cameraStateRef.current.isOnMainPath = true;
+                  console.log('🎯 UPDATED camera state with INTRO_START_POS:', {
+                    mainPathPosition: cameraStateRef.current.mainPathPosition,
+                    journeyStartPosition: cameraStateRef.current.journeyStartPosition,
+                    isOnMainPath: cameraStateRef.current.isOnMainPath
+                  });
+                  
+                  startIntroAnimation(cameraRef.current, rendererRef.current, sceneRef.current);
                   }
 
                   const total = loaderTotalBytesRef.current;
@@ -486,14 +2219,29 @@ export default function ScrollScene({
     loadFloorPlanModel();
     
     // Cube
-    const debugCube = new THREE.Mesh(
-      new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE),
-      new THREE.MeshStandardMaterial({ color: colors.CUBE_COLOR, emissive: colors.CUBE_EMISSIVE_COLOR })
-    );
-    debugCube.position.copy(cubePos.current);
-    debugCube.castShadow = true; // Enable shadow casting
-    debugCube.receiveShadow = true; // Enable shadow receiving
-    scene.add(debugCube);
+    if (SHOW_CUBE) {
+      const cubeMaterial = new THREE.MeshStandardMaterial({ 
+        color: colors.CUBE_COLOR, 
+        emissive: colors.CUBE_EMISSIVE_COLOR 
+      });
+      const debugCube = new THREE.Mesh(
+        new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE),
+        cubeMaterial
+      );
+      debugCube.position.copy(cubePos.current);
+      debugCube.castShadow = true; // Enable shadow casting
+      debugCube.receiveShadow = true; // Enable shadow receiving
+      debugCube.name = "Hotspot_Cube"; // Name for identification
+      scene.add(debugCube);
+      
+      // Store cube reference for interaction
+      cubeRef.current = debugCube;
+      
+      // Debug: log cube creation
+      console.log('Cube created:', debugCube);
+      console.log('Cube material:', cubeMaterial);
+      console.log('Cube position:', debugCube.position);
+    }
     
     return scene;
   };
@@ -529,6 +2277,8 @@ export default function ScrollScene({
     renderer.setClearColor(colors.BACKGROUND_COLOR, 1);
     renderer.shadowMap.enabled = true; // Enable shadow mapping
     renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Use soft shadows
+    // renderer.toneMapping = THREE.ACESFilmicToneMapping; // Use Reinhard tone mapping
+    // renderer.toneMappingExposure = 1; // Adjust exposure as needed
     // Don't append to DOM yet - wait for animation to start
     return renderer;
   };
@@ -550,6 +2300,41 @@ export default function ScrollScene({
     // Prevent re-entry
     if (introStartedRef.current) return;
     introStartedRef.current = true;
+    
+    // Create debug spheres for intro animation when SHOW_DEBUG is true
+    if (SHOW_DEBUG && scene) {
+      console.log('🎯 CREATING INTRO DEBUG SPHERES...');
+      
+      // Create purple sphere at the intro start position
+      const startMarker = new THREE.Mesh(
+        new THREE.SphereGeometry(1.5, 16, 16),
+        new THREE.MeshBasicMaterial({ 
+          color: 0x800080, // Purple color for intro start
+          transparent: true, 
+          opacity: 0.9 
+        })
+      );
+      startMarker.position.copy(introAnimRef.current.fromPos);
+      startMarker.name = 'debug_intro_start_marker';
+      scene.add(startMarker);
+      
+      // Create cyan sphere at the intro end position
+      const endMarker = new THREE.Mesh(
+        new THREE.SphereGeometry(1.5, 16, 16),
+        new THREE.MeshBasicMaterial({ 
+          color: 0x00ffff, // Cyan color for intro end
+          transparent: true, 
+          opacity: 0.9 
+        })
+      );
+      endMarker.position.copy(introAnimRef.current.toPos);
+      endMarker.name = 'debug_intro_end_marker';
+      scene.add(endMarker);
+      
+      console.log('🎯 INTRO DEBUG SPHERES CREATED:');
+      console.log('  Purple sphere (intro start):', startMarker.position);
+      console.log('  Cyan sphere (intro end):', endMarker.position);
+    }
 
     // Clear any previously scheduled intro timer (ensure one-shot)
     if (introTimeoutRef.current) {
@@ -620,11 +2405,33 @@ export default function ScrollScene({
           introTimeoutRef.current = null;
         }
 
+        // Clean up intro debug spheres when SHOW_DEBUG is true
+        if (SHOW_DEBUG && scene) {
+          scene.children.forEach((child: THREE.Object3D) => {
+            if (child.name === 'debug_intro_start_marker' || child.name === 'debug_intro_end_marker') {
+              scene.remove(child);
+              console.log('🧹 Removed intro debug marker:', child.name);
+            }
+          });
+        }
+        
         // Intro completed, enable orbital animation
         introCompletedRef.current = true;
         hasIntroRef.current = true;
         onIntroComplete?.(); // Call intro complete callback
         console.log('Intro completed');
+        
+        // CRITICAL: Update journeyStartPosition to reflect where intro actually ended
+        // This ensures the panel shows the correct main path position
+        if (cameraStateRef.current) {
+          cameraStateRef.current.journeyStartPosition.copy(INTRO_END_POS);
+          cameraStateRef.current.mainPathPosition.copy(INTRO_END_POS);
+          console.log('🎯 UPDATED journeyStartPosition after intro completion:', {
+            journeyStartPosition: cameraStateRef.current.journeyStartPosition,
+            mainPathPosition: cameraStateRef.current.mainPathPosition,
+            INTRO_END_POS: INTRO_END_POS
+          });
+        }
 
         // Initialize GSAP curve to start at current camera position and render first frame
         if (!WITH_ORBITAL && cameraRef.current && rendererRef.current && sceneRef.current) {
@@ -940,7 +2747,7 @@ export default function ScrollScene({
         
         // Force a render update
         if (cameraRef.current) {
-          // Don’t force a render that would show a pre-intro still
+          // Don't force a render that would show a pre-intro still
           if (!WITH_INTRO || introCompletedRef.current) {
             rendererRef.current.render(sceneRef.current, cameraRef.current);
           }
@@ -968,8 +2775,11 @@ export default function ScrollScene({
       mountRef.current?.appendChild(renderer.domElement);
     }
     
-    // Initialize GSAP curve to start exactly at the current camera position once intro completes
-    if (introCompletedRef.current && !gsapPathInitializedRef.current && cameraRef.current) {
+    // Camera position is now controlled by GSAP bezier animation
+    // No need for global position monitoring that interferes with smooth movement
+    
+    // Don't initialize GSAP curve if we're focused on a hotspot
+    if (introCompletedRef.current && !gsapPathInitializedRef.current && cameraRef.current && !isFocusedOnHotspot) {
       const startP = cameraRef.current.position.clone();
       const pts = [startP, ...gsapCameraPoints];
       gsapCurveRef.current = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.1);
@@ -979,18 +2789,83 @@ export default function ScrollScene({
       gsapPathInitializedRef.current = true;
       pathProgressRef.current.t = 0;
     }
-
-    // Run orbital animation if intro is complete OR if we're skipping intro
-    if (WITH_ORBITAL && (introCompletedRef.current || !WITH_INTRO)) {
-      animateOrbital(camera, renderer, scene);
-    } else if (introCompletedRef.current) {
-      // Render GSAP scroll path when orbital is disabled
-      updateCameraAlongCurve(camera, pathProgressRef.current.t);
-      renderer.render(scene, camera);
+    
+    // COMPLETELY DISABLE ALL ANIMATION SYSTEMS when focused on hotspots
+    if (isFocusedOnHotspot) {
+      // Force disable all path systems to prevent camera position overrides
+      gsapPathInitializedRef.current = false;
+      pathProgressRef.current.t = 0;
+      
+      // When focused on hotspot, ONLY render the scene - NO camera movement
+      if (!isAnimatingRef.current) {
+        // Ensure camera is looking at the clicked hotspot target
+        if (clickedHotspot) {
+          const target = new THREE.Vector3();
+          clickedHotspot.getWorldPosition(target);
+          camera.lookAt(target);
+          camera.updateMatrixWorld();
+          
+          // Camera position is controlled by GSAP bezier animation
+          // No need for aggressive position enforcement
+        }
+        
+        // Single render call when not animating
+        renderer.render(scene, camera);
+      } else {
+        // During animation, don't render here - let the bezier animation control rendering
+        // This prevents flickering from multiple render calls
+      }
+      
+      // CRITICAL: Skip the rest of the animation loop when focused on hotspots
+      // This prevents orbital/GSAP systems from interfering with hotspot animations
+      animationIdRef.current = requestAnimationFrame(() => animate(camera, renderer, scene));
+      return;
     }
     
+    // Only run orbital/GSAP animations when NOT focused on hotspots AND not animating
+    if (!isAnimatingRef.current && !isFocusedOnHotspotRef.current) {
+      if (WITH_ORBITAL && (introCompletedRef.current || !WITH_INTRO)) {
+        animateOrbital(camera, renderer, scene);
+        // Update main path position when following orbital path
+        cameraStateRef.current.mainPathPosition.copy(camera.position);
+        cameraStateRef.current.isOnMainPath = true;
+      } else if (introCompletedRef.current) {
+        // Render GSAP scroll path when orbital is disabled
+        updateCameraAlongCurve(camera, pathProgressRef.current.t);
+        // Update main path position when following GSAP path
+        cameraStateRef.current.mainPathPosition.copy(camera.position);
+        cameraStateRef.current.isOnMainPath = true;
+        renderer.render(scene, camera);
+      }
+    }
+    
+    // Ensure pulse markers are always visible (mobile only)
+    if (isMobile.detect()) {
+      if (hotspotPulseRefs.current.length > 0) {
+        ensurePulseMarkersVisible();
+      } else if (clickableObjectsRef.current.length > 0 && !pulseMarkersCreatedRef.current) {
+        // If pulse markers are missing but hotspots exist, recreate them
+        console.log('🔍 Pulse markers missing in animation loop, recreating');
+        createHotspotPulseMarkers();
+      }
+    }
+    
+    // Continue animation loop
     animationIdRef.current = requestAnimationFrame(() => animate(camera, renderer, scene));
   };
+
+  // Start pulse animation if not already running
+  useEffect(() => {
+    if (hotspotPulseRefs.current.length > 0 && !pulseAnimationRef.current) {
+      animateHotspotPulses();
+    }
+    
+    return () => {
+      stopPulseAnimation();
+    };
+  }, [hotspotPulseRefs.current.length]);
+
+
 
   // Resize handler
   const handleResize = (camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer) => {
@@ -1012,6 +2887,9 @@ export default function ScrollScene({
     cameraRef.current = camera;
     sceneRef.current = scene;
     rendererRef.current = renderer;
+    
+    // Initialize raycaster for hotspot interaction
+    raycasterRef.current = new THREE.Raycaster();
     
     // Initial render and animation setup
     if (WITH_INTRO) {
@@ -1058,6 +2936,9 @@ export default function ScrollScene({
       }
       removePathVisuals();
       renderer.dispose();
+      // Clean up pulse markers
+      cleanupPulseMarkers();
+      stopPulseAnimation();
     };
   }, []);
 
@@ -1068,15 +2949,24 @@ export default function ScrollScene({
       const sh = (doc.scrollHeight - window.innerHeight) || 0;
       const targetT = sh > 0 ? st / sh : pathProgressRef.current.t;
       const t = Math.max(0, Math.min(1, targetT));
-      // tween toward target for smoothness
+      // tween toward target for smoothness with higher precision
       gsap.to(pathProgressRef.current, {
-        t,
+        t: parseFloat(t.toFixed(6)), // Higher precision for spline positioning
         duration: 0.4,
         ease: 'power2.out',
         onUpdate: () => {
-          if (introCompletedRef.current && cameraRef.current && sceneRef.current && rendererRef.current) {
+          // CRITICAL: Don't update camera position during hotspot animations
+          if (introCompletedRef.current && cameraRef.current && sceneRef.current && rendererRef.current && !isFocusedOnHotspotRef.current) {
             updateCameraAlongCurve(cameraRef.current, pathProgressRef.current.t);
             rendererRef.current.render(sceneRef.current, cameraRef.current);
+            
+            // GLOBAL: Update main path position reference for debugging
+            cameraStateRef.current.mainPathPosition.copy(cameraRef.current.position);
+            
+            // GLOBAL: Update journey start position when on main path
+            if (cameraStateRef.current.isOnMainPath) {
+              cameraStateRef.current.journeyStartPosition.copy(cameraRef.current.position);
+            }
           }
         },
       });
@@ -1088,6 +2978,283 @@ export default function ScrollScene({
     onScroll();
     return () => window.removeEventListener('scroll', onScroll as any);
   }, []);
+
+  // Mouse event handlers for hotspot interaction
+  useEffect(() => {
+    if (!mountRef.current) return;
+
+    // Throttle mouse move events to prevent flickering
+    let throttleTimeout: any;
+
+    const handleMouseMove = (event: MouseEvent) => {
+      // 🛡️ PREVENT HOTSPOT INTERACTIONS WHEN GALLERY IS VISIBLE
+      if (galleryVisibleRef.current || (window as any).__galleryMode) {
+        console.log('🚫 BLOCKING MOUSEMOVE - Gallery is visible or gallery mode is active');
+        console.log('  galleryVisibleRef.current:', galleryVisibleRef.current);
+        console.log('  __galleryMode:', (window as any).__galleryMode);
+        // Force stop all hotspot interactions
+        if (hoveredHotspot) {
+          setHoveredHotspot(null);
+          setHoverTooltip((prev: any) => ({ ...prev, visible: false }));
+        }
+        return;
+      }
+      
+      // Ensure pulse markers stay visible during mouse movement
+      if (hotspotPulseRefs.current.length > 0) {
+        ensurePulseMarkersVisible();
+      }
+      
+      // Debug: Log when hotspot detection is working
+      console.log('✅ MOUSEMOVE ALLOWED - Processing hotspot detection');
+      
+      if (!raycasterRef.current || !cameraRef.current || !sceneRef.current) {
+        console.log('Missing refs:', { raycaster: !!raycasterRef.current, camera: !!cameraRef.current, scene: !!sceneRef.current });
+        return;
+      }
+      
+      // Calculate mouse position in normalized device coordinates (-1 to +1)
+      mouseRef.current.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouseRef.current.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      // Update the raycaster with current camera position
+      raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
+
+      // Get all objects that could be hotspots (cube and model hotspots)
+      const hotspotObjects: THREE.Object3D[] = [];
+      
+      // Add cube if it exists
+      if (cubeRef.current) {
+        hotspotObjects.push(cubeRef.current);
+      }
+      
+      // Add model hotspots (excluding pulse markers)
+      if (clickableObjectsRef.current.length > 0) {
+        const actualHotspots = clickableObjectsRef.current.filter(obj => !obj.name?.startsWith('pulse_'));
+        hotspotObjects.push(...actualHotspots);
+      }
+      
+      // Add pulse markers for cursor detection (but not for hover effects)
+      if (hotspotPulseRefs.current.length > 0) {
+        const pulseMarkers = hotspotPulseRefs.current.filter((_, index) => index % 2 === 0); // Only main spheres, not glow
+        hotspotObjects.push(...pulseMarkers);
+      }
+      
+      // Check for intersections
+      const intersects = raycasterRef.current.intersectObjects(hotspotObjects);
+      
+      // Update cursor based on intersection
+      if (intersects.length > 0) {
+        const intersectedObject = intersects[0].object;
+        // Set cursor to pointer for hotspots and pulse markers
+        if (document.body) {
+          document.body.style.cursor = 'pointer';
+        }
+      } else {
+        // Reset cursor to default when not hovering over interactive elements
+        if (document.body) {
+          document.body.style.cursor = 'default';
+        }
+      }
+      
+      if (intersects.length > 0) {
+        const intersectedObject = intersects[0].object;
+        if (hoveredHotspot !== intersectedObject) {
+          // Reset previous hotspot (excluding pulse markers)
+          if (hoveredHotspot && hoveredHotspot.material && !hoveredHotspot.name?.startsWith('pulse_')) {
+            if (hoveredHotspot === cubeRef.current) {
+              // Reset cube to normal green
+              (hoveredHotspot.material as THREE.MeshStandardMaterial).color.setHex(CUBE_NORMAL_COLOR);
+            } else {
+              // Reset model hotspot to theme floor color with 80% transparency
+              const colors = getThemeColors();
+              (hoveredHotspot.material as THREE.MeshStandardMaterial).color.setHex(colors.HOTSPOT_NORMAL_COLOR);
+              // (hoveredHotspot.material as THREE.MeshStandardMaterial).transparent = true;
+              // (hoveredHotspot.material as THREE.MeshStandardMaterial).opacity = 0.8; // 80% opacity = 20% transparency
+            }
+          }
+          // Set new hotspot
+          setHoveredHotspot(intersectedObject);
+          
+          // Show category tooltip
+          const category = HOTSPOT_CATEGORIES[intersectedObject.name] || 'Unknown';
+          setHoverTooltip({
+            visible: true,
+            text: category,
+            position: { x: event.clientX, y: event.clientY }
+          });
+          
+          if (intersectedObject.material) {
+            if (intersectedObject === cubeRef.current) {
+              // Highlight cube in red
+              (intersectedObject.material as THREE.MeshStandardMaterial).color.setHex(CUBE_HIGHLIGHT_COLOR);
+              console.log('Changed cube color to red!');
+            } else {
+              // Highlight model hotspot with its assigned random pastel color
+              const assignedColor = hotspotColorsRef.current.get(intersectedObject);
+              if (assignedColor) {
+                (intersectedObject.material as THREE.MeshStandardMaterial).color.setHex(assignedColor);
+                // (intersectedObject.material as THREE.MeshStandardMaterial).transparent = true;
+                // (intersectedObject.material as THREE.MeshStandardMaterial).opacity = 0.9; // 90% opacity = 10% transparency
+              } else {
+                // Fallback to bright green if no color assigned
+                (intersectedObject.material as THREE.MeshStandardMaterial).color.setHex(0x00ff00);
+                // (intersectedObject.material as THREE.MeshStandardMaterial).transparent = true;
+                // (intersectedObject.material as THREE.MeshStandardMaterial).opacity = 0.9;
+              }
+            }
+          }
+        }
+      } else {
+        // No intersection, reset hover state (excluding pulse markers)
+        if (hoveredHotspot && hoveredHotspot.material && !hoveredHotspot.name?.startsWith('pulse_')) {
+          if (hoveredHotspot === cubeRef.current) {
+            // Reset cube to normal green
+            (hoveredHotspot.material as THREE.MeshStandardMaterial).color.setHex(CUBE_NORMAL_COLOR);
+          } else {
+            // Reset model hotspot to theme floor color with 80% transparency
+            const colors = getThemeColors();
+            (hoveredHotspot.material as THREE.MeshStandardMaterial).color.setHex(colors.HOTSPOT_NORMAL_COLOR);
+            // (hoveredHotspot.material as THREE.MeshStandardMaterial).transparent = true;
+            // (hoveredHotspot.material as THREE.MeshStandardMaterial).opacity = 0.8; // 80% opacity = 20% transparency
+          }
+        }
+        setHoveredHotspot(null);
+        
+        // Hide tooltip when no intersection
+        setHoverTooltip((prev: any) => ({ ...prev, visible: false }));
+      }
+      
+      // Always ensure pulse markers are visible after any mouse movement (mobile only)
+      if (isMobile.detect() && hotspotPulseRefs.current.length > 0) {
+        ensurePulseMarkersVisible();
+        // Debug: Log pulse marker status on mouse move
+        debugPulseMarkers();
+      }
+    };
+
+    const handleClick = (event: MouseEvent) => {
+      // 🛡️ PREVENT EVENT BUBBLING FOR GALLERY INTERACTIONS
+      if (galleryVisibleRef.current || (window as any).__galleryMode) {
+        console.log('🚫 BLOCKING CLICK - Gallery is visible or gallery mode is active');
+        console.log('  galleryVisibleRef.current:', galleryVisibleRef.current);
+        console.log('  __galleryMode:', (window as any).__galleryMode);
+        event.preventDefault();
+        event.stopPropagation();
+        // Force stop any ongoing hotspot interactions
+        if (hoveredHotspot) {
+          setHoveredHotspot(null);
+          setHoverTooltip((prev: any) => ({ ...prev, visible: false }));
+        }
+        return;
+      }
+      
+      if (!raycasterRef.current || !cameraRef.current || !sceneRef.current) return;
+      
+      // Calculate mouse position
+      mouseRef.current.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouseRef.current.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      // Update the raycaster with current camera position
+      raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
+
+      // Check for intersections
+      const hotspotObjects: THREE.Object3D[] = [];
+      
+      // Add cube if it exists
+      if (cubeRef.current) hotspotObjects.push(cubeRef.current);
+      
+      // Add model hotspots
+      if (clickableObjectsRef.current.length > 0) {
+        hotspotObjects.push(...clickableObjectsRef.current);
+      }
+      
+      // Add pulse markers for click detection
+      if (hotspotPulseRefs.current.length > 0) {
+        const pulseMarkers = hotspotPulseRefs.current.filter((_, index) => index % 2 === 0); // Only main spheres, not glow
+        hotspotObjects.push(...pulseMarkers);
+      }
+      
+      const intersects = raycasterRef.current.intersectObjects(hotspotObjects);
+      
+      // Update cursor based on intersection for click detection
+      if (intersects.length > 0) {
+        const intersectedObject = intersects[0].object;
+        // Set cursor to pointer for hotspots and pulse markers
+        if (document.body) {
+          document.body.style.cursor = 'pointer';
+        }
+      } else {
+        // Reset cursor to default when not hovering over interactive elements
+        if (document.body) {
+          document.body.style.cursor = 'default';
+        }
+      }
+      
+      if (intersects.length > 0) {
+        const clickedObject = intersects[0].object;
+        const intersection = intersects[0];
+        
+        console.log("🎯 CLICKED OBJECT:", clickedObject.name);
+        console.log("  Object type:", clickedObject.type);
+        console.log("  Local position:", clickedObject.position);
+        console.log("  World position:", clickedObject.getWorldPosition(new THREE.Vector3()));
+        console.log("  Camera position:", cameraRef.current?.position);
+        console.log("  Intersection point:", intersection.point);
+        
+        // Check if this is a pulse marker and get the actual hotspot
+        let actualHotspot = clickedObject;
+        if (clickedObject.name?.startsWith('pulse_')) {
+          const hotspotName = clickedObject.userData.hotspotName;
+          actualHotspot = clickableObjectsRef.current.find(obj => obj.name === hotspotName) || clickedObject;
+          console.log('🎯 Pulse marker clicked, actual hotspot:', actualHotspot.name);
+        }
+        
+        // Store the clicked hotspot for debug display
+        setClickedHotspot(actualHotspot);
+        
+        // Log the current camera state before moving
+        console.log('🎯 BEFORE MOVING CAMERA:');
+        console.log('  Current camera position:', cameraRef.current?.position);
+        console.log('  Current camera rotation:', cameraRef.current?.rotation);
+        console.log('  Actual hotspot:', actualHotspot.name);
+        
+        // Move camera to the actual hotspot (gallery will auto-trigger on animation completion)
+        moveCameraToHotspot(actualHotspot);
+        
+        // Animation is now handled by GSAP bezier curve
+        // No need to override camera position during animation
+      }
+    };
+
+    // Add event listeners with throttled mouse move to prevent flickering
+    const throttledMouseMove = (event: MouseEvent) => {
+      if (throttleTimeout) return;
+      throttleTimeout = setTimeout(() => {
+        handleMouseMove(event);
+        throttleTimeout = null as any;
+      }, 16); // 60fps throttle
+    };
+    
+    // Store references to original listeners for gallery mode management
+    (window as any).__originalMouseMoveListener = throttledMouseMove;
+    (window as any).__originalClickListener = handleClick;
+    
+    window.addEventListener('mousemove', throttledMouseMove);
+    window.addEventListener('click', handleClick);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('mousemove', throttledMouseMove);
+      window.removeEventListener('click', handleClick);
+      // Clean up stored references
+      delete (window as any).__originalMouseMoveListener;
+      delete (window as any).__originalClickListener;
+      // Clean up pulse animation and markers
+      stopPulseAnimation();
+      cleanupPulseMarkers();
+    };
+  }, [hoveredHotspot]);
 
   return (
     <>
@@ -1107,12 +3274,108 @@ export default function ScrollScene({
           style={{ width: "100%", height: "100%" }}
         />
       </div>
+      
+      {/* Debug Display - Only visible when SHOW_DEBUG is true AND focused on hotspot */}
+      {SHOW_DEBUG && isFocusedOnHotspot && (
+      <div style={{
+        position: "fixed",
+        top: "20px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        padding: "8px 12px",
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        color: "white",
+        fontSize: "12px",
+        zIndex: 1000,
+        pointerEvents: "auto",
+        fontFamily: "monospace",
+        textAlign: "center"
+      }}>
+        <div>Focused: {isFocusedOnHotspot ? 'YES' : 'NO'}</div>
+        {isFocusedOnHotspot && (
+          <>
+            <div>Camera Position: {cameraRef.current ? `${cameraRef.current.position.x.toFixed(2)}, ${cameraRef.current.position.y.toFixed(2)}, ${cameraRef.current.position.z.toFixed(2)}` : 'N/A'}</div>
+            <div>Looking At: {hoveredHotspot ? (() => {
+              const target = new THREE.Vector3();
+              hoveredHotspot.getWorldPosition(target);
+              return `${target.x.toFixed(2)}, ${target.y.toFixed(2)}, ${target.z.toFixed(2)}`;
+            })() : 'N/A'}</div>
+            <div>Clicked Hotspot: {clickedHotspot ? `${clickedHotspot.name} (${clickedHotspot.position.x.toFixed(2)}, ${clickedHotspot.position.y.toFixed(2)}, ${clickedHotspot.position.z.toFixed(2)})` : 'N/A'}</div>
+            <div>Hovering Over: {hoveredHotspot ? `${hoveredHotspot.name} (${hoveredHotspot.position.x.toFixed(2)}, ${hoveredHotspot.position.y.toFixed(2)}, ${hoveredHotspot.position.z.toFixed(2)})` : 'N/A'}</div>
+            <div>Hover World Pos: {hoveredHotspot ? (() => {
+              const target = new THREE.Vector3();
+              hoveredHotspot.getWorldPosition(target);
+              return `${target.x.toFixed(2)}, ${target.y.toFixed(2)}, ${target.z.toFixed(2)}`;
+            })() : 'N/A'}</div>
+            <div>Hover Local Pos: {hoveredHotspot ? `${hoveredHotspot.position.x.toFixed(2)}, ${hoveredHotspot.position.y.toFixed(2)}, ${hoveredHotspot.position.z.toFixed(2)}` : 'N/A'}</div>
+          </>
+        )}
+      </div>
+      )}
+
+
+      {/* Blue Position Panel - Only visible when SHOW_DEBUG is true AND focused on hotspot */}
+      {SHOW_DEBUG && isFocusedOnHotspot && (
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-blue-900/90 text-white p-4 rounded-lg text-sm font-mono z-50 min-w-80">
+          <div className="mb-2 font-bold text-blue-200">🎯 Focused Area Panel</div>
+          <div className="mb-2">
+            <span className="text-green-400">Start Position (Current Camera):</span> {(() => {
+              const start = cameraRef.current?.position || new THREE.Vector3();
+              return `${start.x.toFixed(2)}, ${start.y.toFixed(2)}, ${start.z.toFixed(2)}`;
+            })()}
+    </div>
+          <div className="mb-2">
+            <span className="text-red-400">Last Hotspot Position:</span> {(() => {
+              const lastHotspot = cameraStateRef.current.lastHotspotPosition;
+              return lastHotspot ? `${lastHotspot.x.toFixed(2)}, ${lastHotspot.y.toFixed(2)}, ${lastHotspot.z.toFixed(2)}` : 'N/A';
+            })()}
+          </div>
+          <div className="mb-2">
+            <span className="text-yellow-400">Saved Spline Progress:</span> {(() => {
+              const progress = cameraStateRef.current.savedSplineProgress;
+              return progress !== undefined ? `${(progress * 100).toFixed(3)}%` : 'N/A';
+            })()}
+          </div>
+          <div className="mb-2">
+            <span className="text-blue-400">Exact Spline Position:</span> {(() => {
+              const exact = cameraStateRef.current.exactSplinePosition;
+              return exact ? `${exact.x.toFixed(2)}, ${exact.y.toFixed(2)}, ${exact.z.toFixed(2)}` : 'N/A';
+            })()}
+          </div>
+          <div className="mb-2">
+            <span className="text-indigo-400">Saved LookAt Target:</span> {(() => {
+              const lookAt = cameraStateRef.current.savedLookAtTarget;
+              if (!lookAt) return 'N/A';
+              
+              const cameraPos = cameraRef.current?.position;
+              if (cameraPos) {
+                const distance = lookAt.distanceTo(cameraPos);
+                return `${lookAt.x.toFixed(2)}, ${lookAt.y.toFixed(2)}, ${lookAt.z.toFixed(2)} (${distance.toFixed(2)}m away)`;
+              }
+              return `${lookAt.x.toFixed(2)}, ${lookAt.y.toFixed(2)}, ${lookAt.z.toFixed(2)}`;
+            })()}
+          </div>
+          <div className="mb-2">
+            <span className="text-purple-400">Journey Start (Main Path):</span> {(() => {
+              const journey = cameraStateRef.current.journeyStartPosition;
+              return `${journey.x.toFixed(2)}, ${journey.y.toFixed(2)}, ${journey.z.toFixed(2)}`;
+            })()}
+          </div>
+          <div className="mb-2">
+            <span className="text-cyan-400">State:</span> {cameraStateRef.current.isOnMainPath ? '🛣️ Main Path' : '🎯 Branch Path'}
+          </div>
+          <div className="mb-2">
+            <span className="text-orange-400">Animation Status:</span> {isAnimatingRef.current ? '🎬 Animating' : '⏸️ Idle'}
+          </div>
+        </div>
+      )}
+      
       {SHOW_DEBUG && debugInfo && (
         <div
           style={{
             position: "fixed",
-            top: "10px",
-            left: "10px",
+            top: "40px",
+            right: "40px",
             background: "rgba(0,0,0,0.9)",
             color: "white",
             padding: "12px",
@@ -1147,6 +3410,55 @@ export default function ScrollScene({
           <div>Percent: {typeof (debugInfo as any)?.loaderPercent === 'number' ? `${(debugInfo as any).loaderPercent.toFixed(0)}%` : 'N/A'}</div>
           <div>Loaded: {typeof (debugInfo as any)?.loaderLoadedMB === 'number' ? `${(debugInfo as any).loaderLoadedMB.toFixed(2)} MB` : 'N/A'}</div>
           <div>Total: {typeof (debugInfo as any)?.loaderTotalMB === 'number' ? `${(debugInfo as any).loaderTotalMB.toFixed(2)} MB` : 'N/A'}</div>
+        </div>
+      )}
+
+      {/* Hotspot Category Tooltip */}
+      {hoverTooltip.visible && (
+        <div
+          className="fixed z-50 px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg shadow-lg transition-all duration-300 ease-out"
+          style={{
+            left: hoverTooltip.position.x + 10,
+            top: hoverTooltip.position.y - 40,
+            opacity: hoverTooltip.visible ? 1 : 0,
+            transform: `translateY(${hoverTooltip.visible ? '0' : '10px'})`,
+          }}
+        >
+          {hoverTooltip.text}
+        </div>
+      )}
+      
+      {/* SwiperGallery Modal */}
+      {galleryVisible && (
+        <div 
+          className="fixed inset-0 z-[50] flex items-center justify-center p-4"
+          style={{ pointerEvents: 'auto' }}
+          onClick={(e) => {
+            // Block any clicks on the gallery container
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
+          <div className="relative w-full h-full max-w-6xl">
+            {/* Debug Info - Centered */}
+              {SHOW_DEBUG && (
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 bg-black/70 text-white p-3 rounded-lg text-sm">
+               <div className="text-center">
+                 <div className="font-semibold mb-1">Gallery Debug Info</div>
+                 Gallery Visible: {galleryVisible.toString()}<br/>
+                 Images Count: {galleryImages.length}<br/>
+                 Current Hotspot: {currentHotspot}
+               </div>
+             </div>
+              )}
+              <SwiperGallery
+               images={galleryImages}
+               onClose={onReturnToMainPath}
+               mode="modal-fullscreen"
+               triggerModal={galleryVisible}
+               className="w-full h-full"
+             />
+          </div>
         </div>
       )}
     </>

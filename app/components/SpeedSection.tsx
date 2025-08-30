@@ -47,22 +47,23 @@ export default function SpeedSection() {
   ], [t]);
 
   // State for each animated element
-  const [headerState, setHeaderState] = useState({ visible: false })
-  const [subheaderState, setSubheaderState] = useState({ visible: false })
-  const [leftContentState, setLeftContentState] = useState({ visible: false })
-  const [rightContentState, setRightContentState] = useState({ visible: false })
+  const [headerState, setHeaderState] = useState({ visible: false, out: false })
+  const [subheaderState, setSubheaderState] = useState({ visible: false, out: false })
+  const [leftContentState, setLeftContentState] = useState({ visible: false, out: false })
+  const [rightContentState, setRightContentState] = useState({ visible: false, out: false })
   const [processStates, setProcessStates] = useState(
-    processSteps.map(() => ({ visible: false }))
+    processSteps.map(() => ({ visible: false, out: false }))
   )
 
   useEffect(() => {
     function onScroll() {
       // Helper for each element
       function getState(ref: React.RefObject<HTMLElement>) {
-        if (!ref.current) return { visible: false }
+        if (!ref.current) return { visible: false, out: false }
         const rect = ref.current.getBoundingClientRect()
         return {
           visible: rect.top < window.innerHeight * 0.8,
+          out: rect.top < 50,
         }
       }
       
@@ -85,11 +86,11 @@ export default function SpeedSection() {
     return () => window.removeEventListener("scroll", onScroll)
   }, [processSteps])
 
-  // Animation helper - removed fade away effect
-  function getAnim(state: { visible: boolean }) {
+  // Animation helper with consistent exit behavior
+  function getAnim(state: { visible: boolean; out: boolean }) {
     return {
-      opacity: state.visible ? 1 : 0,
-      y: state.visible ? 0 : 40,
+      opacity: state.visible && !state.out ? 1 : 0,
+      y: state.out ? -40 : state.visible ? 0 : 40,
     }
   }
 
