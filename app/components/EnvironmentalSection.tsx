@@ -26,7 +26,7 @@ export default function EnvironmentalSection() {
   const [subheaderState, setSubheaderState] = useState({ visible: false, out: false })
   const [paraState, setParaState] = useState({ visible: false, out: false })
   const [ecoHeaderState, setEcoHeaderState] = useState({ visible: false, out: false })
-  const [ecoParaState, setEcoParaState] = useState({ visible: false, out: false, fromTop: false })
+  const [ecoParaState, setEcoParaState] = useState({ visible: false, out: false })
 
   useEffect(() => {
     function onScroll() {
@@ -43,8 +43,16 @@ export default function EnvironmentalSection() {
       setHeaderState(getState(headerRef))
       setSubheaderState(getState(subheaderRef))
       
-      // Paragraph uses the same pattern as header/subheader
-      setParaState(getState(paraRef))
+      // Paragraph only visible after subheader is fully visible and not out
+      if (paraRef.current && subheaderRef.current) {
+        const paraRect = paraRef.current.getBoundingClientRect()
+        const subheaderRect = subheaderRef.current.getBoundingClientRect()
+        const subheaderVisible = subheaderRect.top < window.innerHeight * SCROLL_VISIBILITY_THRESHOLD && subheaderRect.top >= SCROLL_OUT_THRESHOLD
+        setParaState({
+          visible: subheaderVisible && paraRect.top < window.innerHeight * SCROLL_VISIBILITY_THRESHOLD,
+          out: paraRect.top < SCROLL_OUT_THRESHOLD,
+        })
+      }
       
       setEcoHeaderState(getState(ecoHeaderRef))
       
@@ -56,7 +64,6 @@ export default function EnvironmentalSection() {
         setEcoParaState({
           visible: ecoHeaderVisible && ecoParaRect.top < window.innerHeight * SCROLL_VISIBILITY_THRESHOLD,
           out: ecoParaRect.top < SCROLL_OUT_THRESHOLD,
-          fromTop: ecoParaRect.top < SCROLL_OUT_THRESHOLD,
         })
       }
     }
@@ -70,16 +77,7 @@ export default function EnvironmentalSection() {
   function getAnim(state: { visible: boolean; out: boolean }) {
     return {
       opacity: state.visible && !state.out ? 1 : 0,
-      y: state.out ? -40 : state.visible ? 0 : 40,
-    }
-  }
-
-  // Direction-aware animation (used for eco description only)
-  function getAnimDirectional(state: { visible: boolean; out: boolean; fromTop?: boolean }) {
-    const enteringOffset = state.fromTop ? -40 : 40
-    return {
-      opacity: state.visible && !state.out ? 1 : 0,
-      y: state.out ? -40 : state.visible ? 0 : enteringOffset,
+      y: state.visible ? 0 : ANIMATION_Y_OFFSET,
     }
   }
 
@@ -137,7 +135,7 @@ export default function EnvironmentalSection() {
             <motion.p
               ref={ecoParaRef}
               initial={{ opacity: 0, y: INITIAL_Y_OFFSET }}
-              animate={getAnimDirectional(ecoParaState)}
+              animate={getAnim(ecoParaState)}
               transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
               className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed"
             >
