@@ -47,23 +47,22 @@ export default function SpeedSection() {
   ], [t]);
 
   // State for each animated element
-  const [headerState, setHeaderState] = useState({ visible: false, out: false })
-  const [subheaderState, setSubheaderState] = useState({ visible: false, out: false })
-  const [leftContentState, setLeftContentState] = useState({ visible: false, out: false })
-  const [rightContentState, setRightContentState] = useState({ visible: false, out: false })
+  const [headerState, setHeaderState] = useState({ visible: false })
+  const [subheaderState, setSubheaderState] = useState({ visible: false })
+  const [leftContentState, setLeftContentState] = useState({ visible: false })
+  const [rightContentState, setRightContentState] = useState({ visible: false })
   const [processStates, setProcessStates] = useState(
-    processSteps.map(() => ({ visible: false, out: false }))
+    processSteps.map(() => ({ visible: false }))
   )
 
   useEffect(() => {
     function onScroll() {
       // Helper for each element
       function getState(ref: React.RefObject<HTMLElement>) {
-        if (!ref.current) return { visible: false, out: false }
+        if (!ref.current) return { visible: false }
         const rect = ref.current.getBoundingClientRect()
         return {
           visible: rect.top < window.innerHeight * 0.8,
-          out: rect.top < 50,
         }
       }
       
@@ -86,20 +85,16 @@ export default function SpeedSection() {
     return () => window.removeEventListener("scroll", onScroll)
   }, [processSteps])
 
-  // Animation helper with consistent exit behavior
-  function getAnim(state: { visible: boolean; out: boolean }) {
+  // Animation helper - removed fade away effect
+  function getAnim(state: { visible: boolean }) {
     return {
-      opacity: state.visible && !state.out ? 1 : 0,
-      y: state.out ? -40 : state.visible ? 0 : 40,
+      opacity: state.visible ? 1 : 0,
+      y: state.visible ? 0 : 40,
     }
   }
 
   return (
-    <section id="speed" 
-      ref={sectionRef} 
-      className="py-20 bg-white dark:bg-gray-900 px-6"
-      style={{ scrollSnapAlign: "start"}}
-    >
+    <section id="speed" ref={sectionRef} className="py-20 bg-light-light dark:bg-gray-900 px-6">
       <div className="max-w-6xl mx-auto">
         <motion.h2
           ref={headerRef}
@@ -181,21 +176,21 @@ export default function SpeedSection() {
                 {/* Image - positioned with text wrapping */}
                 <div className="float-left mr-8 mb-4" style={{ shapeOutside: 'margin-box' }}>
                   <div className="w-[120px] h-[180px] lg:w-[200px] lg:h-[300px] rounded-lg overflow-hidden border border-light-dark dark:border-gray-700">
-                  <Image
-                    src={step.image}
+                    <Image
+                      src={step.image}
                       alt={step.alt}
-                    width={200}
-                    height={300}
-                    className="object-cover w-full h-full"
-                  />
+                      width={200}
+                      height={300}
+                      className="object-cover w-full h-full"
+                    />
+                  </div>
                 </div>
-              </div>
 
                 {/* Content - flows around the image like Word document */}
                 <div>
-                <p className="text-base md:text-lg text-light-dark dark:text-gray-300 leading-relaxed">
-                  {step.description}
-                </p>
+                  <p className="text-base md:text-lg text-light-dark dark:text-gray-300 leading-relaxed">
+                    {step.description}
+                  </p>
                 </div>
                 
                 {/* Clear float to prevent layout issues */}

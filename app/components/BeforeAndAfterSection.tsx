@@ -189,9 +189,8 @@ export default function BeforeAndAfterSection() {
           initial={{ opacity: 0 }}
           animate={{
             opacity: (headerState.visible && !headerState.out) || forceIntro ? 1 : 0,
-            y: (headerState.visible && !headerState.out) || forceIntro ? 0 : (headerState.out ? -20 : 20)
+            y: (headerState.visible && !headerState.out) || forceIntro ? 0 : (headerState.out ? 0 : 40)
           }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
         >
           {t('title')}
         </motion.h2>

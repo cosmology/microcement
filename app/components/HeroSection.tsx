@@ -73,7 +73,7 @@ export default function HeroSection() {
         <div className="flex flex-col w-full items-center justify-center"
              style={{ minHeight: 'clamp(2.2rem, 4vw, 4.5rem)' }}>
           <AnimatePresence mode="wait">
-              <motion.div
+            <motion.div
               key={currentLine}
               initial="hidden"
               animate="visible"
@@ -88,18 +88,18 @@ export default function HeroSection() {
             >
               {splitLetters(animatedLines[currentLine]).map(({ char, i }) => (
                 <motion.span
-                key={i}
+                  key={i}
                   variants={{
                     hidden: { opacity: 0, y: -50 },
                     visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 80, damping: 16 } },
                     exit: { opacity: 0, y: 50, transition: { duration: 0.4, ease: "easeIn" } },
                   }}
                   style={{ display: 'inline-block', whiteSpace: char === ' ' ? 'pre' : 'normal' }}
-              >
+                >
                   {char}
                 </motion.span>
               ))}
-              </motion.div>
+            </motion.div>
           </AnimatePresence>
         </div>
         <motion.p
