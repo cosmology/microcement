@@ -17,7 +17,6 @@ export interface GalleryImage {
   thumb: string;
   full: string;
   caption?: string;
-<<<<<<< HEAD
   width?: number;
   height?: number;
 }
@@ -42,10 +41,7 @@ const getObjectFitStyle = (image: GalleryImage): "cover" => {
   return 'cover';
 };
 
-=======
-}
 
->>>>>>> 782ce8d74e6e5604f9f132e862050c7f877391e8
 interface SwiperGalleryProps {
   images: GalleryImage[];
   onClose: () => void;
@@ -228,11 +224,8 @@ const SwiperModal: React.FC<SwiperModalProps> = ({ images, onClose, initialSlide
         </button>
 
         {/* Next Gallery Button */}
-<<<<<<< HEAD
+
         {/* <button
-=======
-        <button
->>>>>>> 782ce8d74e6e5604f9f132e862050c7f877391e8
           onClick={() => alert('Next Gallery')}
           className="absolute top-5 right-5 z-40 w-12 h-12 bg-transparent border border-white/30 text-white rounded-full flex items-center justify-center transition-all duration-300 hover:bg-white/10 hover:border-white/50 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] backdrop-blur-sm"
           style={{ pointerEvents: 'auto' }}
@@ -251,12 +244,7 @@ const SwiperModal: React.FC<SwiperModalProps> = ({ images, onClose, initialSlide
               d="M13 7l5 5m0 0l-5 5m5-5H6" 
             />
           </svg>
-<<<<<<< HEAD
-        </button> */}
-=======
-        </button>
->>>>>>> 782ce8d74e6e5604f9f132e862050c7f877391e8
-
+        </button>*/}
           <Swiper
             modules={[Navigation, Pagination, Zoom]}
             spaceBetween={0}
@@ -269,11 +257,8 @@ const SwiperModal: React.FC<SwiperModalProps> = ({ images, onClose, initialSlide
             {images.map((image, index) => (
               <SwiperSlide key={index} className="flex items-center justify-center">
                 <div className="swiper-zoom-container w-full h-full flex items-center justify-center relative">
-<<<<<<< HEAD
-                {/* Image Caption */}
-=======
                                   {/* Image Caption */}
->>>>>>> 782ce8d74e6e5604f9f132e862050c7f877391e8
+
                 {image.caption && (
                   <div className="absolute top-5 left-1/2 transform -translate-x-1/2 z-20 text-center">
                     <div className="bg-black/70 text-white px-4 py-2 rounded-full backdrop-blur-sm">
@@ -281,27 +266,16 @@ const SwiperModal: React.FC<SwiperModalProps> = ({ images, onClose, initialSlide
                     </div>
                   </div>
                 )}
-                  
-<<<<<<< HEAD
                 <AspectRatio ratio={getImageAspectRatio(image)} className="w-full h-full">
-=======
-                                  <AspectRatio ratio={2/3} className="w-full h-full">
->>>>>>> 782ce8d74e6e5604f9f132e862050c7f877391e8
+
                   <img
                     src={image.full}
                     alt={image.caption || `Image ${index + 1}`}
                     style={{
-<<<<<<< HEAD
                       objectFit: getObjectFitStyle(image),
                       width: "100%",
                       height: "100%",
                       borderRadius: "0", // Remove curved corners
-=======
-                      objectFit: "cover",
-                      width: "100%",
-                      height: "100%",
-                      borderRadius: "12px",
->>>>>>> 782ce8d74e6e5604f9f132e862050c7f877391e8
                     }}
                     onLoad={() => handleImageLoad(index)}
                     onError={() => handleImageError(index)}
