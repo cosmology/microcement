@@ -1,7 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-
-// Define the gallery image structure
-interface GalleryImage {
+// Static gallery data as fallback for when API fails
+export interface GalleryImage {
   thumb: string;
   full: string;
   caption: string;
@@ -12,8 +10,7 @@ interface GalleryImage {
   height?: number;
 }
 
-// Gallery data mapping organized by tour areas - matching exact hotspot names from ScrollScene
-const GALLERY_DATA: Record<string, GalleryImage[]> = {
+export const STATIC_GALLERY_DATA: Record<string, GalleryImage[]> = {
   // KITCHEN AREA
   'kitchen_countertop': [
     { thumb: '/images/gallery/kitchen/kitchen-countertops/kitchen-countertop-1.png', full: '/images/gallery/kitchen/kitchen-countertops/kitchen-countertop-1.png', caption: 'Modern Kitchen Countertop', area: 'Kitchen', category: 'Countertops', folder: 'kitchen', width: 1920, height: 1080 },
@@ -58,62 +55,14 @@ const GALLERY_DATA: Record<string, GalleryImage[]> = {
   ],
 };
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ hotspot: string }> }
-) {
-  try {
-    const { hotspot } = await params;
-    
-    console.log('🖼️ Gallery API called with hotspot:', hotspot);
-    console.log('🖼️ Available hotspots:', Object.keys(GALLERY_DATA));
-    console.log('🖼️ Request URL:', request.url);
-    console.log('🖼️ Environment:', process.env.NODE_ENV);
-    
-    // Get images for the specific hotspot
-    const images = GALLERY_DATA[hotspot] || [];
-    
-    console.log('🖼️ Found images:', images.length);
-    
-    // If no images found, return placeholder images
-    if (images.length === 0) {
-      console.log('🖼️ No images found, returning placeholders');
-      const placeholderImages: GalleryImage[] = [
-        { thumb: '/images/featured/modern-home.png', full: '/images/featured/modern-home.png', caption: `${hotspot} Project 1`, area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
-        { thumb: '/images/featured/boutique-store.png', full: '/images/featured/boutique-store.png', caption: `${hotspot} Project 2`, area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
-        { thumb: '/images/featured/hotel-lobby.png', full: '/images/featured/hotel-lobby.png', caption: `${hotspot} Project 3`, area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
-      ];
-      
-      return NextResponse.json(placeholderImages, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=3600',
-        },
-      });
-    }
-    
-    console.log('🖼️ Returning', images.length, 'images for hotspot:', hotspot);
-    return NextResponse.json(images, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=3600',
-      },
-    });
-  } catch (error) {
-    console.error('Error loading gallery images:', error);
-    
-    // Return placeholder images on error
-    const fallbackImages: GalleryImage[] = [
-      { thumb: '/images/featured/modern-home.png', full: '/images/featured/modern-home.png', caption: 'Project 1', area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
-      { thumb: '/images/featured/boutique-store.png', full: '/images/featured/boutique-store.png', caption: 'Project 2', area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
-      { thumb: '/images/featured/hotel-lobby.png', full: '/images/featured/hotel-lobby.png', caption: 'Project 3', area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
-    ];
-    
-    return NextResponse.json(fallbackImages, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=3600',
-      },
-    });
-  }
-} 
+export function getGalleryImages(hotspot: string): GalleryImage[] {
+  return STATIC_GALLERY_DATA[hotspot] || getPlaceholderImages(hotspot);
+}
+
+export function getPlaceholderImages(hotspot: string): GalleryImage[] {
+  return [
+    { thumb: '/images/featured/modern-home.png', full: '/images/featured/modern-home.png', caption: `${hotspot} Project 1`, area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
+    { thumb: '/images/featured/boutique-store.png', full: '/images/featured/boutique-store.png', caption: `${hotspot} Project 2`, area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
+    { thumb: '/images/featured/hotel-lobby.png', full: '/images/featured/hotel-lobby.png', caption: `${hotspot} Project 3`, area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
+  ];
+}
