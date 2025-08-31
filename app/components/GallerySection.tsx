@@ -18,14 +18,14 @@ export default function GallerySection() {
       id: 1,
       title: t('items.kitchen.title'),
       category: t('categories.kitchen'),
-      image: "/images/gallery/kitchen-countertops.png",
+      image: "/images/gallery/kitchen/kitchen-countertops/kitchen-countertop-1.png",
       description: t('items.kitchen.description'),
     },
     {
       id: 2,
       title: t('items.retail.title'),
       category: t('categories.commercial'),
-      image: "/images/gallery/retail-wall.png",
+      image: "/images/gallery/living-area/walls/accent-wall-sunset-1.jpg",
       description: t('items.retail.description'),
     },
     {
@@ -48,13 +48,6 @@ export default function GallerySection() {
       category: t('categories.exterior'),
       image: "/images/gallery/outdoor-patio.png",
       description: t('items.patio.description'),
-    },
-    {
-      id: 6,
-      title: t('items.furniture.title'),
-      category: t('categories.furniture'),
-      image: "/images/gallery/custom-furniture.png",
-      description: t('items.furniture.description'),
     },
   ], [t]);
 

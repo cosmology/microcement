@@ -415,14 +415,14 @@ export default function ScrollScene({
     
     // Create unique listeners for each event type to ensure proper cleanup
     (window as any).__wheelListener = (e: Event) => {
-      console.log('🚫 BLOCKING WHEEL SCROLL');
+      // console.log('🚫 BLOCKING WHEEL SCROLL');
       e.preventDefault(); 
       e.stopPropagation(); 
       return false;
     };
     
     (window as any).__touchmoveListener = (e: Event) => {
-      console.log('🚫 BLOCKING TOUCH SCROLL');
+      // console.log('🚫 BLOCKING TOUCH SCROLL');
       e.preventDefault(); 
       e.stopPropagation(); 
       return false;
@@ -430,7 +430,7 @@ export default function ScrollScene({
     
     (window as any).__keydownListener = (e: KeyboardEvent) => {
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'PageUp' || e.key === 'PageDown') { 
-        console.log('🚫 BLOCKING KEYBOARD SCROLL:', e.key);
+        // console.log('🚫 BLOCKING KEYBOARD SCROLL:', e.key);
         e.preventDefault(); 
         e.stopPropagation();
         return false;
@@ -979,8 +979,10 @@ export default function ScrollScene({
     }
   };
 
-  // Debug function to log pulse marker status
+  // Debug function to log pulse marker status (commented out to reduce console spam)
   const debugPulseMarkers = () => {
+    // Commented out to reduce console spam - uncomment for debugging
+    /*
     if (sceneRef.current) {
       const pulseGroup = sceneRef.current.getObjectByName('hotspotPulseMarkers');
       console.log('🔍 PULSE MARKERS DEBUG:', {
@@ -1003,6 +1005,7 @@ export default function ScrollScene({
         });
       }
     }
+    */
   };
 
   // Function to add cursor pointer styles for hotspots and pulse markers
@@ -1045,15 +1048,15 @@ export default function ScrollScene({
     if (sceneRef.current && hotspotPulseRefs.current.length > 0) {
       const pulseGroup = sceneRef.current.getObjectByName('hotspotPulseMarkers');
       if (pulseGroup) {
-        // Debug: Log pulse marker visibility status
+        // Debug: Log pulse marker visibility status (commented out to reduce spam)
         if (!pulseGroup.visible) {
-          console.log('🔍 Pulse markers were hidden, restoring visibility');
+          // console.log('🔍 Pulse markers were hidden, restoring visibility');
         }
         
         pulseGroup.visible = true;
         pulseGroup.children.forEach((child: THREE.Object3D, index: number) => {
           if (!child.visible) {
-            console.log(`🔍 Pulse marker ${index} was hidden, restoring visibility`);
+            // console.log(`🔍 Pulse marker ${index} was hidden, restoring visibility`);
           }
           
           child.visible = true;
@@ -1065,14 +1068,14 @@ export default function ScrollScene({
         
         // Force the pulse group to be visible and in the scene
         if (!sceneRef.current.children.includes(pulseGroup)) {
-          console.log('🔍 Pulse group was removed from scene, re-adding');
+          // console.log('🔍 Pulse group was removed from scene, re-adding');
           sceneRef.current.add(pulseGroup);
         }
       } else {
-        console.log('🔍 Pulse group not found in scene, pulse markers may have been removed');
+        // console.log('🔍 Pulse group not found in scene, pulse markers may have been removed');
         // If pulse group is completely missing, recreate it
         if (clickableObjectsRef.current.length > 0 && !pulseMarkersCreatedRef.current) {
-          console.log('🔍 Recreating missing pulse markers');
+          // console.log('🔍 Recreating missing pulse markers');
           createHotspotPulseMarkers();
         }
       }
@@ -3137,17 +3140,17 @@ export default function ScrollScene({
       // Always ensure pulse markers are visible after any mouse movement (mobile only)
       if (isMobile.detect() && hotspotPulseRefs.current.length > 0) {
         ensurePulseMarkersVisible();
-        // Debug: Log pulse marker status on mouse move
-        debugPulseMarkers();
+        // Debug: Log pulse marker status on mouse move (commented out to reduce spam)
+        // debugPulseMarkers();
       }
     };
 
     const handleClick = (event: MouseEvent) => {
       // 🛡️ PREVENT EVENT BUBBLING FOR GALLERY INTERACTIONS
       if (galleryVisibleRef.current || (window as any).__galleryMode) {
-        console.log('🚫 BLOCKING CLICK - Gallery is visible or gallery mode is active');
-        console.log('  galleryVisibleRef.current:', galleryVisibleRef.current);
-        console.log('  __galleryMode:', (window as any).__galleryMode);
+        // console.log('🚫 BLOCKING CLICK - Gallery is visible or gallery mode is active');
+        // console.log('  galleryVisibleRef.current:', galleryVisibleRef.current);
+        // console.log('  __galleryMode:', (window as any).__galleryMode);
         event.preventDefault();
         event.stopPropagation();
         // Force stop any ongoing hotspot interactions
@@ -3205,11 +3208,11 @@ export default function ScrollScene({
         const intersection = intersects[0];
         
         console.log("🎯 CLICKED OBJECT:", clickedObject.name);
-        console.log("  Object type:", clickedObject.type);
-        console.log("  Local position:", clickedObject.position);
-        console.log("  World position:", clickedObject.getWorldPosition(new THREE.Vector3()));
-        console.log("  Camera position:", cameraRef.current?.position);
-        console.log("  Intersection point:", intersection.point);
+        // console.log("  Object type:", clickedObject.type);
+        // console.log("  Local position:", clickedObject.position);
+        // console.log("  World position:", clickedObject.getWorldPosition(new THREE.Vector3()));
+        // console.log("  Camera position:", cameraRef.current?.position);
+        // console.log("  Intersection point:", intersection.point);
         
         // Check if this is a pulse marker and get the actual hotspot
         let actualHotspot = clickedObject;
@@ -3223,10 +3226,10 @@ export default function ScrollScene({
         setClickedHotspot(actualHotspot);
         
         // Log the current camera state before moving
-        console.log('🎯 BEFORE MOVING CAMERA:');
-        console.log('  Current camera position:', cameraRef.current?.position);
-        console.log('  Current camera rotation:', cameraRef.current?.rotation);
-        console.log('  Actual hotspot:', actualHotspot.name);
+        // console.log('🎯 BEFORE MOVING CAMERA:');
+        // console.log('  Current camera position:', cameraRef.current?.position);
+        // console.log('  Current camera rotation:', cameraRef.current?.rotation);
+        // console.log('  Actual hotspot:', actualHotspot.name);
         
         // Move camera to the actual hotspot (gallery will auto-trigger on animation completion)
         moveCameraToHotspot(actualHotspot);
