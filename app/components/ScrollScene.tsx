@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { gsap } from "gsap";
 import SwiperGallery, { GalleryImage } from './SwiperGallery';
 import { isMobile } from '../../lib/utils';
-import { getGalleryImages, getPlaceholderImages } from '@/lib/gallery-data';
+
 
 interface ScrollSceneProps {
   sceneStage?: number;
@@ -270,7 +270,7 @@ export default function ScrollScene({
       // Extract the category from hotspot name (e.g., "Hotspot_geo_floor" -> "floor")
       const category = hotspotName.replace('Hotspot_geo_', '');
       
-      // Call the API endpoint
+      // Try API first, then fallback to static data
       console.log('🖼️ Calling API:', `/api/gallery/${category}`);
       const response = await fetch(`/api/gallery/${category}`);
       
@@ -279,10 +279,10 @@ export default function ScrollScene({
       
       if (response.ok) {
         const images = await response.json();
-        console.log('🖼️ Loaded images:', images.length);
+        console.log('🖼️ Loaded images from API:', images.length);
         setGalleryImages(images);
       } else {
-        console.log('🖼️ API failed, using placeholder images for:', hotspotName);
+        console.log('🖼️ API failed, using static data for:', category);
         console.log('🖼️ Response status:', response.status);
         console.log('🖼️ Response status text:', response.statusText);
         // Fallback to placeholder images
@@ -290,7 +290,8 @@ export default function ScrollScene({
         setGalleryImages(placeholderImages);
       }
     } catch (error) {
-      console.log('🖼️ Using placeholder images for:', hotspotName);
+      console.log('🖼️ API error, using placeholder images for:', hotspotName);
+      console.log('🖼️ Error:', error);
       // Use placeholder images if API fails
       const placeholderImages = getPlaceholderImages(hotspotName);
       setGalleryImages(placeholderImages);
