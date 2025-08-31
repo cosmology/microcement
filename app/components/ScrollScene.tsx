@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { gsap } from "gsap";
 import SwiperGallery, { GalleryImage } from './SwiperGallery';
 import { isMobile } from '../../lib/utils';
+import { getGalleryImages, getPlaceholderImages } from '@/lib/gallery-data';
 
 interface ScrollSceneProps {
   sceneStage?: number;
@@ -267,17 +268,23 @@ export default function ScrollScene({
     
     try {
       // Extract the category from hotspot name (e.g., "Hotspot_geo_floor" -> "floor")
-      const category = hotspotName.replace("Hotspot_geo_", "");
+      const category = hotspotName.replace('Hotspot_geo_', '');
       
       // Call the API endpoint
+      console.log('🖼️ Calling API:', `/api/gallery/${category}`);
       const response = await fetch(`/api/gallery/${category}`);
+      
+      console.log('🖼️ API response status:', response.status);
+      console.log('🖼️ API response ok:', response.ok);
       
       if (response.ok) {
         const images = await response.json();
-        console.log("🖼️ Loaded images:", images.length);
+        console.log('🖼️ Loaded images:', images.length);
         setGalleryImages(images);
       } else {
-        console.log("🖼️ API failed, using placeholder images for:", hotspotName);
+        console.log('🖼️ API failed, using placeholder images for:', hotspotName);
+        console.log('🖼️ Response status:', response.status);
+        console.log('🖼️ Response status text:', response.statusText);
         // Fallback to placeholder images
         const placeholderImages = getPlaceholderImages(hotspotName);
         setGalleryImages(placeholderImages);
@@ -299,6 +306,12 @@ export default function ScrollScene({
     // Generate placeholder images based on hotspot category
     const category = HOTSPOT_CATEGORIES[hotspotName] || 'General';
     const baseImages: GalleryImage[] = [
+      { thumb: '/images/featured/modern-home.png', full: '/images/featured/modern-home.png', caption: `${category} Project 1`, width: 1920, height: 1080 },
+      { thumb: '/images/featured/boutique-store.png', full: '/images/featured/boutique-store.png', caption: `${category} Project 2`, width: 1920, height: 1080 },
+      { thumb: '/images/featured/hotel-lobby.png', full: '/images/featured/hotel-lobby.png', caption: `${category} Project 3`, width: 1920, height: 1080 },
+      { thumb: '/images/gallery/outdoor-patio.png', full: '/images/gallery/outdoor-patio.png', caption: `${category} Project 4`, width: 1920, height: 1080 },
+      { thumb: '/images/gallery/restaurant-bar.png', full: '/images/gallery/restaurant-bar.png', caption: `${category} Project 5`, width: 1920, height: 1080 },
+      { thumb: '/images/gallery/staircase.png', full: '/images/gallery/staircase.png', caption: `${category} Project 6`, width: 1920, height: 1080 },
     ];
     
     return baseImages;
