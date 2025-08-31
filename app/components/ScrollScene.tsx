@@ -11,13 +11,15 @@ interface ScrollSceneProps {
   currentSection?: string;
   onIntroComplete?: () => void;
   onIntroStart?: () => void;
+  onDebugUpdate?: (data: any) => void;
 }
 
 export default function ScrollScene({ 
   sceneStage = 0, 
   currentSection = 'hero',
   onIntroComplete,
-  onIntroStart 
+  onIntroStart,
+  onDebugUpdate
 }: ScrollSceneProps) {
 
   // Toggle flags
