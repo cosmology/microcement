@@ -34,7 +34,7 @@ const getImageAspectRatio = (image: GalleryImage): number => {
 };
 
 // Helper function to get object-fit style for maximum coverage
-const getObjectFitStyle = (image: GalleryImage): string => {
+const getObjectFitStyle = (image: GalleryImage): "cover" => {
   // Always use 'cover' to fill entire container
   // This ensures the longer side determines the bounds
   console.log(`🎯 Using object-fit: cover for maximum real estate`);
