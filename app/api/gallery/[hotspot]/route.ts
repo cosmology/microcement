@@ -65,21 +65,42 @@ export async function GET(
   try {
     const { hotspot } = await params;
     
+
+    console.log('🖼️ Gallery API called with hotspot:', hotspot);
+    console.log('🖼️ Available hotspots:', Object.keys(GALLERY_DATA));
+    console.log('🖼️ Request URL:', request.url);
+    console.log('🖼️ Environment:', process.env.NODE_ENV);
+    
     // Get images for the specific hotspot
     const images = GALLERY_DATA[hotspot] || [];
     
+    console.log('🖼️ Found images:', images.length);
+    
     // If no images found, return placeholder images
     if (images.length === 0) {
+      console.log('🖼️ No images found, returning placeholders');
       const placeholderImages: GalleryImage[] = [
         { thumb: '/images/featured/modern-home.png', full: '/images/featured/modern-home.png', caption: `${hotspot} Project 1`, area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
         { thumb: '/images/featured/boutique-store.png', full: '/images/featured/boutique-store.png', caption: `${hotspot} Project 2`, area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
         { thumb: '/images/featured/hotel-lobby.png', full: '/images/featured/hotel-lobby.png', caption: `${hotspot} Project 3`, area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
       ];
       
-      return NextResponse.json(placeholderImages);
+      return NextResponse.json(placeholderImages, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=3600',
+        },
+      });
     }
     
-    return NextResponse.json(images);
+    console.log('🖼️ Returning', images.length, 'images for hotspot:', hotspot);
+    return NextResponse.json(images, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=3600',
+      },
+    });
+
   } catch (error) {
     console.error('Error loading gallery images:', error);
     
@@ -89,7 +110,12 @@ export async function GET(
       { thumb: '/images/featured/boutique-store.png', full: '/images/featured/boutique-store.png', caption: 'Project 2', area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
       { thumb: '/images/featured/hotel-lobby.png', full: '/images/featured/hotel-lobby.png', caption: 'Project 3', area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
     ];
-    
-    return NextResponse.json(fallbackImages);
+
+    return NextResponse.json(fallbackImages, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=3600',
+      },
+    });
   }
 } 
