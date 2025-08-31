@@ -28,7 +28,7 @@ export default function ScrollScene({
   const WITH_HELPERS = false; // Toggle to show coordinate helpers (floor grid, axes)
   const WITH_ORBITAL = false; // Toggle to enable orbital animation
   const SHOW_CUBE = false; // Toggle to show/hide the green debug cube
-  const SHOW_DEBUG = false; // Toggle to show/hide debug panel
+  const SHOW_DEBUG = true; // Toggle to show/hide debug panel
   // Optional debug visuals for the camera path
   const SHOW_CAMERA_PATH = false;
   const SHOW_WAYPOINTS = false;
@@ -261,6 +261,34 @@ export default function ScrollScene({
     }
   };
   
+  // Real-time event tracking for debug panel
+  useEffect(() => {
+    if (!SHOW_DEBUG) return;
+
+    const trackEvent = (eventType: string) => {
+      (window as any).__lastEventTime = Date.now();
+      (window as any).__lastEventType = eventType;
+    };
+
+    const wheelHandler = () => trackEvent('wheel');
+    const touchHandler = () => trackEvent('touch');
+    const clickHandler = () => trackEvent('click');
+    const keyHandler = () => trackEvent('keydown');
+
+    // Add event listeners for tracking
+    window.addEventListener('wheel', wheelHandler, { passive: true });
+    window.addEventListener('touchstart', touchHandler, { passive: true });
+    window.addEventListener('click', clickHandler, { passive: true });
+    window.addEventListener('keydown', keyHandler, { passive: true });
+
+    return () => {
+      window.removeEventListener('wheel', wheelHandler);
+      window.removeEventListener('touchstart', touchHandler);
+      window.removeEventListener('click', clickHandler);
+      window.removeEventListener('keydown', keyHandler);
+    };
+  }, [SHOW_DEBUG]);
+
   // Gallery system functions
   const loadGalleryImages = async (hotspotName: string) => {
     setGalleryLoading(true);
@@ -376,6 +404,10 @@ export default function ScrollScene({
   const disableSceneMouseEvents = () => {
     console.log('🚫 Disabling scene mouse events - Gallery is visible');
     
+    // Track event for debug panel
+    (window as any).__lastEventTime = Date.now();
+    (window as any).__lastEventType = 'disableSceneMouseEvents';
+    
     // Check if we already have listeners (prevent duplicates)
     if ((window as any).__wheelListener) {
       console.log('⚠️ WARNING: Scroll prevention listeners already exist!');
@@ -470,6 +502,10 @@ export default function ScrollScene({
 
   const enableSceneMouseEvents = () => {
     console.log('✅ Re-enabling scene mouse events - Gallery is closed');
+    
+    // Track event for debug panel
+    (window as any).__lastEventTime = Date.now();
+    (window as any).__lastEventType = 'enableSceneMouseEvents';
     
     // Clear the gallery mode flag FIRST
     delete (window as any).__galleryMode;
@@ -3432,6 +3468,122 @@ export default function ScrollScene({
           <div>Percent: {typeof (debugInfo as any)?.loaderPercent === 'number' ? `${(debugInfo as any).loaderPercent.toFixed(0)}%` : 'N/A'}</div>
           <div>Loaded: {typeof (debugInfo as any)?.loaderLoadedMB === 'number' ? `${(debugInfo as any).loaderLoadedMB.toFixed(2)} MB` : 'N/A'}</div>
           <div>Total: {typeof (debugInfo as any)?.loaderTotalMB === 'number' ? `${(debugInfo as any).loaderTotalMB.toFixed(2)} MB` : 'N/A'}</div>
+        </div>
+      )}
+
+      {/* Mouse Events Debug Panel */}
+      {SHOW_DEBUG && (
+        <div 
+          className="fixed top-4 left-4 z-[60] bg-black/90 text-white p-4 rounded-lg text-xs font-mono max-w-sm"
+          style={{ 
+            border: '2px solid #ff6b6b',
+            boxShadow: '0 4px 12px rgba(255, 107, 107, 0.3)',
+            zIndex: 10001,
+            backdropFilter: 'blur(10px)'
+          }}
+        >
+          <div className="font-bold text-sm mb-3 text-red-400 flex items-center">
+            <span className="mr-2">🐭</span>
+            Mouse Events Debug
+          </div>
+          
+          {/* Gallery Status */}
+          <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
+            <div className="font-semibold text-yellow-400 mb-1">Gallery Status:</div>
+            <div className="grid grid-cols-2 gap-1 text-xs">
+              <div>Visible: <span className={galleryVisible ? 'text-green-400' : 'text-red-400'}>{galleryVisible ? '✅ YES' : '❌ NO'}</span></div>
+              <div>Loading: <span className={galleryLoading ? 'text-yellow-400' : 'text-green-400'}>{galleryLoading ? '⏳ YES' : '✅ NO'}</span></div>
+              <div>Images: <span className="text-blue-400">{galleryImages.length}</span></div>
+              <div>Hotspot: <span className="text-purple-400 text-xs">{currentHotspot || 'None'}</span></div>
+            </div>
+          </div>
+
+          {/* Event Blocking Status */}
+          <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
+            <div className="font-semibold text-yellow-400 mb-1">Event Blocking:</div>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span>Gallery Mode:</span>
+                <span className={(window as any).__galleryMode ? 'text-red-400' : 'text-green-400'}>
+                  {(window as any).__galleryMode ? '🚫 BLOCKED' : '✅ ALLOWED'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Wheel Listener:</span>
+                <span className={(window as any).__wheelListener ? 'text-red-400' : 'text-green-400'}>
+                  {(window as any).__wheelListener ? '🚫 ACTIVE' : '✅ NONE'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Touch Listener:</span>
+                <span className={(window as any).__touchmoveListener ? 'text-red-400' : 'text-green-400'}>
+                  {(window as any).__touchmoveListener ? '🚫 ACTIVE' : '✅ NONE'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Key Listener:</span>
+                <span className={(window as any).__keydownListener ? 'text-red-400' : 'text-green-400'}>
+                  {(window as any).__keydownListener ? '🚫 ACTIVE' : '✅ NONE'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Scroll Status */}
+          <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
+            <div className="font-semibold text-yellow-400 mb-1">Scroll Status:</div>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span>Scroll Y:</span>
+                <span className="text-blue-400">{typeof window !== 'undefined' ? Math.round(window.scrollY) : 'N/A'}px</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Scroll Height:</span>
+                <span className="text-blue-400">{typeof document !== 'undefined' ? Math.round(document.documentElement.scrollHeight) : 'N/A'}px</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Body Overflow:</span>
+                <span className="text-blue-400">{typeof document !== 'undefined' ? document.body.style.overflow || 'auto' : 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>HTML Overflow:</span>
+                <span className="text-blue-400">{typeof document !== 'undefined' ? document.documentElement.style.overflow || 'auto' : 'N/A'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Touch Events */}
+          <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
+            <div className="font-semibold text-yellow-400 mb-1">Touch Events:</div>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span>Touch Support:</span>
+                <span className="text-blue-400">{typeof window !== 'undefined' && 'ontouchstart' in window ? '✅ YES' : '❌ NO'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Max Touch Points:</span>
+                <span className="text-blue-400">{typeof navigator !== 'undefined' ? navigator.maxTouchPoints : 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>User Agent:</span>
+                <span className="text-blue-400 text-xs">{typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 20) + '...' : 'N/A'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Events */}
+          <div className="p-2 bg-gray-800/50 rounded border border-gray-600">
+            <div className="font-semibold text-yellow-400 mb-1">Recent Events:</div>
+            <div className="text-xs text-gray-300">
+              {typeof (window as any).__lastEventTime !== 'undefined' ? 
+                <div>
+                  <div>Last: {(window as any).__lastEventType || 'None'}</div>
+                  <div>{Math.round((Date.now() - (window as any).__lastEventTime) / 1000)}s ago</div>
+                </div> : 
+                'No events tracked'
+              }
+            </div>
+          </div>
         </div>
       )}
 
