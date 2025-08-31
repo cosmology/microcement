@@ -58,64 +58,82 @@ const GALLERY_DATA: Record<string, GalleryImage[]> = {
   ],
 };
 
+// Default fallback images
+const FALLBACK_IMAGES: GalleryImage[] = [
+  { thumb: '/images/featured/modern-home.png', full: '/images/featured/modern-home.png', caption: 'Project 1', area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
+  { thumb: '/images/featured/boutique-store.png', full: '/images/featured/boutique-store.png', caption: 'Project 2', area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
+  { thumb: '/images/featured/hotel-lobby.png', full: '/images/featured/hotel-lobby.png', caption: 'Project 3', area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
+];
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ hotspot: string }> }
 ) {
-  try {
-    const { hotspot } = await params;
-    
+  // Add CORS headers for Vercel
+  const headers = {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
 
-    console.log('🖼️ Gallery API called with hotspot:', hotspot);
-    console.log('🖼️ Available hotspots:', Object.keys(GALLERY_DATA));
+  try {
+    // Log request details for debugging
+    console.log('🖼️ Gallery API called');
     console.log('🖼️ Request URL:', request.url);
     console.log('🖼️ Environment:', process.env.NODE_ENV);
-    
+    console.log('🖼️ Vercel:', process.env.VERCEL === '1' ? 'Yes' : 'No');
+    console.log('🖼️ Region:', process.env.VERCEL_REGION || 'Unknown');
+
+    // Get hotspot parameter
+    const { hotspot } = await params;
+    console.log('🖼️ Hotspot requested:', hotspot);
+    console.log('🖼️ Available hotspots:', Object.keys(GALLERY_DATA));
+
+    // Validate hotspot parameter
+    if (!hotspot || typeof hotspot !== 'string') {
+      console.log('🖼️ Invalid hotspot parameter, returning fallback');
+      return NextResponse.json(FALLBACK_IMAGES, { headers });
+    }
+
     // Get images for the specific hotspot
     const images = GALLERY_DATA[hotspot] || [];
-    
-    console.log('🖼️ Found images:', images.length);
-    
-    // If no images found, return placeholder images
+    console.log('🖼️ Found images for', hotspot + ':', images.length);
+
+    // If no images found, return fallback images
     if (images.length === 0) {
-      console.log('🖼️ No images found, returning placeholders');
-      const placeholderImages: GalleryImage[] = [
-        { thumb: '/images/featured/modern-home.png', full: '/images/featured/modern-home.png', caption: `${hotspot} Project 1`, area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
-        { thumb: '/images/featured/boutique-store.png', full: '/images/featured/boutique-store.png', caption: `${hotspot} Project 2`, area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
-        { thumb: '/images/featured/hotel-lobby.png', full: '/images/featured/hotel-lobby.png', caption: `${hotspot} Project 3`, area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
-      ];
-      
-      return NextResponse.json(placeholderImages, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=3600',
-        },
-      });
+      console.log('🖼️ No images found for', hotspot + ', returning fallback');
+      const placeholderImages = FALLBACK_IMAGES.map((img, index) => ({
+        ...img,
+        caption: `${hotspot} Project ${index + 1}`
+      }));
+      return NextResponse.json(placeholderImages, { headers });
     }
-    
-    console.log('🖼️ Returning', images.length, 'images for hotspot:', hotspot);
-    return NextResponse.json(images, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=3600',
-      },
-    });
+
+    // Return the found images
+    console.log('🖼️ Returning', images.length, 'images for', hotspot);
+    return NextResponse.json(images, { headers });
 
   } catch (error) {
-    console.error('Error loading gallery images:', error);
+    // Log the error for debugging
+    console.error('🖼️ Gallery API error:', error);
+    console.error('🖼️ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     
-    // Return placeholder images on error
-    const fallbackImages: GalleryImage[] = [
-      { thumb: '/images/featured/modern-home.png', full: '/images/featured/modern-home.png', caption: 'Project 1', area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
-      { thumb: '/images/featured/boutique-store.png', full: '/images/featured/boutique-store.png', caption: 'Project 2', area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
-      { thumb: '/images/featured/hotel-lobby.png', full: '/images/featured/hotel-lobby.png', caption: 'Project 3', area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
-    ];
-
-    return NextResponse.json(fallbackImages, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=3600',
-      },
-    });
+    // Return fallback images on any error
+    console.log('🖼️ Returning fallback images due to error');
+    return NextResponse.json(FALLBACK_IMAGES, { headers });
   }
+}
+
+// Handle OPTIONS requests for CORS
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
 } 
