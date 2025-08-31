@@ -55,8 +55,8 @@ export default function HeroSection() {
   return (
     <section
       ref={sectionRef}
-      className="relative min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 px-6 overflow-hidden transition-colors duration-200"
-      style={{ scrollSnapAlign: "start" }}
+      className="relative min-h-screen w-full flex items-center justify-center px-6 overflow-hidden transition-colors duration-200"
+      style={{ scrollSnapAlign: "start", opacity: 0.5 }}
     >
       <div className="w-full max-w-4xl flex flex-col items-center justify-center text-center relative z-10">
         {/* Main line slides in from top and stays */}

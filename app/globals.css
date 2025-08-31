@@ -2,41 +2,96 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Gallery Modal - Optimized UX */
+.gallery-modal {
+  width: calc(100% - 4rem);
+  height: calc(100vh - 4rem);
+  margin: 2rem;
+  border: 1px solid rgba(140, 147, 251, 1.0);
+  border-radius: 20px;
+  padding: 1rem;
+  background: rgba(94,91,146, 1);
+  box-shadow: 0 0 50px rgb(139,120,248);
+  backdrop-filter: blur(30px);
+  position: relative;
+  overflow: hidden;
+  animation: galleryFadeIn 0.4s ease-out;
+  z-index: 3;
+  transition: box-shadow 0.3s ease-in-out, border-color 0.3s ease-in-out;
+}
+
+.animated-glow-box:hover {
+  border-color: #00f;
+  box-shadow: 0 0 15px #00f, 0 0 25px #00f inset; /* Multiple shadows for more depth */
+}
+
+
+/* Gallery Modal Fade-in Animation */
+@keyframes galleryFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Full Screen Backdrop */
+.gallery-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(12,15,28, 1);
+  backdrop-filter: blur(4px);
+  z-index: 2;
+}
+
+/* Hide thumbnails on mobile for better UX */
+@media (max-width: 768px) {
+  .gallery-thumbnails-mobile {
+    display: none !important;
+  }
+}
+
 @layer base {
   :root {
     /* Font variables */
     --font-roboto: 'Roboto', sans-serif;
     
-    /* Light theme variables */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
+    /* Light theme variables - New color scheme */
+    --background: 45 20% 95%; /* BLANCO ROTO #f5f3ed */
+    --foreground: 30 8% 40%; /* ACERO #6a645e */
+    --card: 35 15% 85%; /* LINO #ccc1b1 */
+    --card-foreground: 30 8% 40%; /* ACERO #6a645e */
+    --popover: 45 20% 95%; /* BLANCO ROTO #f5f3ed */
+    --popover-foreground: 30 8% 40%; /* ACERO #6a645e */
+    --primary: 30 8% 40%; /* ACERO #6a645e */
+    --primary-foreground: 45 20% 95%; /* BLANCO ROTO #f5f3ed */
+    --secondary: 35 15% 85%; /* LINO #ccc1b1 */
+    --secondary-foreground: 30 8% 40%; /* ACERO #6a645e */
+    --muted: 35 15% 85%; /* LINO #ccc1b1 */
+    --muted-foreground: 30 8% 40%; /* ACERO #6a645e */
+    --accent: 35 15% 85%; /* LINO #ccc1b1 */
+    --accent-foreground: 30 8% 40%; /* ACERO #6a645e */
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 47.4% 11.2%;
+    --destructive-foreground: 45 20% 95%; /* BLANCO ROTO #f5f3ed */
+    --border: 35 15% 85%; /* LINO #ccc1b1 */
+    --input: 35 15% 85%; /* LINO #ccc1b1 */
+    --ring: 30 8% 40%; /* ACERO #6a645e */
     --radius: 0.5rem;
   }
 
   .dark {
     /* Dark theme variables */
-    --background: 222.2 84% 4.9%;
+    --background: 222.2 84% 4.9%;  /* ← Reverted to original dark background */
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 222.2 84% 4.9%;  /* ← Reverted to original dark card */
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 222.2 84% 4.9%;  /* ← Reverted to original dark popover */
     --popover-foreground: 210 40% 98%;
     --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 11.2%;
@@ -64,6 +119,8 @@
   }
 }
 
+
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
@@ -90,4 +147,51 @@
   .text-nav-lg {
     font-size: 1.125rem;
   }
+}
+
+/* Gallery animations */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(2rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInFromBottom {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideOutToBottom {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(100%); }
+}
+
+.gallery-thumbnail-enter { animation: fadeInUp 0.5s ease-out forwards; }
+.gallery-thumbnail-exit { animation: slideOutToBottom 0.3s ease-in forwards; }
+
+/* Loading spinner animations */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes reverse-spin {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-reverse-spin {
+  animation: reverse-spin 1.5s linear infinite;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

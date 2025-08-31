@@ -177,6 +177,7 @@ For large builds, you might need to increase Docker memory limits in Docker Desk
 ### Technical Features
 - **Theme System**: Light/Dark mode with smooth transitions
 - **Scroll Animations**: Framer Motion powered interactions
+- **3D Scene**: Three.js powered scroll-based camera experience
 - **Responsive Design**: Mobile-first approach
 - **Performance Optimized**: Next.js 14 with App Router
 - **TypeScript**: Full type safety
@@ -200,6 +201,8 @@ The Docker setup includes:
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **Animations**: Framer Motion
+- **3D Graphics**: Three.js, React Three Fiber
+- **Scroll Animations**: GSAP ScrollTrigger
 - **Theme**: Custom theme provider
 - **Deployment**: Docker containerization
 - **Package Manager**: pnpm
