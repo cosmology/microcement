@@ -26,10 +26,10 @@ const getImageAspectRatio = (image: GalleryImage): number => {
   // Use actual image aspect ratio instead of fixed ratios
   if (image.width && image.height) {
     const ratio = image.width / image.height;
-    console.log(`📐 Image: ${image.width}×${image.height}, Aspect Ratio: ${ratio.toFixed(2)}:1`);
+    // console.log(`📐 Image: ${image.width}×${image.height}, Aspect Ratio: ${ratio.toFixed(2)}:1`);
     return ratio;
   }
-  console.log(`📐 No dimensions available, using fallback ratio: 2:3`);
+  // console.log(`📐 No dimensions available, using fallback ratio: 2:3`);
   return 2/3; // Fallback for images without dimensions
 };
 
@@ -37,7 +37,7 @@ const getImageAspectRatio = (image: GalleryImage): number => {
 const getObjectFitStyle = (image: GalleryImage): "cover" => {
   // Always use 'cover' to fill entire container
   // This ensures the longer side determines the bounds
-  console.log(`🎯 Using object-fit: cover for maximum real estate`);
+  // console.log(`🎯 Using object-fit: cover for maximum real estate`);
   return 'cover';
 };
 
