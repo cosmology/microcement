@@ -34,3 +34,6 @@ frontend/tsconfig.tsbuildinfo
 
 # pnpm
 .pnpm-store/
+
+# Next.js
+.next/
