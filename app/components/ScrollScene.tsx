@@ -283,21 +283,9 @@ export default function ScrollScene({
         console.log('🖼️ Loaded images from API:', images.length);
         setGalleryImages(images);
       } else {
-        console.log('🖼️ API failed, using static data for:', category);
+        console.log('🖼️ API failed, using placeholder images for:', hotspotName);
         console.log('🖼️ Response status:', response.status);
         console.log('🖼️ Response status text:', response.statusText);
-
-      const category = hotspotName.replace("Hotspot_geo_", "");
-      
-      // Call the API endpoint
-      const response = await fetch(`/api/gallery/${category}`);
-      
-      if (response.ok) {
-        const images = await response.json();
-        console.log("🖼️ Loaded images:", images.length);
-        setGalleryImages(images);
-      } else {
-        console.log("🖼️ API failed, using placeholder images for:", hotspotName);
         // Fallback to placeholder images
         const placeholderImages = getPlaceholderImages(hotspotName);
         setGalleryImages(placeholderImages);
