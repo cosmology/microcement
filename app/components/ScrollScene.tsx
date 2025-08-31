@@ -266,6 +266,7 @@ export default function ScrollScene({
     setCurrentHotspot(hotspotName);
     
     try {
+<<<<<<< HEAD
       // Extract the category from hotspot name (e.g., "Hotspot_geo_floor" -> "floor")
       const category = hotspotName.replace('Hotspot_geo_', '');
       
@@ -279,6 +280,21 @@ export default function ScrollScene({
       } else {
         console.log('🖼️ API failed, using placeholder images for:', hotspotName);
         // Fallback to placeholder images
+=======
+      // Simulate API call - replace with actual API endpoint
+      const response = await fetch(`/api/gallery/${hotspotName}`);
+      if (response.ok) {
+        const images = await response.json();
+        // Transform API data to GalleryImage format
+        const transformedImages: GalleryImage[] = images.map((img: any) => ({
+          thumb: img.thumbnail,
+          full: img.src,
+          caption: img.alt
+        }));
+        setGalleryImages(transformedImages);
+      } else {
+        // Fallback to placeholder images for demo
+>>>>>>> 782ce8d74e6e5604f9f132e862050c7f877391e8
         const placeholderImages = getPlaceholderImages(hotspotName);
         setGalleryImages(placeholderImages);
       }
@@ -299,12 +315,21 @@ export default function ScrollScene({
     // Generate placeholder images based on hotspot category
     const category = HOTSPOT_CATEGORIES[hotspotName] || 'General';
     const baseImages: GalleryImage[] = [
+<<<<<<< HEAD
       { thumb: '/images/featured/modern-home.png', full: '/images/featured/modern-home.png', caption: `${category} Project 1`, width: 1920, height: 1080 },
       { thumb: '/images/featured/boutique-store.png', full: '/images/featured/boutique-store.png', caption: `${category} Project 2`, width: 1920, height: 1080 },
       { thumb: '/images/featured/hotel-lobby.png', full: '/images/featured/hotel-lobby.png', caption: `${category} Project 3`, width: 1920, height: 1080 },
       { thumb: '/images/gallery/outdoor-patio.png', full: '/images/gallery/outdoor-patio.png', caption: `${category} Project 4`, width: 1920, height: 1080 },
       { thumb: '/images/gallery/restaurant-bar.png', full: '/images/gallery/restaurant-bar.png', caption: `${category} Project 5`, width: 1920, height: 1080 },
       { thumb: '/images/gallery/staircase.png', full: '/images/gallery/staircase.png', caption: `${category} Project 6`, width: 1920, height: 1080 },
+=======
+      { thumb: '/images/placeholder-1-thumb.jpg', full: '/images/placeholder-1.jpg', caption: `${category} Project 1` },
+      { thumb: '/images/placeholder-2-thumb.jpg', full: '/images/placeholder-2.jpg', caption: `${category} Project 2` },
+      { thumb: '/images/placeholder-3-thumb.jpg', full: '/images/placeholder-3.jpg', caption: `${category} Project 3` },
+      { thumb: '/images/placeholder-4-thumb.jpg', full: '/images/placeholder-4.jpg', caption: `${category} Project 4` },
+      { thumb: '/images/placeholder-5-thumb.jpg', full: '/images/placeholder-5.jpg', caption: `${category} Project 5` },
+      { thumb: '/images/placeholder-6-thumb.jpg', full: '/images/placeholder-6.jpg', caption: `${category} Project 6` },
+>>>>>>> 782ce8d74e6e5604f9f132e862050c7f877391e8
     ];
     
     return baseImages;
