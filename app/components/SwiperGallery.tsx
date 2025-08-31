@@ -201,11 +201,11 @@ const SwiperModal: React.FC<SwiperModalProps> = ({ images, onClose, initialSlide
             border: 'none'
           }}
         >
-                  {/* Return to Path Button */}
+        {/* Return to Path Button */}
         <button
           onClick={onClose}
           className="absolute top-5 left-5 z-40 w-12 h-12 bg-transparent border border-white/30 text-white rounded-full flex items-center justify-center transition-all duration-300 hover:bg-white/10 hover:border-white/50 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] backdrop-blur-sm"
-          style={{ pointerEvents: 'auto' }}
+          style={{ pointerEvents: 'auto', zIndex: 20000, }}
           aria-label="Return to tour path"
         >
           <svg 

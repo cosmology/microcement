@@ -28,7 +28,7 @@ export default function ScrollScene({
   const WITH_HELPERS = false; // Toggle to show coordinate helpers (floor grid, axes)
   const WITH_ORBITAL = false; // Toggle to enable orbital animation
   const SHOW_CUBE = false; // Toggle to show/hide the green debug cube
-  const SHOW_DEBUG = true; // Toggle to show/hide debug panel
+  const [showDebug, setShowDebug] = useState(true); // Toggle to show/hide debug panel
   // Optional debug visuals for the camera path
   const SHOW_CAMERA_PATH = false;
   const SHOW_WAYPOINTS = false;
@@ -263,7 +263,7 @@ export default function ScrollScene({
   
   // Real-time event tracking for debug panel
   useEffect(() => {
-    if (!SHOW_DEBUG) return;
+    if (!showDebug) return;
 
     const trackEvent = (eventType: string) => {
       (window as any).__lastEventTime = Date.now();
@@ -287,7 +287,44 @@ export default function ScrollScene({
       window.removeEventListener('click', clickHandler);
       window.removeEventListener('keydown', keyHandler);
     };
-  }, [SHOW_DEBUG]);
+  }, [showDebug]);
+
+  // Clean up debug spheres when showDebug changes
+  useEffect(() => {
+    if (sceneRef.current) {
+      // Remove all debug spheres when showDebug is disabled
+      if (!showDebug) {
+        console.log('🧹 CLEANING UP DEBUG SPHERES (showDebug disabled)...');
+        let removedCount = 0;
+        
+        // Get all children and remove debug markers
+        const childrenToRemove: THREE.Object3D[] = [];
+        sceneRef.current.children.forEach((child: THREE.Object3D) => {
+          if (child.name === 'debug_hotspot_marker' || 
+              child.name === 'debug_camera_marker' || 
+              child.name === 'debug_return_from_marker' || 
+              child.name === 'debug_return_to_marker' ||
+              child.name === 'debug_intro_start_marker' || 
+              child.name === 'debug_intro_end_marker') {
+            childrenToRemove.push(child);
+            removedCount++;
+          }
+        });
+        
+        // Remove the debug markers
+        childrenToRemove.forEach(child => {
+          sceneRef.current?.remove(child);
+        });
+        
+        console.log('🧹 Removed', removedCount, 'debug spheres');
+        
+        // Force a render to update the scene
+        if (rendererRef.current && cameraRef.current) {
+          rendererRef.current.render(sceneRef.current, cameraRef.current);
+        }
+      }
+    }
+  }, [showDebug]);
 
   // Gallery system functions
   const loadGalleryImages = async (hotspotName: string) => {
@@ -1311,9 +1348,9 @@ export default function ScrollScene({
       distance: startPosition.distanceTo(newCamPos).toFixed(2) + 'm'
     });
     
-    // Clear any existing debug markers only when SHOW_DEBUG is true
-    if (SHOW_DEBUG && sceneRef.current) {
-      console.log('🧹 CLEANING UP EXISTING DEBUG MARKERS (SHOW_DEBUG enabled)...');
+    // Clear any existing debug markers only when showDebug is true
+    if (showDebug && sceneRef.current) {
+      console.log('🧹 CLEANING UP EXISTING DEBUG MARKERS (showDebug enabled)...');
       console.log('  Scene children before cleanup:', sceneRef.current.children.length);
       
       let removedCount = 0;
@@ -1328,13 +1365,13 @@ export default function ScrollScene({
       
       console.log('  Debug markers removed:', removedCount);
       console.log('  Scene children after cleanup:', sceneRef.current.children.length);
-    } else if (!SHOW_DEBUG) {
-      console.log('🧹 DEBUG MARKER CLEANUP SKIPPED (SHOW_DEBUG disabled)');
+    } else if (!showDebug) {
+      console.log('🧹 DEBUG MARKER CLEANUP SKIPPED (showDebug disabled)');
     }
     
-          // Create debug spheres only when SHOW_DEBUG is true
-          if (SHOW_DEBUG && sceneRef.current) {
-            console.log('🎯 CREATING DEBUG SPHERES (SHOW_DEBUG enabled)...');
+              // Create debug spheres only when showDebug is true
+    if (showDebug && sceneRef.current) {
+      console.log('🎯 CREATING DEBUG SPHERES (showDebug enabled)...');
             console.log('  Scene has children:', sceneRef.current.children.length);
             console.log('  Target position:', target);
             
@@ -1374,8 +1411,8 @@ export default function ScrollScene({
               rendererRef.current.render(sceneRef.current, cameraRef.current);
               console.log('🎯 RENDER FORCED: Debug spheres should now be visible');
             }
-          } else if (!SHOW_DEBUG) {
-            console.log('🎯 DEBUG SPHERES SKIPPED (SHOW_DEBUG disabled)');
+              } else if (!showDebug) {
+      console.log('🎯 DEBUG SPHERES SKIPPED (showDebug disabled)');
           } else {
             console.log('❌ ERROR: Scene reference is null, cannot create debug spheres');
           }
@@ -1590,8 +1627,8 @@ export default function ScrollScene({
       }
     }
     
-    // Create debug spheres for continue journey animation when SHOW_DEBUG is true
-    if (SHOW_DEBUG && sceneRef.current) {
+    // Create debug spheres for continue journey animation when showDebug is true
+    if (showDebug && sceneRef.current) {
       console.log('🎯 CREATING CONTINUE JOURNEY DEBUG SPHERES...');
       
       // Create green sphere at the current position (where we're returning from)
@@ -1623,6 +1660,8 @@ export default function ScrollScene({
       console.log('🎯 CONTINUE JOURNEY DEBUG SPHERES CREATED:');
       console.log('  Green sphere (return from):', fromMarker.position);
       console.log('  Orange sphere (return to):', toMarker.position);
+    } else if (!showDebug) {
+      console.log('🎯 CONTINUE JOURNEY DEBUG SPHERES SKIPPED (showDebug disabled)');
     }
     
     // Animate camera back to the target position
@@ -1691,8 +1730,8 @@ export default function ScrollScene({
         // Close gallery when returning to main path
         closeGallery();
         
-        // Clean up debug markers only when SHOW_DEBUG is true
-        if (SHOW_DEBUG && sceneRef.current) {
+            // Clean up debug markers only when showDebug is true
+    if (showDebug && sceneRef.current) {
           sceneRef.current?.children.forEach((child: THREE.Object3D) => {
             if (child.name === 'debug_hotspot_marker' || child.name === 'debug_camera_marker' || 
                 child.name === 'debug_return_from_marker' || child.name === 'debug_return_to_marker' ||
@@ -2368,8 +2407,8 @@ export default function ScrollScene({
     if (introStartedRef.current) return;
     introStartedRef.current = true;
     
-    // Create debug spheres for intro animation when SHOW_DEBUG is true
-    if (SHOW_DEBUG && scene) {
+    // Create debug spheres for intro animation when showDebug is true
+    if (showDebug && scene) {
       console.log('🎯 CREATING INTRO DEBUG SPHERES...');
       
       // Create purple sphere at the intro start position
@@ -2401,6 +2440,8 @@ export default function ScrollScene({
       console.log('🎯 INTRO DEBUG SPHERES CREATED:');
       console.log('  Purple sphere (intro start):', startMarker.position);
       console.log('  Cyan sphere (intro end):', endMarker.position);
+    } else if (!showDebug) {
+      console.log('🎯 INTRO DEBUG SPHERES SKIPPED (showDebug disabled)');
     }
 
     // Clear any previously scheduled intro timer (ensure one-shot)
@@ -2472,8 +2513,8 @@ export default function ScrollScene({
           introTimeoutRef.current = null;
         }
 
-        // Clean up intro debug spheres when SHOW_DEBUG is true
-        if (SHOW_DEBUG && scene) {
+            // Clean up intro debug spheres when showDebug is true
+    if (showDebug && scene) {
           scene.children.forEach((child: THREE.Object3D) => {
             if (child.name === 'debug_intro_start_marker' || child.name === 'debug_intro_end_marker') {
               scene.remove(child);
@@ -3333,8 +3374,8 @@ export default function ScrollScene({
         />
       </div>
       
-      {/* Debug Display - Only visible when SHOW_DEBUG is true AND focused on hotspot */}
-      {SHOW_DEBUG && isFocusedOnHotspot && (
+      {/* Debug Display - Only visible when showDebug is true AND focused on hotspot */}
+      {showDebug && isFocusedOnHotspot && (
       <div style={{
         position: "fixed",
         top: "20px",
@@ -3372,8 +3413,8 @@ export default function ScrollScene({
       )}
 
 
-      {/* Blue Position Panel - Only visible when SHOW_DEBUG is true AND focused on hotspot */}
-      {SHOW_DEBUG && isFocusedOnHotspot && (
+      {/* Blue Position Panel - Only visible when showDebug is true AND focused on hotspot */}
+      {showDebug && isFocusedOnHotspot && (
         <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-blue-900/90 text-white p-4 rounded-lg text-sm font-mono z-50 min-w-80">
           <div className="mb-2 font-bold text-blue-200">🎯 Focused Area Panel</div>
           <div className="mb-2">
@@ -3428,7 +3469,7 @@ export default function ScrollScene({
         </div>
       )}
       
-      {SHOW_DEBUG && debugInfo && (
+      {showDebug && debugInfo && (
         <div
           style={{
             position: "fixed",
@@ -3438,7 +3479,7 @@ export default function ScrollScene({
             color: "white",
             padding: "12px",
             borderRadius: "6px",
-            zIndex: 10000,
+            zIndex: 2,
             fontSize: "12px",
             lineHeight: "1.4",
             fontFamily: "monospace",
@@ -3471,20 +3512,46 @@ export default function ScrollScene({
         </div>
       )}
 
+      {/* Debug Toggle Checkbox */}
+      <div 
+        className="fixed top-4 right-4 z-[70] bg-black/80 text-white p-2 rounded-lg text-xs font-mono"
+        style={{ 
+          border: '1px solid #666',
+          backdropFilter: 'blur(10px)'
+        }}
+      >
+        <label className="flex items-center space-x-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showDebug}
+            onChange={(e) => setShowDebug(e.target.checked)}
+            className="w-3 h-3 text-red-400 bg-gray-700 border-gray-600 rounded focus:ring-red-500 focus:ring-2"
+          />
+          <span className="text-red-400">🐭 Debug</span>
+        </label>
+      </div>
+
       {/* Mouse Events Debug Panel */}
-      {SHOW_DEBUG && (
+      {showDebug && (
         <div 
-          className="fixed top-4 left-4 z-[60] bg-black/90 text-white p-4 rounded-lg text-xs font-mono max-w-sm"
+          className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[60] bg-black/90 text-white p-4 rounded-lg text-xs font-mono max-w-sm"
           style={{ 
             border: '2px solid #ff6b6b',
             boxShadow: '0 4px 12px rgba(255, 107, 107, 0.3)',
-            zIndex: 10001,
             backdropFilter: 'blur(10px)'
           }}
         >
-          <div className="font-bold text-sm mb-3 text-red-400 flex items-center">
-            <span className="mr-2">🐭</span>
-            Mouse Events Debug
+          <div className="font-bold text-sm mb-3 text-red-400 flex items-center justify-between">
+            <span className="flex items-center">
+              <span className="mr-2">🐭</span>
+              Mouse Events Debug
+            </span>
+            <button
+              onClick={() => setShowDebug(false)}
+              className="text-gray-400 hover:text-white text-lg"
+            >
+              ×
+            </button>
           </div>
           
           {/* Gallery Status */}
@@ -3571,6 +3638,50 @@ export default function ScrollScene({
             </div>
           </div>
 
+          {/* Debug Spheres Legend */}
+          <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
+            <div className="font-semibold text-yellow-400 mb-1 flex justify-between items-center">
+              <span>Debug Spheres:</span>
+              <span className="text-blue-400 text-xs">
+                {sceneRef.current ? 
+                  Array.from(sceneRef.current.children).filter((child: THREE.Object3D) => 
+                    child.name === 'debug_hotspot_marker' || 
+                    child.name === 'debug_camera_marker' || 
+                    child.name === 'debug_return_from_marker' || 
+                    child.name === 'debug_return_to_marker' ||
+                    child.name === 'debug_intro_start_marker' || 
+                    child.name === 'debug_intro_end_marker'
+                  ).length : 0} active
+              </span>
+            </div>
+            <div className="space-y-1 text-xs">
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                <span>Red: Clicked Hotspot</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                <span>Blue: Camera Target</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                <span>Green: Return From</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
+                <span>Orange: Return To</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
+                <span>Purple: Intro Start</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-cyan-500 rounded-full mr-2"></div>
+                <span>Cyan: Intro End</span>
+              </div>
+            </div>
+          </div>
+
           {/* Recent Events */}
           <div className="p-2 bg-gray-800/50 rounded border border-gray-600">
             <div className="font-semibold text-yellow-400 mb-1">Recent Events:</div>
@@ -3615,7 +3726,7 @@ export default function ScrollScene({
         >
           <div className="relative w-full h-full max-w-6xl">
             {/* Debug Info - Centered */}
-              {SHOW_DEBUG && (
+              {showDebug && (
                 <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 bg-black/70 text-white p-3 rounded-lg text-sm">
                <div className="text-center">
                  <div className="font-semibold mb-1">Gallery Debug Info</div>
