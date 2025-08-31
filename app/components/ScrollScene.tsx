@@ -809,7 +809,7 @@ export default function ScrollScene({
     }
     
     // Check if pulse markers already exist in scene to prevent duplicates
-    const existingPulseGroup = sceneRef.current.getObjectByName('hotspotPulseMarkers');
+    const existingPulseGroup = sceneRef.current.getObjectByName('hotspotPulseMarkers') as THREE.Group | null;
     if (existingPulseGroup) {
       console.log('🎯 Pulse markers already exist in scene, skipping creation');
       return;
@@ -818,11 +818,19 @@ export default function ScrollScene({
     console.log('🎯 Creating hotspot pulse markers for mobile...');
     
     // Remove any existing pulse markers if they exist (safety check)
-    if (existingPulseGroup) {
-      sceneRef.current.remove(existingPulseGroup);
-      existingPulseGroup.children.forEach((child: THREE.Object3D) => {
-        if (child.geometry) child.geometry.dispose();
-        if ((child as any).material) (child as any).material.dispose();
+    const existingPulseGroup2 = sceneRef.current.getObjectByName('hotspotPulseMarkers') as THREE.Group | null;
+    if (existingPulseGroup2) {
+      sceneRef.current.remove(existingPulseGroup2);
+      existingPulseGroup2.children.forEach((child: THREE.Object3D) => {
+        if ((child as THREE.Mesh).geometry) (child as THREE.Mesh).geometry.dispose();
+        if ((child as THREE.Mesh).material) {
+          const material = (child as THREE.Mesh).material;
+          if (Array.isArray(material)) {
+            material.forEach(mat => mat.dispose());
+          } else {
+            material.dispose();
+          }
+        }
       });
     }
     
@@ -939,14 +947,21 @@ export default function ScrollScene({
   // Function to cleanup pulse markers
   const cleanupPulseMarkers = () => {
     if (sceneRef.current) {
-      const existingPulseGroup = sceneRef.current.getObjectByName('hotspotPulseMarkers');
-      if (existingPulseGroup) {
-        sceneRef.current.remove(existingPulseGroup);
-        existingPulseGroup.children.forEach((child: THREE.Object3D) => {
-          if (child.geometry) child.geometry.dispose();
-          if ((child as any).material) (child as any).material.dispose();
+          const existingPulseGroup = sceneRef.current.getObjectByName('hotspotPulseMarkers') as THREE.Group | null;
+    if (existingPulseGroup) {
+      sceneRef.current.remove(existingPulseGroup);
+              existingPulseGroup.children.forEach((child: THREE.Object3D) => {
+          if ((child as THREE.Mesh).geometry) (child as THREE.Mesh).geometry.dispose();
+          if ((child as THREE.Mesh).material) {
+            const material = (child as THREE.Mesh).material;
+            if (Array.isArray(material)) {
+              material.forEach(mat => mat.dispose());
+            } else {
+              material.dispose();
+            }
+          }
         });
-      }
+    }
     }
     pulseMarkersCreatedRef.current = false;
     hotspotPulseRefs.current = [];
@@ -982,7 +997,7 @@ export default function ScrollScene({
           console.log(`  Pulse ${index}:`, {
             name: child.name,
             visible: child.visible,
-            material: !!child.material,
+            material: !!(child as THREE.Mesh).material,
             opacity: (child as any).material?.opacity
           });
         });
@@ -1253,10 +1268,10 @@ export default function ScrollScene({
       console.log('  Scene children before cleanup:', sceneRef.current.children.length);
       
       let removedCount = 0;
-      sceneRef.current.children.forEach((child: THREE.Object3D) => {
+      sceneRef.current?.children.forEach((child: THREE.Object3D) => {
         if (child.name === 'debug_hotspot_marker' || child.name === 'debug_camera_marker' ||
             child.name === 'debug_intro_start_marker' || child.name === 'debug_intro_end_marker') {
-          sceneRef.current.remove(child);
+          sceneRef.current?.remove(child);
           removedCount++;
           console.log('  Removed debug marker:', child.name);
         }
@@ -1629,11 +1644,11 @@ export default function ScrollScene({
         
         // Clean up debug markers only when SHOW_DEBUG is true
         if (SHOW_DEBUG && sceneRef.current) {
-          sceneRef.current.children.forEach((child: THREE.Object3D) => {
+          sceneRef.current?.children.forEach((child: THREE.Object3D) => {
             if (child.name === 'debug_hotspot_marker' || child.name === 'debug_camera_marker' || 
                 child.name === 'debug_return_from_marker' || child.name === 'debug_return_to_marker' ||
                 child.name === 'debug_intro_start_marker' || child.name === 'debug_intro_end_marker') {
-              sceneRef.current.remove(child);
+              sceneRef.current?.remove(child);
               console.log('🧹 Removed debug marker:', child.name);
             }
           });
@@ -1742,7 +1757,7 @@ export default function ScrollScene({
           console.log('✅ ANIMATION COMPLETED - Camera at end position:', finalPosition);
           
           // Force a render to ensure the position is visible
-          if (rendererRef.current) {
+          if (rendererRef.current && sceneRef.current && cameraRef.current) {
             rendererRef.current.render(sceneRef.current, cameraRef.current);
           }
           
@@ -1796,7 +1811,7 @@ export default function ScrollScene({
     scene.add(new THREE.AmbientLight(0xffffff, 1));
     
     // Main directional light
-    scene.add(new THREE.DirectionalLight(0xffffff, 1, 100));
+    scene.add(new THREE.DirectionalLight(0xffffff, 1));
     
     // Hemisphere light for sky/ground color
     scene.add(new THREE.HemisphereLight(0xccc1b1, 0x080820, 1.5));
@@ -1806,7 +1821,7 @@ export default function ScrollScene({
     const lightHeight = cubeHeight * 10; // 50 units above cube
     const diagonalDistance = 20; // Distance from cube center to wall corner
     
-    const diagonalLight = new THREE.DirectionalLight(0xffffff, 1.5, 10);
+    const diagonalLight = new THREE.DirectionalLight(0xffffff, 1.5);
     diagonalLight.position.set(
       diagonalDistance * Math.cos(Math.PI / 4), // 45 degrees X
       lightHeight, // 4 times cube height above
@@ -1823,7 +1838,8 @@ export default function ScrollScene({
     diagonalLight.shadow.camera.top = 40;
     diagonalLight.shadow.camera.bottom = -40;
     diagonalLight.shadow.bias = -0.0001;
-    diagonalLight.shadow.color = 0x000000; // Pure black shadows
+    diagonalLight.shadow.mapSize.width = 2048;
+    diagonalLight.shadow.mapSize.height = 2048;
     scene.add(diagonalLight);
     scene.add(diagonalLight.target);
   };
@@ -3063,16 +3079,13 @@ export default function ScrollScene({
         const intersectedObject = intersects[0].object;
         if (hoveredHotspot !== intersectedObject) {
           // Reset previous hotspot (excluding pulse markers)
-          if (hoveredHotspot && hoveredHotspot.material && !hoveredHotspot.name?.startsWith('pulse_')) {
+          if (hoveredHotspot && (hoveredHotspot as THREE.Mesh).material && !hoveredHotspot.name?.startsWith('pulse_')) {
             if (hoveredHotspot === cubeRef.current) {
-              // Reset cube to normal green
-              (hoveredHotspot.material as THREE.MeshStandardMaterial).color.setHex(CUBE_NORMAL_COLOR);
+              ((hoveredHotspot as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(CUBE_NORMAL_COLOR);
             } else {
               // Reset model hotspot to theme floor color with 80% transparency
               const colors = getThemeColors();
-              (hoveredHotspot.material as THREE.MeshStandardMaterial).color.setHex(colors.HOTSPOT_NORMAL_COLOR);
-              // (hoveredHotspot.material as THREE.MeshStandardMaterial).transparent = true;
-              // (hoveredHotspot.material as THREE.MeshStandardMaterial).opacity = 0.8; // 80% opacity = 20% transparency
+              ((hoveredHotspot as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(colors.HOTSPOT_NORMAL_COLOR);
             }
           }
           // Set new hotspot
@@ -3086,39 +3099,33 @@ export default function ScrollScene({
             position: { x: event.clientX, y: event.clientY }
           });
           
-          if (intersectedObject.material) {
+          if ((intersectedObject as THREE.Mesh).material) {
             if (intersectedObject === cubeRef.current) {
               // Highlight cube in red
-              (intersectedObject.material as THREE.MeshStandardMaterial).color.setHex(CUBE_HIGHLIGHT_COLOR);
+              ((intersectedObject as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(CUBE_HIGHLIGHT_COLOR);
               console.log('Changed cube color to red!');
             } else {
               // Highlight model hotspot with its assigned random pastel color
               const assignedColor = hotspotColorsRef.current.get(intersectedObject);
               if (assignedColor) {
-                (intersectedObject.material as THREE.MeshStandardMaterial).color.setHex(assignedColor);
-                // (intersectedObject.material as THREE.MeshStandardMaterial).transparent = true;
-                // (intersectedObject.material as THREE.MeshStandardMaterial).opacity = 0.9; // 90% opacity = 10% transparency
+                ((intersectedObject as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(assignedColor);
               } else {
                 // Fallback to bright green if no color assigned
-                (intersectedObject.material as THREE.MeshStandardMaterial).color.setHex(0x00ff00);
-                // (intersectedObject.material as THREE.MeshStandardMaterial).transparent = true;
-                // (intersectedObject.material as THREE.MeshStandardMaterial).opacity = 0.9;
+                ((intersectedObject as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(0x00ff00);
               }
             }
           }
         }
       } else {
         // No intersection, reset hover state (excluding pulse markers)
-        if (hoveredHotspot && hoveredHotspot.material && !hoveredHotspot.name?.startsWith('pulse_')) {
+        if (hoveredHotspot && (hoveredHotspot as THREE.Mesh).material && !hoveredHotspot.name?.startsWith('pulse_')) {
           if (hoveredHotspot === cubeRef.current) {
             // Reset cube to normal green
-            (hoveredHotspot.material as THREE.MeshStandardMaterial).color.setHex(CUBE_NORMAL_COLOR);
+            ((hoveredHotspot as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(CUBE_NORMAL_COLOR);
           } else {
             // Reset model hotspot to theme floor color with 80% transparency
             const colors = getThemeColors();
-            (hoveredHotspot.material as THREE.MeshStandardMaterial).color.setHex(colors.HOTSPOT_NORMAL_COLOR);
-            // (hoveredHotspot.material as THREE.MeshStandardMaterial).transparent = true;
-            // (hoveredHotspot.material as THREE.MeshStandardMaterial).opacity = 0.8; // 80% opacity = 20% transparency
+            ((hoveredHotspot as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(colors.HOTSPOT_NORMAL_COLOR);
           }
         }
         setHoveredHotspot(null);
