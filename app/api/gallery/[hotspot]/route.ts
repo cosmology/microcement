@@ -65,6 +65,7 @@ export async function GET(
   try {
     const { hotspot } = await params;
     
+
     console.log('🖼️ Gallery API called with hotspot:', hotspot);
     console.log('🖼️ Available hotspots:', Object.keys(GALLERY_DATA));
     console.log('🖼️ Request URL:', request.url);
@@ -99,6 +100,23 @@ export async function GET(
         'Cache-Control': 'public, max-age=3600',
       },
     });
+
+    // Get images for the specific hotspot
+    const images = GALLERY_DATA[hotspot] || [];
+    
+    // If no images found, return placeholder images
+    if (images.length === 0) {
+      const placeholderImages: GalleryImage[] = [
+        { thumb: '/images/featured/modern-home.png', full: '/images/featured/modern-home.png', caption: `${hotspot} Project 1`, area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
+        { thumb: '/images/featured/boutique-store.png', full: '/images/featured/boutique-store.png', caption: `${hotspot} Project 2`, area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
+        { thumb: '/images/featured/hotel-lobby.png', full: '/images/featured/hotel-lobby.png', caption: `${hotspot} Project 3`, area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
+      ];
+      
+      return NextResponse.json(placeholderImages);
+    }
+    
+    return NextResponse.json(images);
+
   } catch (error) {
     console.error('Error loading gallery images:', error);
     
@@ -108,7 +126,7 @@ export async function GET(
       { thumb: '/images/featured/boutique-store.png', full: '/images/featured/boutique-store.png', caption: 'Project 2', area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
       { thumb: '/images/featured/hotel-lobby.png', full: '/images/featured/hotel-lobby.png', caption: 'Project 3', area: 'General', category: 'General', folder: 'general', width: 1920, height: 1080 },
     ];
-    
+
     return NextResponse.json(fallbackImages, {
       headers: {
         'Content-Type': 'application/json',

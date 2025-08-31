@@ -268,6 +268,7 @@ export default function ScrollScene({
     
     try {
       // Extract the category from hotspot name (e.g., "Hotspot_geo_floor" -> "floor")
+
       const category = hotspotName.replace('Hotspot_geo_', '');
       
       // Try API first, then fallback to static data
@@ -285,6 +286,18 @@ export default function ScrollScene({
         console.log('🖼️ API failed, using static data for:', category);
         console.log('🖼️ Response status:', response.status);
         console.log('🖼️ Response status text:', response.statusText);
+
+      const category = hotspotName.replace("Hotspot_geo_", "");
+      
+      // Call the API endpoint
+      const response = await fetch(`/api/gallery/${category}`);
+      
+      if (response.ok) {
+        const images = await response.json();
+        console.log("🖼️ Loaded images:", images.length);
+        setGalleryImages(images);
+      } else {
+        console.log("🖼️ API failed, using placeholder images for:", hotspotName);
         // Fallback to placeholder images
         const placeholderImages = getPlaceholderImages(hotspotName);
         setGalleryImages(placeholderImages);
@@ -313,6 +326,7 @@ export default function ScrollScene({
       { thumb: '/images/gallery/outdoor-patio.png', full: '/images/gallery/outdoor-patio.png', caption: `${category} Project 4`, width: 1920, height: 1080 },
       { thumb: '/images/gallery/restaurant-bar.png', full: '/images/gallery/restaurant-bar.png', caption: `${category} Project 5`, width: 1920, height: 1080 },
       { thumb: '/images/gallery/staircase.png', full: '/images/gallery/staircase.png', caption: `${category} Project 6`, width: 1920, height: 1080 },
+
     ];
     
     return baseImages;
