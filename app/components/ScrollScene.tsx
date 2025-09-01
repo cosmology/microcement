@@ -379,9 +379,10 @@ export default function ScrollScene({
       const category = hotspotName.replace('Hotspot_geo_', '');
       
       // Try API first, then fallback to static data
+      const encodedCategory = encodeURIComponent(category);
       const requestUrl = typeof window !== 'undefined'
-        ? `${window.location.origin}/api/gallery/${category}`
-        : `/api/gallery/${category}`;
+        ? `${window.location.origin}/api/gallery/${encodedCategory}`
+        : `/api/gallery/${encodedCategory}`;
       const response = await fetch(requestUrl, {
         headers: { 'Accept': 'application/json' },
         cache: 'no-store',

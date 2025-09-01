@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Ensure this API route is always dynamic on Vercel/Next production
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Define the gallery image structure
 interface GalleryImage {
   thumb: string;
@@ -67,7 +71,7 @@ const FALLBACK_IMAGES: GalleryImage[] = [
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ hotspot: string }> }
+  context: { params: { hotspot: string } } | { params: Promise<{ hotspot: string }> }
 ) {
   // Add CORS headers for Vercel
   const headers = {
@@ -82,12 +86,18 @@ export async function GET(
     // Log request details for debugging
     console.log('🖼️ Gallery API called');
     console.log('🖼️ Request URL:', request.url);
+    console.log('🖼️ Pathname:', request.nextUrl?.pathname);
+    console.log('🖼️ Search Params:', request.nextUrl?.searchParams?.toString?.() || '');
     console.log('🖼️ Environment:', process.env.NODE_ENV);
     console.log('🖼️ Vercel:', process.env.VERCEL === '1' ? 'Yes' : 'No');
     console.log('🖼️ Region:', process.env.VERCEL_REGION || 'Unknown');
 
-    // Get hotspot parameter
-    const { hotspot } = await params;
+    // Get hotspot parameter (handle both Promise and plain object forms)
+    const rawParams: any = (context as any).params;
+    const resolvedParams = rawParams && typeof rawParams.then === 'function' ? await rawParams : rawParams;
+    const hotspot: string | undefined = resolvedParams?.hotspot;
+    console.log('🖼️ Hotspot param raw:', rawParams);
+    console.log('🖼️ Hotspot param resolved:', resolvedParams);
     console.log('🖼️ Hotspot requested:', hotspot);
     console.log('🖼️ Available hotspots:', Object.keys(GALLERY_DATA));
 
@@ -97,8 +107,11 @@ export async function GET(
       return NextResponse.json(FALLBACK_IMAGES, { headers });
     }
 
+    // Normalize hotspot (defensive: trim, lowercase) for matching
+    const normalized = hotspot.trim().toLowerCase();
+    console.log('🖼️ Hotspot normalized:', normalized);
     // Get images for the specific hotspot
-    const images = GALLERY_DATA[hotspot] || [];
+    const images = GALLERY_DATA[normalized] || GALLERY_DATA[hotspot] || [];
     console.log('🖼️ Found images for', hotspot + ':', images.length);
 
     // If no images found, return fallback images
