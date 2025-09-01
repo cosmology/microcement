@@ -459,6 +459,20 @@ export default function ScrollScene({
     // Call disableSceneMouseEvents(false) to properly clean up all event listeners
     enableSceneMouseEvents();
     
+    // Ensure body overflow is properly restored for mobile scrolling
+    if (typeof document !== 'undefined') {
+      // Restore body overflow to allow scrolling
+      const originalOverflow = (window as any).__originalBodyOverflow || 'auto';
+      document.body.style.overflow = originalOverflow;
+      
+      // Ensure touch-action is enabled for mobile scrolling
+      document.body.style.touchAction = 'auto';
+      document.documentElement.style.touchAction = 'auto';
+      
+      console.log('  ✅ Body overflow restored to:', originalOverflow);
+      console.log('  ✅ Touch-action enabled for mobile scrolling');
+    }
+    
     // Debug: Check if flags are cleared
     console.log('🔍 After restore - Debug check:');
     console.log('  __galleryMode:', (window as any).__galleryMode);
@@ -3466,7 +3480,7 @@ export default function ScrollScene({
       {/* Blue Position Panel - Draggable Container */}
       {showPosition && (
         <div 
-          className="fixed z-[55] bg-blue-900/90 text-white rounded-lg text-xs font-mono"
+          className="fixed z-[55] bg-blue-900/95 text-white rounded-lg text-xs font-mono"
           style={{ 
             border: '2px solid #3b82f6',
             boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
@@ -3475,7 +3489,8 @@ export default function ScrollScene({
             top: '10vh',
             left: '20px',
             cursor: 'move',
-            userSelect: 'none'
+            userSelect: 'none',
+            overflow: 'auto'
           }}
           onMouseDown={(e) => {
             const target = e.target as HTMLElement;
@@ -3606,8 +3621,6 @@ export default function ScrollScene({
           </div>
         </div>
       )}
-      
-
 
       {/* Debug Toggle Checkbox */}
       <div 
@@ -3642,17 +3655,19 @@ export default function ScrollScene({
       {/* Consolidated Debug Panel */}
       {showDebug && (
         <div 
-          className="fixed z-[60] bg-black/90 text-white rounded-lg text-xs font-mono"
+          className="fixed z-[60] bg-black/95 text-white rounded-lg text-xs font-mono"
           style={{ 
             border: '2px solid #ff6b6b',
             boxShadow: '0 4px 12px rgba(255, 107, 107, 0.3)',
             backdropFilter: 'blur(10px)',
             width: '400px',
-            height: '50vh',
-            top: '25vh',
+            height: '60vh',
+            maxHeight: '80vh',
+            top: '20vh',
             left: 'calc(100vw - 420px)',
             cursor: 'move',
-            userSelect: 'none'
+            userSelect: 'none',
+            overflow: 'auto'
           }}
           onMouseDown={(e) => {
             const target = e.target as HTMLElement;
@@ -3736,7 +3751,7 @@ export default function ScrollScene({
           </div>
 
           {/* Scrollable Content */}
-          <div className="p-3 overflow-y-auto" style={{ height: 'calc(50vh - 60px)' }}>
+          <div className="p-3 overflow-y-auto bg-black/80" style={{ height: 'calc(60vh - 60px)' }}>
             
             {/* Gallery Status */}
             <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
@@ -3799,6 +3814,14 @@ export default function ScrollScene({
                 <div className="flex justify-between">
                   <span>HTML Overflow:</span>
                   <span className="text-blue-400">{typeof document !== 'undefined' ? document.documentElement.style.overflow || 'auto' : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Touch Action:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? document.body.style.touchAction || 'auto' : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Gallery Mode:</span>
+                  <span className="text-red-400">{(window as any).__galleryMode ? 'Yes' : 'No'}</span>
                 </div>
               </div>
             </div>

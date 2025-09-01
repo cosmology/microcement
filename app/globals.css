@@ -58,6 +58,21 @@
 }
 
 @layer base {
+  /* Ensure proper body scrolling behavior */
+  html, body {
+    overflow-x: auto;
+    overflow-y: auto;
+    touch-action: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Prevent horizontal scrolling on mobile */
+  @media (max-width: 768px) {
+    html, body {
+      overflow-x: hidden;
+    }
+  }
+  
   :root {
     /* Font variables */
     --font-roboto: 'Roboto', sans-serif;
