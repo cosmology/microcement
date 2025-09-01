@@ -368,6 +368,54 @@ export default function ScrollScene({
     }
   }, [showDebug]);
 
+  // Touch event tracking for mobile debugging
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const touchStartHandler = () => {
+      setEventCounts(prev => ({ ...prev, touchstart: prev.touchstart + 1 }));
+      console.log('📱 Touch start detected');
+    };
+    
+    const touchMoveHandler = () => {
+      setEventCounts(prev => ({ ...prev, touchmove: prev.touchmove + 1 }));
+      console.log('📱 Touch move detected');
+    };
+    
+    const touchEndHandler = () => {
+      setEventCounts(prev => ({ ...prev, touchend: prev.touchend + 1 }));
+      console.log('📱 Touch end detected');
+    };
+    
+    const wheelHandler = () => {
+      setEventCounts(prev => ({ ...prev, wheel: prev.wheel + 1 }));
+      console.log('🖱️ Wheel event detected');
+    };
+    
+    // Add event listeners
+    window.addEventListener('touchstart', touchStartHandler, { passive: true });
+    window.addEventListener('touchmove', touchMoveHandler, { passive: true });
+    window.addEventListener('touchend', touchEndHandler, { passive: true });
+    window.addEventListener('wheel', wheelHandler, { passive: true });
+    
+    return () => {
+      window.removeEventListener('touchstart', touchStartHandler);
+      window.removeEventListener('touchmove', touchMoveHandler);
+      window.removeEventListener('touchend', touchEndHandler);
+      window.removeEventListener('wheel', wheelHandler);
+    };
+  }, []);
+  
+  // Event counters for debug panel
+  const [eventCounts, setEventCounts] = useState({
+    wheel: 0,
+    touchstart: 0,
+    touchmove: 0,
+    touchend: 0,
+    click: 0,
+    keydown: 0
+  });
+
   // Gallery system functions
   const loadGalleryImages = async (hotspotName: string) => {
     setGalleryLoading(true);
@@ -456,29 +504,40 @@ export default function ScrollScene({
   const restoreSceneEvents = () => {
     console.log('✅ Restoring scene events and scrolling...');
     
-    // Call disableSceneMouseEvents(false) to properly clean up all event listeners
-    enableSceneMouseEvents();
+    // Clear the gallery mode flag
+    delete (window as any).__galleryMode;
+    console.log('  ✅ __galleryMode flag removed');
     
-    // Ensure body overflow is properly restored for mobile scrolling
+    // CSS-ONLY RESTORATION: Restore original CSS values
     if (typeof document !== 'undefined') {
-      // Restore body overflow to allow scrolling
-      const originalOverflow = (window as any).__originalBodyOverflow || 'auto';
-      document.body.style.overflow = originalOverflow;
+      console.log('🎨 Restoring original CSS scroll properties...');
       
-      // Ensure touch-action is enabled for mobile scrolling
-      document.body.style.touchAction = 'auto';
-      document.documentElement.style.touchAction = 'auto';
+      // Restore original values or use defaults
+      const originalBodyOverflow = (window as any).__originalBodyOverflow || 'auto';
+      const originalBodyTouchAction = (window as any).__originalBodyTouchAction || 'auto';
+      const originalHtmlOverflow = (window as any).__originalHtmlOverflow || 'auto';
+      const originalHtmlTouchAction = (window as any).__originalHtmlTouchAction || 'auto';
       
-      console.log('  ✅ Body overflow restored to:', originalOverflow);
-      console.log('  ✅ Touch-action enabled for mobile scrolling');
+      // Restore body styles
+      document.body.style.overflow = originalBodyOverflow;
+      document.body.style.touchAction = originalBodyTouchAction;
+      
+      // Restore HTML element styles
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.documentElement.style.touchAction = originalHtmlTouchAction;
+      
+      console.log('  ✅ CSS scroll properties restored');
+      console.log('  📊 Body overflow:', document.body.style.overflow);
+      console.log('  📊 Body touch-action:', document.body.style.touchAction);
+      console.log('  📊 HTML overflow:', document.documentElement.style.overflow);
+      console.log('  📊 HTML touch-action:', document.documentElement.style.touchAction);
+      
+      // Clean up stored values
+      delete (window as any).__originalBodyOverflow;
+      delete (window as any).__originalBodyTouchAction;
+      delete (window as any).__originalHtmlOverflow;
+      delete (window as any).__originalHtmlTouchAction;
     }
-    
-    // Debug: Check if flags are cleared
-    console.log('🔍 After restore - Debug check:');
-    console.log('  __galleryMode:', (window as any).__galleryMode);
-    console.log('  __wheelListener:', (window as any).__wheelListener);
-    console.log('  __touchmoveListener:', (window as any).__touchmoveListener);
-    console.log('  __keydownListener:', (window as any).__keydownListener);
     
     console.log('✅ Scene events restored - scrolling and hotspots should work normally');
   };
@@ -509,89 +568,27 @@ export default function ScrollScene({
     (window as any).__lastEventTime = Date.now();
     (window as any).__lastEventType = 'disableSceneMouseEvents';
     
-    // Check if we already have listeners (prevent duplicates)
-    if ((window as any).__wheelListener) {
-      console.log('⚠️ WARNING: Scroll prevention listeners already exist!');
-      console.log('  Existing wheel listener:', (window as any).__wheelListener);
-      console.log('  This might cause duplicate blocking!');
-    }
-    
-    // GLOBAL WHEEL LISTENER TRACKER - Track ALL wheel listeners
-    if (!(window as any).__globalWheelTracker) {
-      console.log('🔍 Setting up global wheel listener tracker...');
-      (window as any).__globalWheelTracker = {
-        originalAddEventListener: window.addEventListener,
-        originalRemoveEventListener: window.removeEventListener,
-        wheelListeners: new Set()
-      };
-      
-      // Override addEventListener to track ALL wheel listeners
-      window.addEventListener = function(type: string, listener: any, options?: any) {
-        if (type === 'wheel') {
-          console.log('🔍 GLOBAL TRACKER: Wheel listener added:', listener);
-          console.log('  Function:', listener.toString().substring(0, 100));
-          console.log('  Options:', options);
-          (window as any).__globalWheelTracker.wheelListeners.add({ listener, options });
-        }
-        return (window as any).__globalWheelTracker.originalAddEventListener.call(this, type, listener, options);
-      };
-      
-      // Override removeEventListener to track wheel listener removal
-      window.removeEventListener = function(type: string, listener: any, options?: any) {
-        if (type === 'wheel') {
-          console.log('🔍 GLOBAL TRACKER: Wheel listener removed:', listener);
-          // Remove from our tracking set
-          for (const item of (window as any).__globalWheelTracker.wheelListeners) {
-            if (item.listener === listener) {
-              (window as any).__globalWheelTracker.wheelListeners.delete(item);
-              break;
-            }
-          }
-        }
-        return (window as any).__globalWheelTracker.originalRemoveEventListener.call(this, type, listener, options);
-      };
-      
-      console.log('✅ Global wheel listener tracker activated');
-    }
-    
     (window as any).__galleryMode = true; // Set flag
     
-    // Create unique listeners for each event type to ensure proper cleanup
-    (window as any).__wheelListener = (e: Event) => {
-      // console.log('🚫 BLOCKING WHEEL SCROLL');
-      e.preventDefault(); 
-      e.stopPropagation(); 
-      return false;
-    };
-    
-    (window as any).__touchmoveListener = (e: Event) => {
-      // console.log('🚫 BLOCKING TOUCH SCROLL');
-      e.preventDefault(); 
-      e.stopPropagation(); 
-      return false;
-    };
-    
-    (window as any).__keydownListener = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'PageUp' || e.key === 'PageDown') { 
-        // console.log('🚫 BLOCKING KEYBOARD SCROLL:', e.key);
-        e.preventDefault(); 
-        e.stopPropagation();
-        return false;
-      }
-    };
-    
-    // Add listeners with non-passive option for maximum blocking
-    console.log('  📍 Adding wheel listener:', (window as any).__wheelListener);
-    window.addEventListener('wheel', (window as any).__wheelListener, { passive: false, capture: true });
-    
-    console.log('  📍 Adding touchmove listener:', (window as any).__touchmoveListener);
-    window.addEventListener('touchmove', (window as any).__touchmoveListener, { passive: false, capture: true });
-    
-    console.log('  📍 Adding keydown listener:', (window as any).__keydownListener);
-    window.addEventListener('keydown', (window as any).__keydownListener, { capture: true });
-    
-    console.log('✅ Scroll prevention listeners added with capture: true');
-    console.log('  📊 Current listener count - Wheel:', (window as any).__wheelListener ? '1' : '0');
+    // CSS-ONLY APPROACH: Block scrolling using CSS instead of JavaScript
+    if (typeof document !== 'undefined') {
+      console.log('🎨 Using CSS-only scroll blocking...');
+      
+      // Store original values
+      (window as any).__originalBodyOverflow = document.body.style.overflow;
+      (window as any).__originalBodyTouchAction = document.body.style.touchAction;
+      (window as any).__originalHtmlOverflow = document.documentElement.style.overflow;
+      (window as any).__originalHtmlTouchAction = document.documentElement.style.touchAction;
+      
+      // Block scrolling with CSS
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.touchAction = 'none';
+      
+      console.log('  ✅ CSS scroll blocking applied');
+      console.log('  📊 Original values stored for restoration');
+    }
     
     // Force clear any existing hotspot state
     if (hoveredHotspot) {
@@ -3741,12 +3738,79 @@ export default function ScrollScene({
                 <span className="mr-2">🐭</span>
                 Debug Panel
               </span>
-              <button
-                onClick={() => setShowDebug(false)}
-                className="text-gray-400 hover:text-white text-lg"
-              >
-                ×
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => {
+                    console.log('🚨 NUCLEAR RESET triggered!');
+                    // Force restore all scrolling with CSS reset
+                    if (typeof document !== 'undefined') {
+                      // Force enable scrolling
+                      document.body.style.overflow = 'auto';
+                      document.body.style.touchAction = 'auto';
+                      document.documentElement.style.overflow = 'auto';
+                      document.documentElement.style.touchAction = 'auto';
+                      
+                      // Clear any stored values
+                      delete (window as any).__galleryMode;
+                      delete (window as any).__originalBodyOverflow;
+                      delete (window as any).__originalBodyTouchAction;
+                      delete (window as any).__originalHtmlOverflow;
+                      delete (window as any).__originalHtmlTouchAction;
+                      
+                      console.log('✅ Forced CSS scroll restoration');
+                    }
+                    console.log('🚨 Nuclear reset completed');
+                  }}
+                  className="text-yellow-400 hover:text-yellow-300 text-xs px-2 py-1 border border-yellow-400 rounded"
+                  title="Force restore scrolling (nuclear option)"
+                >
+                  🚨 RESET
+                </button>
+                <button
+                  onClick={() => {
+                    console.log('🧪 Testing scroll restoration...');
+                    
+                    // Test 1: Programmatic scrolling (this always works)
+                    const currentScroll = window.scrollY;
+                    window.scrollTo(0, currentScroll + 100);
+                    
+                    // Test 2: Check if event listeners are blocking
+                    const testEvent = new WheelEvent('wheel', { deltaY: 100 });
+                    let wasBlocked = false;
+                    
+                    const testListener = (e: Event) => {
+                      if (e.defaultPrevented) {
+                        wasBlocked = true;
+                        console.log('❌ Event is being blocked by another listener');
+                      }
+                    };
+                    
+                    window.addEventListener('wheel', testListener, { once: true });
+                    window.dispatchEvent(testEvent);
+                    
+                    setTimeout(() => {
+                      if (wasBlocked) {
+                        console.log('❌ Scroll test FAILED - events are being blocked');
+                        alert('❌ Scroll test FAILED - events are being blocked\n\nCheck console for details');
+                      } else {
+                        console.log('✅ Scroll test PASSED - no event blocking detected');
+                        alert('✅ Scroll test PASSED - no event blocking detected\n\nTry scrolling with mouse wheel or touch');
+                      }
+                      window.removeEventListener('wheel', testListener);
+                    }, 50);
+                  }}
+                  className="text-green-400 hover:text-green-300 text-xs px-2 py-1 border border-green-400 rounded"
+                  title="Test if scrolling is working"
+                >
+                  🧪 TEST
+                </button>
+                <button
+                  onClick={() => setShowDebug(false)}
+                  className="text-gray-400 hover:text-white text-lg"
+                >
+                  ×
+                </button>
+              </div>
             </div>
           </div>
 
@@ -3775,22 +3839,22 @@ export default function ScrollScene({
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Wheel Listener:</span>
-                  <span className={(window as any).__wheelListener ? 'text-red-400' : 'text-green-400'}>
-                    {(window as any).__wheelListener ? '🚫 ACTIVE' : '✅ NONE'}
+                  <span>CSS Blocking:</span>
+                  <span className={
+                    document.body.style.overflow === 'hidden' || 
+                    document.body.style.touchAction === 'none' ? 'text-red-400' : 'text-green-400'
+                  }>
+                    {document.body.style.overflow === 'hidden' || 
+                     document.body.style.touchAction === 'none' ? '🚫 ACTIVE' : '✅ NONE'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Touch Listener:</span>
-                  <span className={(window as any).__touchmoveListener ? 'text-red-400' : 'text-green-400'}>
-                    {(window as any).__touchmoveListener ? '🚫 ACTIVE' : '✅ NONE'}
-                  </span>
+                  <span>Body Overflow:</span>
+                  <span className="text-blue-400">{document.body.style.overflow || 'auto'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Key Listener:</span>
-                  <span className={(window as any).__keydownListener ? 'text-red-400' : 'text-green-400'}>
-                    {(window as any).__keydownListener ? '🚫 ACTIVE' : '✅ NONE'}
-                  </span>
+                  <span>Body Touch-Action:</span>
+                  <span className="text-blue-400">{document.body.style.touchAction || 'auto'}</span>
                 </div>
               </div>
             </div>
@@ -3843,6 +3907,18 @@ export default function ScrollScene({
                 <div className="flex justify-between">
                   <span>Max Touch Points:</span>
                   <span className="text-blue-400">{typeof navigator !== 'undefined' ? navigator.maxTouchPoints : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Touch Action:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? document.body.style.touchAction || 'auto' : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Body Overflow:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? document.body.style.overflow || 'auto' : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Pointer Events:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? document.body.style.pointerEvents || 'auto' : 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Screen Size:</span>
@@ -4039,27 +4115,27 @@ export default function ScrollScene({
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between">
                   <span>Touch Start:</span>
-                  <span className="text-blue-400">{(window as any).__touchStartCount || 0}</span>
+                  <span className="text-blue-400">{eventCounts.touchstart}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Touch Move:</span>
-                  <span className="text-blue-400">{(window as any).__touchMoveCount || 0}</span>
+                  <span className="text-blue-400">{eventCounts.touchmove}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Touch End:</span>
-                  <span className="text-blue-400">{(window as any).__touchEndCount || 0}</span>
+                  <span className="text-blue-400">{eventCounts.touchend}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Wheel Events:</span>
-                  <span className="text-blue-400">{(window as any).__wheelCount || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Scroll Events:</span>
-                  <span className="text-blue-400">{(window as any).__scrollCount || 0}</span>
+                  <span className="text-blue-400">{eventCounts.wheel}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Click Events:</span>
-                  <span className="text-blue-400">{(window as any).__clickCount || 0}</span>
+                  <span className="text-blue-400">{eventCounts.click}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Key Events:</span>
+                  <span className="text-blue-400">{eventCounts.keydown}</span>
                 </div>
               </div>
             </div>
