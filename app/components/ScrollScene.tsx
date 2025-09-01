@@ -265,25 +265,66 @@ export default function ScrollScene({
   useEffect(() => {
     if (!showDebug) return;
 
+    // Initialize counters
+    (window as any).__touchStartCount = 0;
+    (window as any).__touchMoveCount = 0;
+    (window as any).__touchEndCount = 0;
+    (window as any).__wheelCount = 0;
+    (window as any).__scrollCount = 0;
+    (window as any).__clickCount = 0;
+
     const trackEvent = (eventType: string) => {
       (window as any).__lastEventTime = Date.now();
       (window as any).__lastEventType = eventType;
     };
 
-    const wheelHandler = () => trackEvent('wheel');
-    const touchHandler = () => trackEvent('touch');
-    const clickHandler = () => trackEvent('click');
+    const wheelHandler = () => {
+      trackEvent('wheel');
+      (window as any).__wheelCount = ((window as any).__wheelCount || 0) + 1;
+    };
+
+    const touchStartHandler = () => {
+      trackEvent('touchstart');
+      (window as any).__touchStartCount = ((window as any).__touchStartCount || 0) + 1;
+    };
+
+    const touchMoveHandler = () => {
+      trackEvent('touchmove');
+      (window as any).__touchMoveCount = ((window as any).__touchMoveCount || 0) + 1;
+    };
+
+    const touchEndHandler = () => {
+      trackEvent('touchend');
+      (window as any).__touchEndCount = ((window as any).__touchEndCount || 0) + 1;
+    };
+
+    const scrollHandler = () => {
+      trackEvent('scroll');
+      (window as any).__scrollCount = ((window as any).__scrollCount || 0) + 1;
+    };
+
+    const clickHandler = () => {
+      trackEvent('click');
+      (window as any).__clickCount = ((window as any).__clickCount || 0) + 1;
+    };
+
     const keyHandler = () => trackEvent('keydown');
 
     // Add event listeners for tracking
     window.addEventListener('wheel', wheelHandler, { passive: true });
-    window.addEventListener('touchstart', touchHandler, { passive: true });
+    window.addEventListener('touchstart', touchStartHandler, { passive: true });
+    window.addEventListener('touchmove', touchMoveHandler, { passive: true });
+    window.addEventListener('touchend', touchEndHandler, { passive: true });
+    window.addEventListener('scroll', scrollHandler, { passive: true });
     window.addEventListener('click', clickHandler, { passive: true });
     window.addEventListener('keydown', keyHandler, { passive: true });
 
     return () => {
       window.removeEventListener('wheel', wheelHandler);
-      window.removeEventListener('touchstart', touchHandler);
+      window.removeEventListener('touchstart', touchStartHandler);
+      window.removeEventListener('touchmove', touchMoveHandler);
+      window.removeEventListener('touchend', touchEndHandler);
+      window.removeEventListener('scroll', scrollHandler);
       window.removeEventListener('click', clickHandler);
       window.removeEventListener('keydown', keyHandler);
     };
@@ -3375,7 +3416,7 @@ export default function ScrollScene({
       </div>
       
       {/* Debug Display - Only visible when showDebug is true AND focused on hotspot */}
-      {showDebug && isFocusedOnHotspot && (
+      {showDebug && (
       <div style={{
         position: "fixed",
         top: "20px",
@@ -3413,104 +3454,120 @@ export default function ScrollScene({
       )}
 
 
-      {/* Blue Position Panel - Only visible when showDebug is true AND focused on hotspot */}
-      {showDebug && isFocusedOnHotspot && (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-blue-900/90 text-white p-4 rounded-lg text-sm font-mono z-50 min-w-80">
-          <div className="mb-2 font-bold text-blue-200">🎯 Focused Area Panel</div>
-          <div className="mb-2">
-            <span className="text-green-400">Start Position (Current Camera):</span> {(() => {
-              const start = cameraRef.current?.position || new THREE.Vector3();
-              return `${start.x.toFixed(2)}, ${start.y.toFixed(2)}, ${start.z.toFixed(2)}`;
-            })()}
-    </div>
-          <div className="mb-2">
-            <span className="text-red-400">Last Hotspot Position:</span> {(() => {
-              const lastHotspot = cameraStateRef.current.lastHotspotPosition;
-              return lastHotspot ? `${lastHotspot.x.toFixed(2)}, ${lastHotspot.y.toFixed(2)}, ${lastHotspot.z.toFixed(2)}` : 'N/A';
-            })()}
-          </div>
-          <div className="mb-2">
-            <span className="text-yellow-400">Saved Spline Progress:</span> {(() => {
-              const progress = cameraStateRef.current.savedSplineProgress;
-              return progress !== undefined ? `${(progress * 100).toFixed(3)}%` : 'N/A';
-            })()}
-          </div>
-          <div className="mb-2">
-            <span className="text-blue-400">Exact Spline Position:</span> {(() => {
-              const exact = cameraStateRef.current.exactSplinePosition;
-              return exact ? `${exact.x.toFixed(2)}, ${exact.y.toFixed(2)}, ${exact.z.toFixed(2)}` : 'N/A';
-            })()}
-          </div>
-          <div className="mb-2">
-            <span className="text-indigo-400">Saved LookAt Target:</span> {(() => {
-              const lookAt = cameraStateRef.current.savedLookAtTarget;
-              if (!lookAt) return 'N/A';
+      {/* Blue Position Panel - Draggable Container */}
+      {showDebug && (
+        <div 
+          ref={(el) => {
+            if (el) {
+              el.style.position = 'fixed';
+              el.style.zIndex = '55';
+              el.style.backgroundColor = 'rgba(30, 58, 138, 0.9)';
+              el.style.color = 'white';
+              el.style.borderRadius = '8px';
+              el.style.fontSize = '12px';
+              el.style.fontFamily = 'monospace';
+              el.style.border = '2px solid #3b82f6';
+              el.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+              el.style.backdropFilter = 'blur(10px)';
+              el.style.width = '350px';
+              el.style.top = '10vh';
+              el.style.left = '20px';
+              el.style.cursor = 'move';
+              el.style.userSelect = 'none';
+            }
+          }}
+          onMouseDown={(e) => {
+            const target = e.target as HTMLElement;
+            if (target.classList.contains('position-header') || target === e.currentTarget) {
+              e.preventDefault();
+              const element = e.currentTarget as HTMLElement;
+              const startX = e.clientX - element.offsetLeft;
+              const startY = e.clientY - element.offsetTop;
               
-              const cameraPos = cameraRef.current?.position;
-              if (cameraPos) {
-                const distance = lookAt.distanceTo(cameraPos);
-                return `${lookAt.x.toFixed(2)}, ${lookAt.y.toFixed(2)}, ${lookAt.z.toFixed(2)} (${distance.toFixed(2)}m away)`;
-              }
-              return `${lookAt.x.toFixed(2)}, ${lookAt.y.toFixed(2)}, ${lookAt.z.toFixed(2)}`;
-            })()}
+              const onMouseMove = (e: MouseEvent) => {
+                e.preventDefault();
+                const newLeft = Math.max(0, Math.min(window.innerWidth - element.offsetWidth, e.clientX - startX));
+                const newTop = Math.max(0, Math.min(window.innerHeight - element.offsetHeight, e.clientY - startY));
+                element.style.left = newLeft + 'px';
+                element.style.top = newTop + 'px';
+              };
+              
+              const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+              };
+              
+              document.addEventListener('mousemove', onMouseMove);
+              document.addEventListener('mouseup', onMouseUp);
+            }
+          }}
+        >
+          {/* Header */}
+          <div className="position-header p-3 border-b border-blue-600 bg-blue-800/50 rounded-t-lg">
+            <div className="font-bold text-sm text-blue-200 flex items-center justify-between">
+              <span className="flex items-center">
+                <span className="mr-2">🎯</span>
+                Position Panel
+              </span>
+            </div>
           </div>
-          <div className="mb-2">
-            <span className="text-purple-400">Journey Start (Main Path):</span> {(() => {
-              const journey = cameraStateRef.current.journeyStartPosition;
-              return `${journey.x.toFixed(2)}, ${journey.y.toFixed(2)}, ${journey.z.toFixed(2)}`;
-            })()}
-          </div>
-          <div className="mb-2">
-            <span className="text-cyan-400">State:</span> {cameraStateRef.current.isOnMainPath ? '🛣️ Main Path' : '🎯 Branch Path'}
-          </div>
-          <div className="mb-2">
-            <span className="text-orange-400">Animation Status:</span> {isAnimatingRef.current ? '🎬 Animating' : '⏸️ Idle'}
+
+          {/* Content */}
+          <div className="p-3">
+            <div className="mb-2">
+              <span className="text-green-400">Start Position (Current Camera):</span> {(() => {
+                const start = cameraRef.current?.position || new THREE.Vector3();
+                return `${start.x.toFixed(2)}, ${start.y.toFixed(2)}, ${start.z.toFixed(2)}`;
+              })()}
+            </div>
+            <div className="mb-2">
+              <span className="text-red-400">Last Hotspot Position:</span> {(() => {
+                const lastHotspot = cameraStateRef.current.lastHotspotPosition;
+                return lastHotspot ? `${lastHotspot.x.toFixed(2)}, ${lastHotspot.y.toFixed(2)}, ${lastHotspot.z.toFixed(2)}` : 'N/A';
+              })()}
+            </div>
+            <div className="mb-2">
+              <span className="text-yellow-400">Saved Spline Progress:</span> {(() => {
+                const progress = cameraStateRef.current.savedSplineProgress;
+                return progress !== undefined ? `${(progress * 100).toFixed(3)}%` : 'N/A';
+              })()}
+            </div>
+            <div className="mb-2">
+              <span className="text-blue-400">Exact Spline Position:</span> {(() => {
+                const exact = cameraStateRef.current.exactSplinePosition;
+                return exact ? `${exact.x.toFixed(2)}, ${exact.y.toFixed(2)}, ${exact.z.toFixed(2)}` : 'N/A';
+              })()}
+            </div>
+            <div className="mb-2">
+              <span className="text-indigo-400">Saved LookAt Target:</span> {(() => {
+                const lookAt = cameraStateRef.current.savedLookAtTarget;
+                if (!lookAt) return 'N/A';
+                
+                const cameraPos = cameraRef.current?.position;
+                if (cameraPos) {
+                  const distance = lookAt.distanceTo(cameraPos);
+                  return `${lookAt.x.toFixed(2)}, ${lookAt.y.toFixed(2)}, ${lookAt.z.toFixed(2)} (${distance.toFixed(2)}m away)`;
+                }
+                return `${lookAt.x.toFixed(2)}, ${lookAt.y.toFixed(2)}, ${lookAt.z.toFixed(2)}`;
+              })()}
+            </div>
+            <div className="mb-2">
+              <span className="text-purple-400">Journey Start (Main Path):</span> {(() => {
+                const journey = cameraStateRef.current.journeyStartPosition;
+                return `${journey.x.toFixed(2)}, ${journey.y.toFixed(2)}, ${journey.z.toFixed(2)}`;
+              })()}
+            </div>
+            <div className="mb-2">
+              <span className="text-cyan-400">State:</span> {cameraStateRef.current.isOnMainPath ? '🛣️ Main Path' : '🎯 Branch Path'}
+            </div>
+            <div className="mb-2">
+              <span className="text-orange-400">Animation Status:</span> {isAnimatingRef.current ? '🎬 Animating' : '⏸️ Idle'}
+            </div>
           </div>
         </div>
       )}
       
-      {showDebug && debugInfo && (
-        <div
-          style={{
-            position: "fixed",
-            top: "40px",
-            right: "40px",
-            background: "rgba(0,0,0,0.9)",
-            color: "white",
-            padding: "12px",
-            borderRadius: "6px",
-            zIndex: 2,
-            fontSize: "12px",
-            lineHeight: "1.4",
-            fontFamily: "monospace",
-            minWidth: "200px",
-            border: "1px solid rgba(255,255,255,0.2)"
-          }}
-        >
-          <div><strong>Camera Position:</strong></div>
-          <div>X: {Array.isArray((debugInfo as any)?.cameraPos) ? (debugInfo as any).cameraPos[0].toFixed(2) : 'N/A'}</div>
-          <div>Y: {Array.isArray((debugInfo as any)?.cameraPos) ? (debugInfo as any).cameraPos[1].toFixed(2) : 'N/A'}</div>
-          <div>Z: {Array.isArray((debugInfo as any)?.cameraPos) ? (debugInfo as any).cameraPos[2].toFixed(2) : 'N/A'}</div>
-          <div style={{marginTop: "8px"}}><strong>Scroll Info:</strong></div>
-          <div>Top: {debugInfo.scrollTop}px</div>
-          <div>Height: {debugInfo.scrollHeight}px</div>
-          <div>Progress: {typeof (debugInfo as any)?.progressPercent === 'number' ? (debugInfo as any).progressPercent.toFixed(2) + '%' : 'N/A'}</div>
-          <div style={{marginTop: "8px"}}><strong>Window:</strong></div>
-          <div>Width: {debugInfo.windowWidth}px</div>
-          <div>Height: {debugInfo.windowHeight}px</div>
-          <div style={{marginTop: "8px"}}><strong>Current Section:</strong></div>
-          <div>{debugInfo.currentSection}</div>
-          <div style={{marginTop: "8px"}}><strong>Scene Stage:</strong></div>
-          <div>{sceneStage}</div>
-          <div style={{marginTop: "8px"}}><strong>Intro Status:</strong></div>
-          <div>Completed: {introCompletedRef.current ? 'Yes' : 'No'}</div>
-          <div>With Intro: {WITH_INTRO ? 'Yes' : 'No'}</div>
-          <div style={{marginTop: "8px"}}><strong>Loader Info:</strong></div>
-          <div>Percent: {typeof (debugInfo as any)?.loaderPercent === 'number' ? `${(debugInfo as any).loaderPercent.toFixed(0)}%` : 'N/A'}</div>
-          <div>Loaded: {typeof (debugInfo as any)?.loaderLoadedMB === 'number' ? `${(debugInfo as any).loaderLoadedMB.toFixed(2)} MB` : 'N/A'}</div>
-          <div>Total: {typeof (debugInfo as any)?.loaderTotalMB === 'number' ? `${(debugInfo as any).loaderTotalMB.toFixed(2)} MB` : 'N/A'}</div>
-        </div>
-      )}
+
 
       {/* Debug Toggle Checkbox */}
       <div 
@@ -3520,180 +3577,487 @@ export default function ScrollScene({
           backdropFilter: 'blur(10px)'
         }}
       >
-        <label className="flex items-center space-x-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={showDebug}
-            onChange={(e) => setShowDebug(e.target.checked)}
-            className="w-3 h-3 text-red-400 bg-gray-700 border-gray-600 rounded focus:ring-red-500 focus:ring-2"
-          />
-          <span className="text-red-400">🐭 Debug</span>
-        </label>
+        <div className="space-y-2">
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showDebug}
+              onChange={(e) => setShowDebug(e.target.checked)}
+              className="w-3 h-3 text-red-400 bg-gray-700 border-gray-600 rounded focus:ring-red-500 focus:ring-2"
+            />
+            <span className="text-red-400">🐭 Debug Panel</span>
+          </label>
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showDebug}
+              onChange={(e) => setShowDebug(e.target.checked)}
+              className="w-3 h-3 text-blue-400 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+            />
+            <span className="text-blue-400">🎯 Position Panel</span>
+          </label>
+        </div>
       </div>
 
-      {/* Mouse Events Debug Panel */}
+      {/* Consolidated Debug Panel */}
       {showDebug && (
         <div 
-          className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[60] bg-black/90 text-white p-4 rounded-lg text-xs font-mono max-w-sm"
-          style={{ 
-            border: '2px solid #ff6b6b',
-            boxShadow: '0 4px 12px rgba(255, 107, 107, 0.3)',
-            backdropFilter: 'blur(10px)'
+          ref={(el) => {
+            if (el) {
+              el.style.position = 'fixed';
+              el.style.zIndex = '60';
+              el.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+              el.style.color = 'white';
+              el.style.borderRadius = '8px';
+              el.style.fontSize = '12px';
+              el.style.fontFamily = 'monospace';
+              el.style.border = '2px solid #ff6b6b';
+              el.style.boxShadow = '0 4px 12px rgba(255, 107, 107, 0.3)';
+              el.style.backdropFilter = 'blur(10px)';
+              el.style.width = '400px';
+              el.style.height = '50vh';
+              el.style.top = '25vh';
+              el.style.left = 'calc(100vw - 420px)';
+              el.style.cursor = 'move';
+              el.style.userSelect = 'none';
+            }
+          }}
+          onMouseDown={(e) => {
+            const target = e.target as HTMLElement;
+            if (target.classList.contains('debug-header') || target === e.currentTarget) {
+              e.preventDefault();
+              const element = e.currentTarget as HTMLElement;
+              const startX = e.clientX - element.offsetLeft;
+              const startY = e.clientY - element.offsetTop;
+              
+              const onMouseMove = (e: MouseEvent) => {
+                e.preventDefault();
+                const newLeft = Math.max(0, Math.min(window.innerWidth - element.offsetWidth, e.clientX - startX));
+                const newTop = Math.max(0, Math.min(window.innerHeight - element.offsetHeight, e.clientY - startY));
+                element.style.left = newLeft + 'px';
+                element.style.top = newTop + 'px';
+              };
+              
+              const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+              };
+              
+              document.addEventListener('mousemove', onMouseMove);
+              document.addEventListener('mouseup', onMouseUp);
+            }
           }}
         >
-          <div className="font-bold text-sm mb-3 text-red-400 flex items-center justify-between">
-            <span className="flex items-center">
-              <span className="mr-2">🐭</span>
-              Mouse Events Debug
-            </span>
-            <button
-              onClick={() => setShowDebug(false)}
-              className="text-gray-400 hover:text-white text-lg"
-            >
-              ×
-            </button>
-          </div>
-          
-          {/* Gallery Status */}
-          <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
-            <div className="font-semibold text-yellow-400 mb-1">Gallery Status:</div>
-            <div className="grid grid-cols-2 gap-1 text-xs">
-              <div>Visible: <span className={galleryVisible ? 'text-green-400' : 'text-red-400'}>{galleryVisible ? '✅ YES' : '❌ NO'}</span></div>
-              <div>Loading: <span className={galleryLoading ? 'text-yellow-400' : 'text-green-400'}>{galleryLoading ? '⏳ YES' : '✅ NO'}</span></div>
-              <div>Images: <span className="text-blue-400">{galleryImages.length}</span></div>
-              <div>Hotspot: <span className="text-purple-400 text-xs">{currentHotspot || 'None'}</span></div>
-            </div>
-          </div>
-
-          {/* Event Blocking Status */}
-          <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
-            <div className="font-semibold text-yellow-400 mb-1">Event Blocking:</div>
-            <div className="space-y-1 text-xs">
-              <div className="flex justify-between">
-                <span>Gallery Mode:</span>
-                <span className={(window as any).__galleryMode ? 'text-red-400' : 'text-green-400'}>
-                  {(window as any).__galleryMode ? '🚫 BLOCKED' : '✅ ALLOWED'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Wheel Listener:</span>
-                <span className={(window as any).__wheelListener ? 'text-red-400' : 'text-green-400'}>
-                  {(window as any).__wheelListener ? '🚫 ACTIVE' : '✅ NONE'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Touch Listener:</span>
-                <span className={(window as any).__touchmoveListener ? 'text-red-400' : 'text-green-400'}>
-                  {(window as any).__touchmoveListener ? '🚫 ACTIVE' : '✅ NONE'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Key Listener:</span>
-                <span className={(window as any).__keydownListener ? 'text-red-400' : 'text-green-400'}>
-                  {(window as any).__keydownListener ? '🚫 ACTIVE' : '✅ NONE'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Scroll Status */}
-          <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
-            <div className="font-semibold text-yellow-400 mb-1">Scroll Status:</div>
-            <div className="space-y-1 text-xs">
-              <div className="flex justify-between">
-                <span>Scroll Y:</span>
-                <span className="text-blue-400">{typeof window !== 'undefined' ? Math.round(window.scrollY) : 'N/A'}px</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Scroll Height:</span>
-                <span className="text-blue-400">{typeof document !== 'undefined' ? Math.round(document.documentElement.scrollHeight) : 'N/A'}px</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Body Overflow:</span>
-                <span className="text-blue-400">{typeof document !== 'undefined' ? document.body.style.overflow || 'auto' : 'N/A'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>HTML Overflow:</span>
-                <span className="text-blue-400">{typeof document !== 'undefined' ? document.documentElement.style.overflow || 'auto' : 'N/A'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Touch Events */}
-          <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
-            <div className="font-semibold text-yellow-400 mb-1">Touch Events:</div>
-            <div className="space-y-1 text-xs">
-              <div className="flex justify-between">
-                <span>Touch Support:</span>
-                <span className="text-blue-400">{typeof window !== 'undefined' && 'ontouchstart' in window ? '✅ YES' : '❌ NO'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Max Touch Points:</span>
-                <span className="text-blue-400">{typeof navigator !== 'undefined' ? navigator.maxTouchPoints : 'N/A'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>User Agent:</span>
-                <span className="text-blue-400 text-xs">{typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 20) + '...' : 'N/A'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Debug Spheres Legend */}
-          <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
-            <div className="font-semibold text-yellow-400 mb-1 flex justify-between items-center">
-              <span>Debug Spheres:</span>
-              <span className="text-blue-400 text-xs">
-                {sceneRef.current ? 
-                  Array.from(sceneRef.current.children).filter((child: THREE.Object3D) => 
-                    child.name === 'debug_hotspot_marker' || 
-                    child.name === 'debug_camera_marker' || 
-                    child.name === 'debug_return_from_marker' || 
-                    child.name === 'debug_return_to_marker' ||
-                    child.name === 'debug_intro_start_marker' || 
-                    child.name === 'debug_intro_end_marker'
-                  ).length : 0} active
+          {/* Header */}
+          <div className="debug-header p-3 border-b border-gray-600 bg-gray-800/50 rounded-t-lg">
+            <div className="font-bold text-sm text-red-400 flex items-center justify-between">
+              <span className="flex items-center">
+                <span className="mr-2">🐭</span>
+                Debug Panel
               </span>
-            </div>
-            <div className="space-y-1 text-xs">
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                <span>Red: Clicked Hotspot</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                <span>Blue: Camera Target</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                <span>Green: Return From</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
-                <span>Orange: Return To</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
-                <span>Purple: Intro Start</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-cyan-500 rounded-full mr-2"></div>
-                <span>Cyan: Intro End</span>
-              </div>
+              <button
+                onClick={() => setShowDebug(false)}
+                className="text-gray-400 hover:text-white text-lg"
+              >
+                ×
+              </button>
             </div>
           </div>
 
-          {/* Recent Events */}
-          <div className="p-2 bg-gray-800/50 rounded border border-gray-600">
-            <div className="font-semibold text-yellow-400 mb-1">Recent Events:</div>
-            <div className="text-xs text-gray-300">
-              {typeof (window as any).__lastEventTime !== 'undefined' ? 
-                <div>
-                  <div>Last: {(window as any).__lastEventType || 'None'}</div>
-                  <div>{Math.round((Date.now() - (window as any).__lastEventTime) / 1000)}s ago</div>
-                </div> : 
-                'No events tracked'
-              }
+          {/* Scrollable Content */}
+          <div className="p-3 overflow-y-auto" style={{ height: 'calc(50vh - 60px)' }}>
+            
+            {/* Gallery Status */}
+            <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
+              <div className="font-semibold text-yellow-400 mb-1">Gallery Status:</div>
+              <div className="grid grid-cols-2 gap-1 text-xs">
+                <div>Visible: <span className={galleryVisible ? 'text-green-400' : 'text-red-400'}>{galleryVisible ? '✅ YES' : '❌ NO'}</span></div>
+                <div>Loading: <span className={galleryLoading ? 'text-yellow-400' : 'text-green-400'}>{galleryLoading ? '⏳ YES' : '✅ NO'}</span></div>
+                <div>Images: <span className="text-blue-400">{galleryImages.length}</span></div>
+                <div>Hotspot: <span className="text-purple-400 text-xs">{currentHotspot || 'None'}</span></div>
+              </div>
             </div>
+
+            {/* Event Blocking Status */}
+            <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
+              <div className="font-semibold text-yellow-400 mb-1">Event Blocking:</div>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span>Gallery Mode:</span>
+                  <span className={(window as any).__galleryMode ? 'text-red-400' : 'text-green-400'}>
+                    {(window as any).__galleryMode ? '🚫 BLOCKED' : '✅ ALLOWED'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Wheel Listener:</span>
+                  <span className={(window as any).__wheelListener ? 'text-red-400' : 'text-green-400'}>
+                    {(window as any).__wheelListener ? '🚫 ACTIVE' : '✅ NONE'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Touch Listener:</span>
+                  <span className={(window as any).__touchmoveListener ? 'text-red-400' : 'text-green-400'}>
+                    {(window as any).__touchmoveListener ? '🚫 ACTIVE' : '✅ NONE'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Key Listener:</span>
+                  <span className={(window as any).__keydownListener ? 'text-red-400' : 'text-green-400'}>
+                    {(window as any).__keydownListener ? '🚫 ACTIVE' : '✅ NONE'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Scroll Status */}
+            <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
+              <div className="font-semibold text-yellow-400 mb-1">Scroll Status:</div>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span>Scroll Y:</span>
+                  <span className="text-blue-400">{typeof window !== 'undefined' ? Math.round(window.scrollY) : 'N/A'}px</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Scroll Height:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? Math.round(document.documentElement.scrollHeight) : 'N/A'}px</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Body Overflow:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? document.body.style.overflow || 'auto' : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>HTML Overflow:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? document.documentElement.style.overflow || 'auto' : 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile Debug */}
+            <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
+              <div className="font-semibold text-yellow-400 mb-1">Mobile Debug:</div>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span>Device Type:</span>
+                  <span className="text-blue-400">
+                    {typeof window !== 'undefined' && 'ontouchstart' in window ? '📱 Mobile' : '🖥️ Desktop'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Touch Support:</span>
+                  <span className="text-blue-400">{typeof window !== 'undefined' && 'ontouchstart' in window ? '✅ YES' : '❌ NO'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Max Touch Points:</span>
+                  <span className="text-blue-400">{typeof navigator !== 'undefined' ? navigator.maxTouchPoints : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Screen Size:</span>
+                  <span className="text-blue-400">
+                    {typeof window !== 'undefined' ? `${window.screen.width}×${window.screen.height}` : 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Viewport Size:</span>
+                  <span className="text-blue-400">
+                    {typeof window !== 'undefined' ? `${window.innerWidth}×${window.innerHeight}` : 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Pixel Ratio:</span>
+                  <span className="text-blue-400">
+                    {typeof window !== 'undefined' ? window.devicePixelRatio.toFixed(2) : 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>User Agent:</span>
+                  <span className="text-blue-400 text-xs">{typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 25) + '...' : 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Scroll Blocking Debug */}
+            <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
+              <div className="font-semibold text-yellow-400 mb-1">Scroll Blocking Debug:</div>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span>Body Overflow:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? document.body.style.overflow || 'auto' : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>HTML Overflow:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? document.documentElement.style.overflow || 'auto' : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Body Position:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? document.body.style.position || 'static' : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Body Height:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? document.body.style.height || 'auto' : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Body Top:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? document.body.style.top || '0px' : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Body Left:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? document.body.style.left || '0px' : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Body Transform:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? document.body.style.transform || 'none' : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Body Touch Action:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? document.body.style.touchAction || 'auto' : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>HTML Touch Action:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? document.documentElement.style.touchAction || 'auto' : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Body User Select:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? document.body.style.userSelect || 'auto' : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Body Pointer Events:</span>
+                  <span className="text-blue-400">{typeof document !== 'undefined' ? document.body.style.pointerEvents || 'auto' : 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Event Listener Debug */}
+            <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
+              <div className="font-semibold text-yellow-400 mb-1">Event Listener Debug:</div>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span>Wheel Events:</span>
+                  <span className="text-blue-400">
+                    {typeof (window as any).__wheelListener !== 'undefined' ? 
+                      ((window as any).__wheelListener ? '🚫 BLOCKED' : '✅ ALLOWED') : '❓ UNKNOWN'
+                    }
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Touch Move Events:</span>
+                  <span className="text-blue-400">
+                    {typeof (window as any).__touchmoveListener !== 'undefined' ? 
+                      ((window as any).__touchmoveListener ? '🚫 BLOCKED' : '✅ ALLOWED') : '❓ UNKNOWN'
+                    }
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Touch Start Events:</span>
+                  <span className="text-blue-400">
+                    {typeof (window as any).__touchstartListener !== 'undefined' ? 
+                      ((window as any).__touchstartListener ? '🚫 BLOCKED' : '✅ ALLOWED') : '❓ UNKNOWN'
+                    }
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Key Events:</span>
+                  <span className="text-blue-400">
+                    {typeof (window as any).__keydownListener !== 'undefined' ? 
+                      ((window as any).__keydownListener ? '🚫 BLOCKED' : '✅ ALLOWED') : '❓ UNKNOWN'
+                    }
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Gallery Mode:</span>
+                  <span className="text-blue-400">
+                    {typeof (window as any).__galleryMode !== 'undefined' ? 
+                      ((window as any).__galleryMode ? '🚫 ACTIVE' : '✅ INACTIVE') : '❓ UNKNOWN'
+                    }
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Scene Events:</span>
+                  <span className="text-blue-400">
+                    {typeof (window as any).__sceneEventsDisabled !== 'undefined' ? 
+                      ((window as any).__sceneEventsDisabled ? '🚫 DISABLED' : '✅ ENABLED') : '❓ UNKNOWN'
+                    }
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Debug Spheres Legend */}
+            <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
+              <div className="font-semibold text-yellow-400 mb-1 flex justify-between items-center">
+                <span>Debug Spheres:</span>
+                <span className="text-blue-400 text-xs">
+                  {sceneRef.current ? 
+                    Array.from(sceneRef.current.children).filter((child: THREE.Object3D) => 
+                      child.name === 'debug_hotspot_marker' || 
+                      child.name === 'debug_camera_marker' || 
+                      child.name === 'debug_return_from_marker' || 
+                      child.name === 'debug_return_to_marker' ||
+                      child.name === 'debug_intro_start_marker' || 
+                      child.name === 'debug_intro_end_marker'
+                    ).length : 0} active
+                </span>
+              </div>
+              <div className="space-y-1 text-xs">
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                  <span>Red: Clicked Hotspot</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                  <span>Blue: Camera Target</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                  <span>Green: Return From</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
+                  <span>Orange: Return To</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
+                  <span>Purple: Intro Start</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-cyan-500 rounded-full mr-2"></div>
+                  <span>Cyan: Intro End</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Events */}
+            <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
+              <div className="font-semibold text-yellow-400 mb-1">Recent Events:</div>
+              <div className="text-xs text-gray-300">
+                {typeof (window as any).__lastEventTime !== 'undefined' ? 
+                  <div>
+                    <div>Last: {(window as any).__lastEventType || 'None'}</div>
+                    <div>{Math.round((Date.now() - (window as any).__lastEventTime) / 1000)}s ago</div>
+                  </div> : 
+                  'No events tracked'
+                }
+              </div>
+            </div>
+
+            {/* Touch Event Counter */}
+            <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
+              <div className="font-semibold text-yellow-400 mb-1">Touch Event Counter:</div>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span>Touch Start:</span>
+                  <span className="text-blue-400">{(window as any).__touchStartCount || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Touch Move:</span>
+                  <span className="text-blue-400">{(window as any).__touchMoveCount || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Touch End:</span>
+                  <span className="text-blue-400">{(window as any).__touchEndCount || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Wheel Events:</span>
+                  <span className="text-blue-400">{(window as any).__wheelCount || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Scroll Events:</span>
+                  <span className="text-blue-400">{(window as any).__scrollCount || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Click Events:</span>
+                  <span className="text-blue-400">{(window as any).__clickCount || 0}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Camera Info */}
+            {debugInfo && (
+              <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
+                <div className="font-semibold text-yellow-400 mb-1">Camera Info:</div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span>Position:</span>
+                    <span className="text-blue-400">
+                      {debugInfo.cameraPos ? 
+                        `${debugInfo.cameraPos[0].toFixed(1)}, ${debugInfo.cameraPos[1].toFixed(1)}, ${debugInfo.cameraPos[2].toFixed(1)}` : 
+                        'N/A'
+                      }
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Window Size:</span>
+                    <span className="text-blue-400">{debugInfo.windowWidth}×{debugInfo.windowHeight}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Current Section:</span>
+                    <span className="text-blue-400">{debugInfo.currentSection}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Scene Stage:</span>
+                    <span className="text-blue-400">{sceneStage}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Scroll Info */}
+            {debugInfo && (
+              <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
+                <div className="font-semibold text-yellow-400 mb-1">Scroll Info:</div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span>Scroll Top:</span>
+                    <span className="text-blue-400">{debugInfo.scrollTop}px</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Scroll Height:</span>
+                    <span className="text-blue-400">{debugInfo.scrollHeight}px</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Progress:</span>
+                    <span className="text-blue-400">
+                      {typeof (debugInfo as any)?.progressPercent === 'number' ? 
+                        `${(debugInfo as any).progressPercent.toFixed(2)}%` : 'N/A'
+                      }
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Loader Info */}
+            {debugInfo && (
+              <div className="p-2 bg-gray-800/50 rounded border border-gray-600">
+                <div className="font-semibold text-yellow-400 mb-1">Loader Info:</div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span>Progress:</span>
+                    <span className="text-blue-400">
+                      {typeof (debugInfo as any)?.loaderPercent === 'number' ? 
+                        `${(debugInfo as any).loaderPercent.toFixed(0)}%` : 'N/A'
+                      }
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Loaded:</span>
+                    <span className="text-blue-400">
+                      {typeof (debugInfo as any)?.loaderLoadedMB === 'number' ? 
+                        `${(debugInfo as any).loaderLoadedMB.toFixed(2)} MB` : 'N/A'
+                      }
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total:</span>
+                    <span className="text-blue-400">
+                      {typeof (debugInfo as any)?.loaderTotalMB === 'number' ? 
+                        `${(debugInfo as any).loaderTotalMB.toFixed(2)} MB` : 'N/A'
+                      }
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       )}
