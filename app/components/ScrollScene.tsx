@@ -379,27 +379,34 @@ export default function ScrollScene({
       const category = hotspotName.replace('Hotspot_geo_', '');
       
       // Try API first, then fallback to static data
-      console.log('🖼️ Calling API:', `/api/gallery/${category}`);
-      const response = await fetch(`/api/gallery/${category}`);
-      
+      const requestUrl = typeof window !== 'undefined'
+        ? `${window.location.origin}/api/gallery/${category}`
+        : `/api/gallery/${category}`;
+      const response = await fetch(requestUrl, {
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store',
+      });
+      console.log('🖼️ API requestUrl:', requestUrl);
       console.log('🖼️ API response status:', response.status);
       console.log('🖼️ API response ok:', response.ok);
-      
+
       if (response.ok) {
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          const text = await response.text();
+          throw new Error(`Invalid content-type: ${contentType}. Body starts with: ${text.slice(0, 200)}`);
+        }
         const images = await response.json();
-        console.log('🖼️ Loaded images from API:', images.length);
         setGalleryImages(images);
       } else {
-        console.log('🖼️ API failed, using placeholder images for:', hotspotName);
-        console.log('🖼️ Response status:', response.status);
-        console.log('🖼️ Response status text:', response.statusText);
+        const errorText = await response.text().catch(() => '');
+        alert(`Gallery API failed (${response.status} ${response.statusText}).\nURL: ${requestUrl}\n${errorText.slice(0, 200)}`);
         // Fallback to placeholder images
         const placeholderImages = getPlaceholderImages(hotspotName);
         setGalleryImages(placeholderImages);
       }
     } catch (error) {
-      console.log('🖼️ API error, using placeholder images for:', hotspotName);
-      console.log('🖼️ Error:', error);
+      alert(`Gallery API error: ${error instanceof Error ? error.message : String(error)}\nURL: ${typeof window !== 'undefined' ? `${window.location.origin}/api/gallery/${hotspotName.replace('Hotspot_geo_', '')}` : '/api/gallery'}`);
       // Use placeholder images if API fails
       const placeholderImages = getPlaceholderImages(hotspotName);
       setGalleryImages(placeholderImages);
@@ -3738,8 +3745,8 @@ export default function ScrollScene({
                 <div>Loading: <span className={galleryLoading ? 'text-yellow-400' : 'text-green-400'}>{galleryLoading ? '⏳ YES' : '✅ NO'}</span></div>
                 <div>Images: <span className="text-blue-400">{galleryImages.length}</span></div>
                 <div>Hotspot: <span className="text-purple-400 text-xs">{currentHotspot || 'None'}</span></div>
-              </div>
-            </div>
+      </div>
+    </div>
 
             {/* Event Blocking Status */}
             <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
