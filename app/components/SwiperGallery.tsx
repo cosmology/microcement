@@ -111,11 +111,23 @@ const SwiperModal: React.FC<SwiperModalProps> = ({ images, onClose, initialSlide
     };
 
     document.addEventListener('keydown', handleEsc);
+    
+    // Store the original body overflow value before hiding it
+    const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    
+    // Store the original value for restoration
+    (window as any).__originalBodyOverflow = originalOverflow;
 
     return () => {
       document.removeEventListener('keydown', handleEsc);
-      document.body.style.overflow = 'unset';
+      
+      // Restore the original body overflow value
+      const originalValue = (window as any).__originalBodyOverflow || 'auto';
+      document.body.style.overflow = originalValue;
+      
+      // Clean up the stored value
+      delete (window as any).__originalBodyOverflow;
     };
   }, [onClose]);
 
