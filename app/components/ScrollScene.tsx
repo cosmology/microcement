@@ -29,6 +29,7 @@ export default function ScrollScene({
   const WITH_ORBITAL = false; // Toggle to enable orbital animation
   const SHOW_CUBE = false; // Toggle to show/hide the green debug cube
   const [showDebug, setShowDebug] = useState(true); // Toggle to show/hide debug panel
+  const [showPosition, setShowPosition] = useState(true); // Toggle to show/hide position panel
   // Optional debug visuals for the camera path
   const SHOW_CAMERA_PATH = false;
   const SHOW_WAYPOINTS = false;
@@ -3455,39 +3456,37 @@ export default function ScrollScene({
 
 
       {/* Blue Position Panel - Draggable Container */}
-      {showDebug && (
+      {showPosition && (
         <div 
-          ref={(el) => {
-            if (el) {
-              el.style.position = 'fixed';
-              el.style.zIndex = '55';
-              el.style.backgroundColor = 'rgba(30, 58, 138, 0.9)';
-              el.style.color = 'white';
-              el.style.borderRadius = '8px';
-              el.style.fontSize = '12px';
-              el.style.fontFamily = 'monospace';
-              el.style.border = '2px solid #3b82f6';
-              el.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
-              el.style.backdropFilter = 'blur(10px)';
-              el.style.width = '350px';
-              el.style.top = '10vh';
-              el.style.left = '20px';
-              el.style.cursor = 'move';
-              el.style.userSelect = 'none';
-            }
+          className="fixed z-[55] bg-blue-900/90 text-white rounded-lg text-xs font-mono"
+          style={{ 
+            border: '2px solid #3b82f6',
+            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+            backdropFilter: 'blur(10px)',
+            width: '350px',
+            top: '10vh',
+            left: '20px',
+            cursor: 'move',
+            userSelect: 'none'
           }}
           onMouseDown={(e) => {
             const target = e.target as HTMLElement;
             if (target.classList.contains('position-header') || target === e.currentTarget) {
               e.preventDefault();
+              e.stopPropagation();
+              
               const element = e.currentTarget as HTMLElement;
-              const startX = e.clientX - element.offsetLeft;
-              const startY = e.clientY - element.offsetTop;
+              const rect = element.getBoundingClientRect();
+              const startX = e.clientX - rect.left;
+              const startY = e.clientY - rect.top;
               
               const onMouseMove = (e: MouseEvent) => {
                 e.preventDefault();
-                const newLeft = Math.max(0, Math.min(window.innerWidth - element.offsetWidth, e.clientX - startX));
-                const newTop = Math.max(0, Math.min(window.innerHeight - element.offsetHeight, e.clientY - startY));
+                e.stopPropagation();
+                
+                const newLeft = Math.max(0, Math.min(window.innerWidth - rect.width, e.clientX - startX));
+                const newTop = Math.max(0, Math.min(window.innerHeight - rect.height, e.clientY - startY));
+                
                 element.style.left = newLeft + 'px';
                 element.style.top = newTop + 'px';
               };
@@ -3499,6 +3498,39 @@ export default function ScrollScene({
               
               document.addEventListener('mousemove', onMouseMove);
               document.addEventListener('mouseup', onMouseUp);
+            }
+          }}
+          onTouchStart={(e) => {
+            const target = e.target as HTMLElement;
+            if (target.classList.contains('position-header') || target === e.currentTarget) {
+              e.preventDefault();
+              e.stopPropagation();
+              
+              const element = e.currentTarget as HTMLElement;
+              const rect = element.getBoundingClientRect();
+              const touch = e.touches[0];
+              const startX = touch.clientX - rect.left;
+              const startY = touch.clientY - rect.top;
+              
+              const onTouchMove = (e: TouchEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const touch = e.touches[0];
+                const newLeft = Math.max(0, Math.min(window.innerWidth - rect.width, touch.clientX - startX));
+                const newTop = Math.max(0, Math.min(window.innerHeight - rect.height, touch.clientY - startY));
+                
+                element.style.left = newLeft + 'px';
+                element.style.top = newTop + 'px';
+              };
+              
+              const onTouchEnd = () => {
+                document.removeEventListener('touchmove', onTouchMove);
+                document.removeEventListener('touchend', onTouchEnd);
+              };
+              
+              document.addEventListener('touchmove', onTouchMove);
+              document.addEventListener('touchend', onTouchEnd);
             }
           }}
         >
@@ -3590,8 +3622,8 @@ export default function ScrollScene({
           <label className="flex items-center space-x-2 cursor-pointer">
             <input
               type="checkbox"
-              checked={showDebug}
-              onChange={(e) => setShowDebug(e.target.checked)}
+              checked={showPosition}
+              onChange={(e) => setShowPosition(e.target.checked)}
               className="w-3 h-3 text-blue-400 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
             />
             <span className="text-blue-400">🎯 Position Panel</span>
@@ -3602,38 +3634,36 @@ export default function ScrollScene({
       {/* Consolidated Debug Panel */}
       {showDebug && (
         <div 
-          ref={(el) => {
-            if (el) {
-              el.style.position = 'fixed';
-              el.style.zIndex = '60';
-              el.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
-              el.style.color = 'white';
-              el.style.borderRadius = '8px';
-              el.style.fontSize = '12px';
-              el.style.fontFamily = 'monospace';
-              el.style.border = '2px solid #ff6b6b';
-              el.style.boxShadow = '0 4px 12px rgba(255, 107, 107, 0.3)';
-              el.style.backdropFilter = 'blur(10px)';
-              el.style.width = '400px';
-              el.style.height = '50vh';
-              el.style.top = '25vh';
-              el.style.left = 'calc(100vw - 420px)';
-              el.style.cursor = 'move';
-              el.style.userSelect = 'none';
-            }
+          className="fixed z-[60] bg-black/90 text-white rounded-lg text-xs font-mono"
+          style={{ 
+            border: '2px solid #ff6b6b',
+            boxShadow: '0 4px 12px rgba(255, 107, 107, 0.3)',
+            backdropFilter: 'blur(10px)',
+            width: '400px',
+            height: '50vh',
+            top: '25vh',
+            left: 'calc(100vw - 420px)',
+            cursor: 'move',
+            userSelect: 'none'
           }}
           onMouseDown={(e) => {
             const target = e.target as HTMLElement;
             if (target.classList.contains('debug-header') || target === e.currentTarget) {
               e.preventDefault();
+              e.stopPropagation();
+              
               const element = e.currentTarget as HTMLElement;
-              const startX = e.clientX - element.offsetLeft;
-              const startY = e.clientY - element.offsetTop;
+              const rect = element.getBoundingClientRect();
+              const startX = e.clientX - rect.left;
+              const startY = e.clientY - rect.top;
               
               const onMouseMove = (e: MouseEvent) => {
                 e.preventDefault();
-                const newLeft = Math.max(0, Math.min(window.innerWidth - element.offsetWidth, e.clientX - startX));
-                const newTop = Math.max(0, Math.min(window.innerHeight - element.offsetHeight, e.clientY - startY));
+                e.stopPropagation();
+                
+                const newLeft = Math.max(0, Math.min(window.innerWidth - rect.width, e.clientX - startX));
+                const newTop = Math.max(0, Math.min(window.innerHeight - rect.height, e.clientY - startY));
+                
                 element.style.left = newLeft + 'px';
                 element.style.top = newTop + 'px';
               };
@@ -3645,6 +3675,39 @@ export default function ScrollScene({
               
               document.addEventListener('mousemove', onMouseMove);
               document.addEventListener('mouseup', onMouseUp);
+            }
+          }}
+          onTouchStart={(e) => {
+            const target = e.target as HTMLElement;
+            if (target.classList.contains('debug-header') || target === e.currentTarget) {
+              e.preventDefault();
+              e.stopPropagation();
+              
+              const element = e.currentTarget as HTMLElement;
+              const rect = element.getBoundingClientRect();
+              const touch = e.touches[0];
+              const startX = touch.clientX - rect.left;
+              const startY = touch.clientY - rect.top;
+              
+              const onTouchMove = (e: TouchEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const touch = e.touches[0];
+                const newLeft = Math.max(0, Math.min(window.innerWidth - rect.width, touch.clientX - startX));
+                const newTop = Math.max(0, Math.min(window.innerHeight - rect.height, touch.clientY - startY));
+                
+                element.style.left = newLeft + 'px';
+                element.style.top = newTop + 'px';
+              };
+              
+              const onTouchEnd = () => {
+                document.removeEventListener('touchmove', onTouchMove);
+                document.removeEventListener('touchend', onTouchEnd);
+              };
+              
+              document.addEventListener('touchmove', onTouchMove);
+              document.addEventListener('touchend', onTouchEnd);
             }
           }}
         >
@@ -4024,6 +4087,47 @@ export default function ScrollScene({
                 </div>
               </div>
             )}
+
+            {/* API Test */}
+            <div className="mb-3 p-2 bg-gray-800/50 rounded border border-gray-600">
+              <div className="font-semibold text-yellow-400 mb-1">API Test:</div>
+              <div className="space-y-1 text-xs">
+                <button
+                  onClick={async () => {
+                    try {
+                      console.log('🧪 Testing API...');
+                      const response = await fetch('/api/test');
+                      const data = await response.json();
+                      console.log('🧪 Test API response:', data);
+                      alert(`API Test: ${data.message}\nEnvironment: ${data.environment}\nVercel: ${data.vercel}`);
+                    } catch (error) {
+                      console.error('🧪 Test API error:', error);
+                      alert('API Test failed: ' + error);
+                    }
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs"
+                >
+                  Test API
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      console.log('🖼️ Testing Gallery API...');
+                      const response = await fetch('/api/gallery/floor');
+                      const data = await response.json();
+                      console.log('🖼️ Gallery API response:', data);
+                      alert(`Gallery API: ${data.length} images found\nFirst image: ${data[0]?.caption || 'None'}`);
+                    } catch (error) {
+                      console.error('🖼️ Gallery API error:', error);
+                      alert('Gallery API failed: ' + error);
+                    }
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs ml-2"
+                >
+                  Test Gallery
+                </button>
+              </div>
+            </div>
 
             {/* Loader Info */}
             {debugInfo && (
