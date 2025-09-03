@@ -28,8 +28,18 @@ export default function ScrollScene({
   const WITH_HELPERS = false; // Toggle to show coordinate helpers (floor grid, axes)
   const WITH_ORBITAL = false; // Toggle to enable orbital animation
   const SHOW_CUBE = false; // Toggle to show/hide the green debug cube
-  const [showDebug, setShowDebug] = useState(true); // Toggle to show/hide debug panel
-  const [showPosition, setShowPosition] = useState(true); // Toggle to show/hide position panel
+  const [showDebug, setShowDebug] = useState(false); // Toggle to show/hide debug panel
+  const [showPosition, setShowPosition] = useState(false); // Toggle to show/hide position panel
+  
+  // Get SHOW_DEBUG from URL parameter
+  const getShowDebugFromURL = () => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('SHOW_DEBUG') === 'true';
+    }
+    return false;
+  };
+  const SHOW_DEBUG = getShowDebugFromURL(); // Master flag to show/hide debug controls
   // Optional debug visuals for the camera path
   const SHOW_CAMERA_PATH = false;
   const SHOW_WAYPOINTS = false;
@@ -39,20 +49,20 @@ export default function ScrollScene({
   const CUBE_HIGHLIGHT_COLOR = 0xff0000; // Red for cube
   const CUBE_NORMAL_COLOR = 0x00ff00; // Green for cube normal state
   
-  // Array of pastel light colors for hotspots
+  // Array of lighter purple variations for hotspot hover colors (within 25% range)
   const PASTEL_COLORS = [
-    0xFFB3BA, // Light pink
-    0xBAFFC9, // Light mint
-    0xBAE1FF, // Light blue
-    0xFFFFBA, // Light yellow
-    0xFFB3F7, // Light purple
-    0xB3FFE6, // Light teal
-    0xFFD4B3, // Light peach
-    0xD4B3FF, // Light lavender
-    0xB3FFB3, // Light green
-    0xFFE6B3, // Light orange
-    0xB3D4FF, // Light sky blue
-    0xFFB3D4, // Light rose
+    0xF8F4FF, // Very light violet
+    0xF0E6FF, // Light violet
+    0xE8D8FF, // Soft light purple
+    0xE0CAFF, // Light lavender
+    0xD8BCFF, // Soft purple
+    0xD0AEFF, // Light purple
+    0xC8A0FF, // Medium light purple
+    0xC092FF, // Light violet purple
+    0xB884FF, // Soft violet
+    0xB076FF, // Light purple violet
+    0xA868FF, // Medium light violet
+    0xA05AFF, // Light purple
   ];
 
   // Scene configuration constants
@@ -90,7 +100,7 @@ export default function ScrollScene({
     
     if (isDark) {
       return {
-        BACKGROUND_COLOR: 0x111827, // Dark background (reverted)
+        BACKGROUND_COLOR: 0x02030A, // Dark background #000254
         FLOOR_COLOR: 0x1f2937, // Dark floor
         WALL_COLOR: 0x04070E, // Dark walls
         CUBE_COLOR: 0x00ff00, // Green (keep same)
@@ -123,6 +133,29 @@ export default function ScrollScene({
   const cubePos = useRef(CUBE_POSITION);
   const cubeRef = useRef<THREE.Mesh | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  // Live lookAt tracking for Position Panel
+  const [currentLookAtTarget, setCurrentLookAtTarget] = useState<THREE.Vector3 | null>(null);
+
+  useEffect(() => {
+    if (!showPosition) return;
+    const computeCurrentLookAt = () => {
+      if (!cameraRef.current) return;
+      const camera = cameraRef.current;
+      const dir = new THREE.Vector3();
+      camera.getWorldDirection(dir);
+      const distance = 100; // project a point sufficiently far in front
+      const point = camera.position.clone().add(dir.multiplyScalar(distance));
+      setCurrentLookAtTarget(point);
+    };
+    // Initialize and then update on pointer movement
+    computeCurrentLookAt();
+    window.addEventListener('mousemove', computeCurrentLookAt, { passive: true });
+    window.addEventListener('touchmove', computeCurrentLookAt, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', computeCurrentLookAt as EventListener);
+      window.removeEventListener('touchmove', computeCurrentLookAt as EventListener);
+    };
+  }, [showPosition]);
   const loaderOverlayRef = useRef<HTMLDivElement | null>(null);
   const loaderBarRef = useRef<HTMLDivElement | null>(null);
   const loaderTextRef = useRef<HTMLElement | null>(null);
@@ -873,7 +906,7 @@ export default function ScrollScene({
     "Hotspot_geo_fireplace": 12,
     "Hotspot_geo_coffee_table": 5,
     "Hotspot_geo_kitchen_countertop": 5,
-    "Hotspot_geo_island": 10,
+    "Hotspot_geo_island": 5,
     "Hotspot_geo_shelves": 5,
   };
 
@@ -936,14 +969,8 @@ export default function ScrollScene({
   const pulseAnimationRef = useRef<number>();
   const pulseMarkersCreatedRef = useRef<boolean>(false);
 
-  // Function to create purple pulsing spheres for hotspots (mobile only)
+  // Function to create purple pulsing spheres for hotspots
   const createHotspotPulseMarkers = () => {
-    // Only create pulse markers on mobile devices
-    if (!isMobile.detect()) {
-      console.log('🎯 Desktop detected, skipping pulse marker creation');
-      return;
-    }
-    
     if (!sceneRef.current || !clickableObjectsRef.current.length) return;
     
     // Check if pulse markers have already been created to prevent duplicates
@@ -992,7 +1019,7 @@ export default function ScrollScene({
       const pulseMaterial = new THREE.MeshBasicMaterial({
         color: 0x8B5CF6, // Purple color
         transparent: true,
-        opacity: 0.6
+        opacity: 0.9 // 90% opacity
       });
       
       const pulseSphere = new THREE.Mesh(pulseGeometry, pulseMaterial);
@@ -1011,7 +1038,7 @@ export default function ScrollScene({
       const glowMaterial = new THREE.MeshBasicMaterial({
         color: 0x8B5CF6,
         transparent: true,
-        opacity: 0.3
+        opacity: 0.6 // 60% opacity for glow
       });
       glowMaterial.depthWrite = false;
       glowMaterial.depthTest = true; // Enable depth testing for proper layering
@@ -1046,15 +1073,30 @@ export default function ScrollScene({
     console.log('Pulse group added to scene:', pulseGroup);
     
     // Start pulse animation
+    console.log('🎯 Starting pulse animation with', hotspotPulseRefs.current.length, 'markers');
     animateHotspotPulses();
     
     // Add cursor pointer CSS to the document for pulse markers
     addPulseMarkerCursorStyles();
+    
+    // Set up a periodic check to ensure animation is running
+    const animationCheckInterval = setInterval(() => {
+      if (!pulseAnimationRef.current && hotspotPulseRefs.current.length > 0) {
+        console.log('🔍 Animation stopped, restarting...');
+        animateHotspotPulses();
+      }
+    }, 1000); // Check every second
+    
+    // Store the interval for cleanup
+    (window as any).__pulseAnimationCheckInterval = animationCheckInterval;
   };
 
   // Function to animate the pulse markers
   const animateHotspotPulses = () => {
-    if (!hotspotPulseRefs.current.length) return;
+    if (!hotspotPulseRefs.current.length) {
+      console.log('🎯 No pulse markers to animate');
+      return;
+    }
     
     const time = Date.now() * 0.003; // Slower animation
     
@@ -1062,12 +1104,15 @@ export default function ScrollScene({
       if (!pulseMesh || !pulseMesh.material) return;
       
       const material = pulseMesh.material as THREE.MeshBasicMaterial;
-      const baseOpacity = index % 2 === 0 ? 0.6 : 0.3; // Main sphere vs glow
+      const baseOpacity = index % 2 === 0 ? 0.9 : 0.6; // Main sphere vs glow - updated base opacity
       const pulseSpeed = index % 2 === 0 ? 1 : 0.7; // Different speeds for variety
       
-      // Create pulsing effect
-      const pulse = Math.sin(time * pulseSpeed) * 0.3 + 0.7;
+      // Create pulsing effect with more visible range
+      const pulse = Math.sin(time * pulseSpeed) * 0.4 + 0.6; // Range from 0.2 to 1.0
       material.opacity = baseOpacity * pulse;
+      
+      // Ensure color stays purple
+      material.color.setHex(0x8B5CF6);
       
       // Scale effect for main spheres only
       if (index % 2 === 0) {
@@ -1076,7 +1121,7 @@ export default function ScrollScene({
       }
     });
     
-    // Continue animation
+    // Continue animation - ALWAYS continue regardless of mouse events
     pulseAnimationRef.current = requestAnimationFrame(animateHotspotPulses);
   };
 
@@ -1109,6 +1154,15 @@ export default function ScrollScene({
     }
     pulseMarkersCreatedRef.current = false;
     hotspotPulseRefs.current = [];
+    
+    // Stop animation
+    stopPulseAnimation();
+    
+    // Clear the animation check interval
+    if ((window as any).__pulseAnimationCheckInterval) {
+      clearInterval((window as any).__pulseAnimationCheckInterval);
+      delete (window as any).__pulseAnimationCheckInterval;
+    }
     
     // Reset cursor to default
     if (document.body) {
@@ -1186,9 +1240,6 @@ export default function ScrollScene({
 
   // Function to ensure pulse markers are visible
   const ensurePulseMarkersVisible = () => {
-    // Only work on mobile devices
-    if (!isMobile.detect()) return;
-    
     if (sceneRef.current && hotspotPulseRefs.current.length > 0) {
       const pulseGroup = sceneRef.current.getObjectByName('hotspotPulseMarkers');
       if (pulseGroup) {
@@ -1206,7 +1257,8 @@ export default function ScrollScene({
           child.visible = true;
           if ((child as any).material) {
             (child as any).material.transparent = true;
-            (child as any).material.opacity = index % 2 === 0 ? 0.6 : 0.3;
+            // Don't reset opacity here - let animation control it
+            // (child as any).material.opacity = index % 2 === 0 ? 0.6 : 0.3;
           }
         });
         
@@ -1221,7 +1273,14 @@ export default function ScrollScene({
         if (clickableObjectsRef.current.length > 0 && !pulseMarkersCreatedRef.current) {
           // console.log('🔍 Recreating missing pulse markers');
           createHotspotPulseMarkers();
-        }
+                 } else if (pulseMarkersCreatedRef.current && sceneRef.current) {
+           // If markers exist but animation might have stopped, restart it
+           const pulseGroup = sceneRef.current.getObjectByName('hotspotPulseMarkers');
+           if (pulseGroup && !pulseAnimationRef.current) {
+             console.log('🔍 Restarting pulse animation');
+             animateHotspotPulses();
+           }
+         }
       }
     }
   };
@@ -1497,8 +1556,15 @@ export default function ScrollScene({
     }
     
     // Create a beautiful bezier curve with slight detour for visual appeal
-    // Use current camera position for continuous path calculation
+    // Use current camera position for continuous path calculation (exact start)
     const startPos = camera.position.clone();
+
+    // HARD-LOCK the very first frame to the exact current position to avoid any visible jerk
+    camera.position.copy(startPos);
+    if (cameraRef.current) cameraRef.current.position.copy(startPos);
+    if (rendererRef.current && sceneRef.current) {
+      rendererRef.current.render(sceneRef.current, camera);
+    }
     const endPos = newCamPos.clone();
     
     // Update the current camera position reference for next path calculation
@@ -1552,9 +1618,16 @@ export default function ScrollScene({
       ease: "power2.inOut",
       type: "cubic",
       onUpdate: () => {
-        const p = curve3D.getPoint(tweenParam.t);
-        camera.position.copy(p);
-        if (cameraRef.current) cameraRef.current.position.copy(p);
+        // Sample curve and ensure exact start at t=0 to avoid initial jerk
+        const p = tweenParam.t === 0 ? startPos : curve3D.getPoint(tweenParam.t);
+        if (tweenParam.t === 0) {
+          // lock to exact start on first tick
+          camera.position.copy(startPos);
+          if (cameraRef.current) cameraRef.current.position.copy(startPos);
+        } else {
+          camera.position.copy(p);
+          if (cameraRef.current) cameraRef.current.position.copy(p);
+        }
         camera.lookAt(animationTarget);
         camera.updateMatrixWorld();
         
@@ -1762,7 +1835,16 @@ export default function ScrollScene({
       }
     }
     
-    // Create a timeline for synchronized position and lookAt animation
+    // Preserve current lookAt target (fixed world point) so we don't change it during zoom out
+    const fixedLookAt = (() => {
+      const direction = new THREE.Vector3();
+      camera.getWorldDirection(direction);
+      // Use a reasonably large distance to stabilize the world point
+      const distance = 100;
+      return camera.position.clone().add(direction.multiplyScalar(distance));
+    })();
+
+    // Create a timeline for position-only animation, keep lookAt fixed
     const timeline = gsap.timeline({
       onUpdate: () => {
         // Ensure both camera and cameraRef are updated
@@ -1770,6 +1852,9 @@ export default function ScrollScene({
         if (cameraRef.current) {
           cameraRef.current.position.copy(camera.position);
         }
+        
+        // Keep looking at the same world-space point throughout the animation
+        camera.lookAt(fixedLookAt);
         
         // Force render to show the animation
         if (rendererRef.current && sceneRef.current) {
@@ -1837,20 +1922,7 @@ export default function ScrollScene({
           console.warn('⚠️ WARNING: Camera not at expected end position!');
           console.warn('  Forcing camera to expected position...');
           camera.position.copy(expectedEndPosition);
-          
-          // Look at the correct target based on spline progress
-          if (cameraStateRef.current.savedSplineProgress !== undefined && gsapLookAtTargetsRef.current) {
-            // Calculate the lookAt target based on saved spline progress
-            const lookAtIndex = Math.floor(cameraStateRef.current.savedSplineProgress * (gsapLookAtTargetsRef.current.length - 1));
-            const lookAtTarget = gsapLookAtTargetsRef.current[Math.max(0, Math.min(lookAtIndex, gsapLookAtTargetsRef.current.length - 1))];
-            camera.lookAt(lookAtTarget);
-            console.log('🎯 LOOKING AT spline target:', lookAtTarget, 'at index:', lookAtIndex);
-          } else if (clickedHotspot) {
-            // Fallback: Look at the hotspot we just visited
-            const target = new THREE.Vector3();
-            clickedHotspot.getWorldPosition(target);
-            camera.lookAt(target);
-          }
+          // Do NOT change lookAt during verification to avoid visual snapping
         }
         
         // CRITICAL: Force camera to stay at the exact end position
@@ -1919,7 +1991,7 @@ export default function ScrollScene({
       }
     });
     
-    // Add position animation to timeline
+    // Add position animation to timeline (position only)
     timeline.to(camera.position, {
       duration: 2.5,
       x: targetPosition.x,
@@ -1927,29 +1999,9 @@ export default function ScrollScene({
       z: targetPosition.z,
       ease: "power2.inOut"
     }, 0); // Start at time 0
+    // Do NOT change lookAt target here; it's maintained via fixedLookAt during onUpdate
     
-    // Add lookAt animation to timeline (synchronized with position)
-    timeline.to(camera, {
-      duration: 2.5,
-      onUpdate: function() {
-        // Smoothly interpolate lookAt target during animation
-        const progress = this.progress();
-        const currentLookAt = new THREE.Vector3();
-        camera.getWorldDirection(currentLookAt);
-        currentLookAt.multiplyScalar(10).add(camera.position);
-        
-        // Interpolate between current lookAt and target lookAt
-        const interpolatedLookAt = new THREE.Vector3();
-        // interpolatedLookAt.lerpVectors(currentLookAt, targetLookAt, progress);
-        interpolatedLookAt.lerpVectors(currentLookAt, new THREE.Vector3(0, 0, 0), progress);
-        
-        camera.lookAt(interpolatedLookAt);
-        camera.updateMatrixWorld();
-      },
-      ease: "power2.inOut"
-    }, 0); // Start at time 0 (synchronized with position)
-    
-    console.log('🎬 TIMELINE ANIMATION STARTED: Duration 2.5s, synchronized position + lookAt');
+    console.log('🎬 TIMELINE ANIMATION STARTED: Duration 2.5s, position only (lookAt set immediately)');
     console.log('🎬 Position target:', targetPosition);
     console.log('🎬 LookAt target:', targetLookAt);
   };
@@ -3243,14 +3295,19 @@ export default function ScrollScene({
           setHoveredHotspot(intersectedObject);
           
           // Show category tooltip
-          const category = HOTSPOT_CATEGORIES[intersectedObject.name] || 'Unknown';
+          let hotspotName = intersectedObject.name;
+          // If this is a pulse marker, get the actual hotspot name from userData
+          if (intersectedObject.name?.startsWith('pulse_')) {
+            hotspotName = intersectedObject.userData.hotspotName || intersectedObject.name.replace('pulse_', '');
+          }
+          const category = HOTSPOT_CATEGORIES[hotspotName] || 'Unknown';
           setHoverTooltip({
             visible: true,
             text: category,
             position: { x: event.clientX, y: event.clientY }
           });
           
-          if ((intersectedObject as THREE.Mesh).material) {
+          if ((intersectedObject as THREE.Mesh).material && !intersectedObject.name?.startsWith('pulse_')) {
             if (intersectedObject === cubeRef.current) {
               // Highlight cube in red
               ((intersectedObject as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(CUBE_HIGHLIGHT_COLOR);
@@ -3285,8 +3342,8 @@ export default function ScrollScene({
         setHoverTooltip((prev: any) => ({ ...prev, visible: false }));
       }
       
-      // Always ensure pulse markers are visible after any mouse movement (mobile only)
-      if (isMobile.detect() && hotspotPulseRefs.current.length > 0) {
+      // Always ensure pulse markers are visible after any mouse movement
+      if (hotspotPulseRefs.current.length > 0) {
         ensurePulseMarkersVisible();
         // Debug: Log pulse marker status on mouse move (commented out to reduce spam)
         // debugPulseMarkers();
@@ -3410,9 +3467,8 @@ export default function ScrollScene({
       // Clean up stored references
       delete (window as any).__originalMouseMoveListener;
       delete (window as any).__originalClickListener;
-      // Clean up pulse animation and markers
+      // Clean up pulse animation only (don't remove markers)
       stopPulseAnimation();
-      cleanupPulseMarkers();
     };
   }, [hoveredHotspot]);
 
@@ -3604,6 +3660,18 @@ export default function ScrollScene({
               })()}
             </div>
             <div className="mb-2">
+              <span className="text-teal-300">Current LookAt Target:</span> {(() => {
+                const lookAt = currentLookAtTarget;
+                if (!lookAt) return 'N/A';
+                const cameraPos = cameraRef.current?.position;
+                if (cameraPos) {
+                  const distance = lookAt.distanceTo(cameraPos);
+                  return `${lookAt.x.toFixed(2)}, ${lookAt.y.toFixed(2)}, ${lookAt.z.toFixed(2)} (${distance.toFixed(2)}m away)`;
+                }
+                return `${lookAt.x.toFixed(2)}, ${lookAt.y.toFixed(2)}, ${lookAt.z.toFixed(2)}`;
+              })()}
+            </div>
+            <div className="mb-2">
               <span className="text-purple-400">Journey Start (Main Path):</span> {(() => {
                 const journey = cameraStateRef.current.journeyStartPosition;
                 return `${journey.x.toFixed(2)}, ${journey.y.toFixed(2)}, ${journey.z.toFixed(2)}`;
@@ -3620,34 +3688,36 @@ export default function ScrollScene({
       )}
 
       {/* Debug Toggle Checkbox */}
-      <div 
-        className="fixed top-4 right-4 z-[70] bg-black/80 text-white p-2 rounded-lg text-xs font-mono"
-        style={{ 
-          border: '1px solid #666',
-          backdropFilter: 'blur(10px)'
-        }}
-      >
-        <div className="space-y-2">
-          <label className="flex items-center space-x-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showDebug}
-              onChange={(e) => setShowDebug(e.target.checked)}
-              className="w-3 h-3 text-red-400 bg-gray-700 border-gray-600 rounded focus:ring-red-500 focus:ring-2"
-            />
-            <span className="text-red-400">🐭 Debug Panel</span>
-          </label>
-          <label className="flex items-center space-x-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showPosition}
-              onChange={(e) => setShowPosition(e.target.checked)}
-              className="w-3 h-3 text-blue-400 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
-            />
-            <span className="text-blue-400">🎯 Position Panel</span>
-          </label>
+      {SHOW_DEBUG && (
+        <div 
+          className="fixed top-4 right-4 z-[70] bg-black/80 text-white p-2 rounded-lg text-xs font-mono"
+          style={{ 
+            border: '1px solid #666',
+            backdropFilter: 'blur(10px)'
+          }}
+        >
+          <div className="space-y-2">
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showDebug}
+                onChange={(e) => setShowDebug(e.target.checked)}
+                className="w-3 h-3 text-red-400 bg-gray-700 border-gray-600 rounded focus:ring-red-500 focus:ring-2"
+              />
+              <span className="text-red-400">🐭 Debug Panel</span>
+            </label>
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showPosition}
+                onChange={(e) => setShowPosition(e.target.checked)}
+                className="w-3 h-3 text-blue-400 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+              />
+              <span className="text-blue-400">🎯 Position Panel</span>
+            </label>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Consolidated Debug Panel */}
       {showDebug && (
