@@ -46,16 +46,16 @@ export async function middleware(req: NextRequest) {
   console.log('🔍 Middleware hit for path:', pathname);
   
   // Skip middleware for API routes, static files, and Next.js internals
-  // if (
-  //   pathname.startsWith('/api/') ||
-  //   pathname.startsWith('/_next/') ||
-  //   pathname.startsWith('/_vercel/') ||
-  //   pathname.includes('.') ||
-  //   pathname.startsWith('/favicon')
-  // ) {
-  //   console.log('✅ Skipping middleware for API route:', pathname);
-  //   return NextResponse.next();
-  // }
+  if (
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/_vercel/') ||
+    pathname.includes('.') ||
+    pathname.startsWith('/favicon')
+  ) {
+    console.log('✅ Skipping middleware for API route:', pathname);
+    return NextResponse.next();
+  }
 
   const geo: GeolocationData = geolocation(req)
   
@@ -132,11 +132,7 @@ export const config = {
      * - favicon.ico (favicon file)
      * - files with extensions (static files)
      */
-     // '/((?!api|_next|_vercel|.*\\..*).*)',
-    
-     // Run on all paths except static files
-    '/((?!_next/static|_next/image|favicon.ico).*)',
-    // Or be more specific:
+    '/((?!api|_next|_vercel|.*\\..*).*)',
     // '/blog/:path*',
     // '/api/:path*'
   ],
