@@ -17,6 +17,7 @@ import CTASection from "./CTASection"
 import NavigationSection from "./NavigationSection"
 import dynamic from "next/dynamic";
 import DebugInfo from "./DebugInfo";
+import ScrollDownCTA from "./ScrollDownCTA";
 
 const ScrollScene = dynamic(() => import("./ScrollScene"), { ssr: false });
 
@@ -160,11 +161,28 @@ export default function HomeClient() {
       <ScrollScene 
         sceneStage={sceneStage} 
         currentSection={currentSection}
-        onIntroComplete={() => setScrollEnabled(true)}
+        onIntroComplete={() => {
+          console.log('🎯 HomeClient: Intro completed, enabling scroll and triggering ScrollDownCTA');
+          setScrollEnabled(true);
+          
+          // Trigger ScrollDownCTA intro completion with retry mechanism
+          const triggerScrollDownCTA = () => {
+            if ((window as any).__scrollDownCTAIntroComplete) {
+              console.log('🎯 HomeClient: Calling ScrollDownCTA intro complete handler');
+              (window as any).__scrollDownCTAIntroComplete();
+            } else {
+              console.log('🎯 HomeClient: ScrollDownCTA handler not found, retrying in 100ms');
+              setTimeout(triggerScrollDownCTA, 100);
+            }
+          };
+          
+          triggerScrollDownCTA();
+        }}
         onIntroStart={() => setScrollEnabled(false)}
         onDebugUpdate={setDebugData}
       />
       {debugData && <DebugInfo {...debugData} />}
+      <ScrollDownCTA />
       <main 
         className="relative z-20" 
         style={{ 
