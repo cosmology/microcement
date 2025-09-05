@@ -71,7 +71,7 @@ const FALLBACK_IMAGES: GalleryImage[] = [
 
 export async function GET(
   request: NextRequest,
-  context: { params: { hotspot: string } } | { params: Promise<{ hotspot: string }> }
+  { params }: { params: Promise<{ hotspot: string }> }
 ) {
   // Add CORS headers for Vercel
   const headers = {
@@ -92,12 +92,9 @@ export async function GET(
     console.log('🖼️ Vercel:', process.env.VERCEL === '1' ? 'Yes' : 'No');
     console.log('🖼️ Region:', process.env.VERCEL_REGION || 'Unknown');
 
-    // Get hotspot parameter (handle both Promise and plain object forms)
-    const rawParams: any = (context as any).params;
-    const resolvedParams = rawParams && typeof rawParams.then === 'function' ? await rawParams : rawParams;
+    // Await the params Promise (Next.js 15 requirement)
+    const resolvedParams = await params;
     const hotspot: string | undefined = resolvedParams?.hotspot;
-    console.log('🖼️ Hotspot param raw:', rawParams);
-    console.log('🖼️ Hotspot param resolved:', resolvedParams);
     console.log('🖼️ Hotspot requested:', hotspot);
     console.log('🖼️ Available hotspots:', Object.keys(GALLERY_DATA));
 
