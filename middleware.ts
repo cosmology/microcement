@@ -43,6 +43,8 @@ export async function middleware(req: NextRequest) {
   const { nextUrl: url } = req
   const pathname = url.pathname;
   
+  console.log('🔍 Middleware hit for path:', pathname);
+  
   // Skip middleware for API routes, static files, and Next.js internals
   if (
     pathname.startsWith('/api/') ||
@@ -51,6 +53,7 @@ export async function middleware(req: NextRequest) {
     pathname.includes('.') ||
     pathname.startsWith('/favicon')
   ) {
+    console.log('✅ Skipping middleware for API route:', pathname);
     return NextResponse.next();
   }
 
@@ -129,6 +132,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - files with extensions (static files)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)',
+    '/((?!api|_next|_vercel|.*\\..*).*)',
   ],
 }; 

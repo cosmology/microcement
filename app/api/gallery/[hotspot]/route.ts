@@ -84,13 +84,14 @@ export async function GET(
 
   try {
     // Log request details for debugging
-    console.log('🖼️ Gallery API called');
+    console.log('🖼️ ===== GALLERY API CALLED =====');
     console.log('🖼️ Request URL:', request.url);
     console.log('🖼️ Pathname:', request.nextUrl?.pathname);
     console.log('🖼️ Search Params:', request.nextUrl?.searchParams?.toString?.() || '');
     console.log('🖼️ Environment:', process.env.NODE_ENV);
     console.log('🖼️ Vercel:', process.env.VERCEL === '1' ? 'Yes' : 'No');
     console.log('🖼️ Region:', process.env.VERCEL_REGION || 'Unknown');
+    console.log('🖼️ ================================');
 
     // Await the params Promise (Next.js 15 requirement)
     const resolvedParams = await params;
