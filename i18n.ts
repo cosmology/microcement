@@ -6,7 +6,7 @@ const locales = ['en', 'es', 'sr'];
 
 export default getRequestConfig(async ({ locale }) => {
   // Validate that the incoming `locale` parameter is valid
-  if (!locales.includes(locale as any)) notFound();
+  if (!locale || !locales.includes(locale)) notFound();
 
   return {
     locale,
