@@ -41,6 +41,19 @@ function getLocaleFromCountry(country: string) {
 
 export async function middleware(req: NextRequest) {
   const { nextUrl: url } = req
+  const pathname = url.pathname;
+  
+  // Skip middleware for API routes, static files, and Next.js internals
+  if (
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/_vercel/') ||
+    pathname.includes('.') ||
+    pathname.startsWith('/favicon')
+  ) {
+    return NextResponse.next();
+  }
+
   const geo: GeolocationData = geolocation(req)
   
   // Mock data for development (remove in production)
@@ -91,7 +104,6 @@ export async function middleware(req: NextRequest) {
 
   // Supported locales
   const supportedLocales = ['en', 'es', 'sr'];
-  const pathname = url.pathname;
 
   // If the path does not start with a supported locale, redirect to the detected locale
   if (!supportedLocales.some(l => pathname.startsWith(`/${l}`))) {
@@ -106,7 +118,17 @@ export async function middleware(req: NextRequest) {
   })(req);
 }
 
-// Run middleware on ALL paths EXCEPT"
+// Run middleware on ALL paths EXCEPT API routes, static files, and Next.js internals
 export const config = {
-  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)'],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - files with extensions (static files)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)',
+  ],
 }; 
