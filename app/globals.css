@@ -199,6 +199,82 @@
   50% { opacity: 0.5; }
 }
 
+/* ScrollDownCTA Arrow Animation */
+.arrow {
+  opacity: 0;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-origin: 50% 50%;
+  transform: translate3d(-50%, -50%, 0);
+}
+
+.arrow-first {
+  animation: arrow-movement 2.5s ease-in-out infinite;
+}
+
+.arrow-second {
+  animation: arrow-movement 2.5s 1.25s ease-in-out infinite;
+}
+
+.arrow:before,
+.arrow:after {
+  background: hsl(var(--foreground));
+  content: '';
+  display: block;
+  height: 3px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 16px;
+}
+
+.arrow:before {
+  transform: rotate(45deg) translateX(-20%);
+  transform-origin: top left;
+}
+
+.arrow:after {
+  transform: rotate(-45deg) translateX(20%);
+  transform-origin: top right;
+}
+
+@keyframes arrow-movement {
+  0% { 
+    opacity: 0;
+    top: 45%;
+    transform: translate3d(-50%, -50%, 0) translateY(0);
+  }
+  50% {
+    opacity: 1;
+    top: 60%;
+    transform: translate3d(-50%, -50%, 0) translateY(6px);
+  }
+  100% { 
+    opacity: 0;
+    top: 75%;
+    transform: translate3d(-50%, -50%, 0) translateY(12px);
+  }
+}
+
+/* ScrollDownCTA fadeIn slideDown animation */
+.scroll-down-cta {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.scroll-down-cta.fade-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-down-cta.fade-out {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 0.4s ease-in, transform 0.4s ease-in;
+}
+
 .animate-spin {
   animation: spin 1s linear infinite;
 }
