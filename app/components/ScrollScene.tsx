@@ -461,9 +461,8 @@ export default function ScrollScene({
       
       // Try API first, then fallback to static data
       const encodedCategory = encodeURIComponent(category);
-      const requestUrl = typeof window !== 'undefined'
-        ? `${window.location.origin}/api/gallery/${encodedCategory}`
-        : `/api/gallery/${encodedCategory}`;
+      console.log('🖼️ API encodedCategory:', encodedCategory);
+      const requestUrl = `/api/gallery/${encodedCategory}`;
       const response = await fetch(requestUrl, {
         headers: { 'Accept': 'application/json' },
         cache: 'no-store',
