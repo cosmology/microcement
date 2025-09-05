@@ -111,6 +111,8 @@ export async function GET(
     // Get images for the specific hotspot
     const images = GALLERY_DATA[normalized] || GALLERY_DATA[hotspot] || [];
     console.log('🖼️ Found images for', hotspot + ':', images.length);
+    console.log('🖼️ GALLERY_DATA[normalized]:', GALLERY_DATA[normalized]);
+    console.log('🖼️ GALLERY_DATA[hotspot]:', GALLERY_DATA[hotspot]);
 
     // If no images found, return fallback images
     if (images.length === 0) {
