@@ -132,6 +132,12 @@ export const config = {
      * - favicon.ico (favicon file)
      * - files with extensions (static files)
      */
-    '/((?!api|_next|_vercel|.*\\..*).*)',
+     // '/((?!api|_next|_vercel|.*\\..*).*)',
+    
+     // Run on all paths except static files
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+    // Or be more specific:
+    // '/blog/:path*',
+    // '/api/:path*'
   ],
 }; 
