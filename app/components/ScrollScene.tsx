@@ -465,13 +465,28 @@ export default function ScrollScene({
       const requestUrl = typeof window !== 'undefined'
         ? `${window.location.origin}/api/gallery/${encodedCategory}`
         : `/api/gallery/${encodedCategory}`;
+      
+      console.log('🖼️ ===== MAKING API CALL =====');
+      console.log('🖼️ API requestUrl:', requestUrl);
+      console.log('🖼️ Window location origin:', window.location.origin);
+      
+      // Test if basic API works
+      try {
+        const testResponse = await fetch(`${window.location.origin}/api/test`);
+        console.log('🖼️ Test API status:', testResponse.status);
+        console.log('🖼️ Test API ok:', testResponse.ok);
+      } catch (testError) {
+        console.log('🖼️ Test API error:', testError);
+      }
+      
       const response = await fetch(requestUrl, {
         headers: { 'Accept': 'application/json' },
         cache: 'no-store',
       });
-      console.log('🖼️ API requestUrl:', requestUrl);
+      
       console.log('🖼️ API response status:', response.status);
       console.log('🖼️ API response ok:', response.ok);
+      console.log('🖼️ API response headers:', Object.fromEntries(response.headers.entries()));
 
       if (response.ok) {
         const contentType = response.headers.get('content-type') || '';
@@ -483,6 +498,12 @@ export default function ScrollScene({
         setGalleryImages(images);
       } else {
         const errorText = await response.text().catch(() => '');
+        console.log('🖼️ ===== API ERROR =====');
+        console.log('🖼️ Status:', response.status);
+        console.log('🖼️ Status Text:', response.statusText);
+        console.log('🖼️ URL:', requestUrl);
+        console.log('🖼️ Error Text:', errorText);
+        console.log('🖼️ ===================');
         alert(`Gallery API failed (${response.status} ${response.statusText}).\nURL: ${requestUrl}\n${errorText.slice(0, 200)}`);
         // Fallback to placeholder images
         const placeholderImages = getPlaceholderImages(hotspotName);
