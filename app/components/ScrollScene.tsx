@@ -476,13 +476,18 @@ export default function ScrollScene({
         console.log('🖼️ Test API status:', testResponse.status);
         console.log('🖼️ Test API ok:', testResponse.ok);
         
-        // Test simple gallery API
-        const simpleGalleryResponse = await fetch(`${window.location.origin}/api/gallery-simple/${encodedCategory}`);
-        console.log('🖼️ Simple Gallery API status:', simpleGalleryResponse.status);
-        console.log('🖼️ Simple Gallery API ok:', simpleGalleryResponse.ok);
-        if (simpleGalleryResponse.ok) {
-          const simpleData = await simpleGalleryResponse.json();
-          console.log('🖼️ Simple Gallery API data:', simpleData);
+        // Test minimal gallery API
+        const minimalResponse = await fetch(`${window.location.origin}/api/gallery-minimal`);
+        console.log('🖼️ Minimal Gallery API status:', minimalResponse.status);
+        console.log('🖼️ Minimal Gallery API ok:', minimalResponse.ok);
+        
+        // Test dynamic gallery API
+        const dynamicResponse = await fetch(`${window.location.origin}/api/gallery-dynamic/${encodedCategory}`);
+        console.log('🖼️ Dynamic Gallery API status:', dynamicResponse.status);
+        console.log('🖼️ Dynamic Gallery API ok:', dynamicResponse.ok);
+        if (dynamicResponse.ok) {
+          const dynamicData = await dynamicResponse.json();
+          console.log('🖼️ Dynamic Gallery API data:', dynamicData);
         }
       } catch (testError) {
         console.log('🖼️ Test API error:', testError);
