@@ -43,8 +43,6 @@ export async function middleware(req: NextRequest) {
   const { nextUrl: url } = req
   const pathname = url.pathname;
   
-  console.log('🔍 Middleware hit for path:', pathname);
-  
   // Skip middleware for API routes, static files, and Next.js internals
   if (
     pathname.startsWith('/api/') ||
@@ -53,7 +51,6 @@ export async function middleware(req: NextRequest) {
     pathname.includes('.') ||
     pathname.startsWith('/favicon')
   ) {
-    console.log('✅ Skipping middleware for API route:', pathname);
     return NextResponse.next();
   }
 
@@ -114,23 +111,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Temporarily disable next-intl middleware to test API routes
-  // const intlMiddleware = createMiddleware({
-  //   locales: supportedLocales,
-  //   defaultLocale: 'en',
-  //   // Ensure next-intl doesn't interfere with API routes
-  //   pathnames: {
-  //     '/': '/',
-  //     '/en': '/en',
-  //     '/es': '/es', 
-  //     '/sr': '/sr'
-  //   }
-  // });
-  
-  // return intlMiddleware(req);
-  
-  // Just pass through for now to test API routes
-  return NextResponse.next();
+  // Otherwise, let next-intl handle the rest
+  return createMiddleware({
+    locales: supportedLocales,
+    defaultLocale: 'en'
+  })(req);
 }
 
 // Run middleware on ALL paths EXCEPT API routes, static files, and Next.js internals
@@ -144,8 +129,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - files with extensions (static files)
      */
-    '/((?!api|_next|_vercel|.*\\..*).*)',
-    // '/blog/:path*',
-    // '/api/:path*'
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)',
   ],
 }; 
