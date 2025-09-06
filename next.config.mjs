@@ -13,13 +13,11 @@ const nextConfig = {
         pathname: '/wp-content/uploads/**',
       },
     ],
-    reactStrictMode: true,
-    eslint: { ignoreDuringBuilds: true },
-    typescript: { ignoreBuildErrors: true },
-    trailingSlash: false
   },
-  // No basePath, no assetPrefix, no output: 'export'
-  // Add any other config you need here
+  reactStrictMode: true,
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
+  trailingSlash: false
 };
 
 export default withNextIntl(nextConfig);
