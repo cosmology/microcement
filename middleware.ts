@@ -114,11 +114,23 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Otherwise, let next-intl handle the rest
-  return createMiddleware({
-    locales: supportedLocales,
-    defaultLocale: 'en'
-  })(req);
+  // Temporarily disable next-intl middleware to test API routes
+  // const intlMiddleware = createMiddleware({
+  //   locales: supportedLocales,
+  //   defaultLocale: 'en',
+  //   // Ensure next-intl doesn't interfere with API routes
+  //   pathnames: {
+  //     '/': '/',
+  //     '/en': '/en',
+  //     '/es': '/es', 
+  //     '/sr': '/sr'
+  //   }
+  // });
+  
+  // return intlMiddleware(req);
+  
+  // Just pass through for now to test API routes
+  return NextResponse.next();
 }
 
 // Run middleware on ALL paths EXCEPT API routes, static files, and Next.js internals
