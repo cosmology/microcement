@@ -35,26 +35,67 @@ export async function GET(request: NextRequest) {
       ], { headers });
     }
 
-    // Simple test data for specific hotspots
-    const testData: Record<string, any[]> = {
-      'backsplash': [
-        { thumb: '/images/gallery/kitchen/kitchen-backsplashes/century-city-backsplash-1.jpg', full: '/images/gallery/kitchen/kitchen-backsplashes/century-city-backsplash-1.jpg', caption: 'Modern Kitchen Backsplash', width: 1920, height: 1080 }
-      ],
-      'floor': [
-        { thumb: '/images/gallery/living-area/floors/floor-sunset-1.png', full: '/images/gallery/living-area/floors/floor-sunset-1.png', caption: 'Acero Floor - Sunset Project', width: 1920, height: 1080 }
-      ],
+    // Comprehensive gallery data with all actual image paths
+    const galleryData: Record<string, any[]> = {
+      // KITCHEN AREA
       'kitchen_countertop': [
-        { thumb: '/images/gallery/kitchen/kitchen-countertops/kitchen-countertop-1.png', full: '/images/gallery/kitchen/kitchen-countertops/kitchen-countertop-1.png', caption: 'Modern Kitchen Countertop', width: 1920, height: 1080 }
+        { thumb: '/images/gallery/kitchen/kitchen-countertops/kitchen-countertop-1.png', full: '/images/gallery/kitchen/kitchen-countertops/kitchen-countertop-1.png', caption: 'Modern Kitchen Countertop', area: 'Kitchen', category: 'Countertops', folder: 'kitchen', width: 1920, height: 1080 }
       ],
-      'fireplace': [
-        { thumb: '/images/gallery/living-area/fireplaces/fireplace-1.png', full: '/images/gallery/living-area/fireplaces/fireplace-1.png', caption: 'Custom Fireplace Installation', width: 1920, height: 1080 }
+      'backsplash': [
+        { thumb: '/images/gallery/kitchen/kitchen-backsplashes/century-city-backsplash-1.jpg', full: '/images/gallery/kitchen/kitchen-backsplashes/century-city-backsplash-1.jpg', caption: 'Modern Kitchen Backsplash', area: 'Kitchen', category: 'Backsplash', folder: 'kitchen', width: 1920, height: 1080 }
+      ],
+      'island': [
+        { thumb: '/images/gallery/kitchen/kitchen-islands/kitchen-island-1.jpg', full: '/images/gallery/kitchen/kitchen-islands/kitchen-island-1.jpg', caption: 'Custom Kitchen Island', area: 'Kitchen', category: 'Island', folder: 'kitchen', width: 1920, height: 1080 }
       ],
       'kitchen_cabinet': [
-        { thumb: '/images/gallery/kitchen/kitchen-cabinets/kitchen-cabinet-naples-1.jpg', full: '/images/gallery/kitchen/kitchen-cabinets/kitchen-cabinet-naples-1.jpg', caption: 'Modern Kitchen Cabinet Installation', width: 1920, height: 1080 }
+        { thumb: '/images/gallery/kitchen/kitchen-cabinets/kitchen-cabinet-naples-1.jpg', full: '/images/gallery/kitchen/kitchen-cabinets/kitchen-cabinet-naples-1.jpg', caption: 'Modern Kitchen Cabinet Installation', area: 'Kitchen', category: 'Cabinets', folder: 'kitchen', width: 1920, height: 1080 }
+      ],
+
+      // BATHROOM AREA
+      'bath_countertop': [
+        { thumb: '/images/gallery/bathroom/bathroom-countertops/bathroom-countertop-1.jpg', full: '/images/gallery/bathroom/bathroom-countertops/bathroom-countertop-1.jpg', caption: 'Modern Bathroom Countertop Installation', area: 'Bathroom', category: 'Countertops', folder: 'bathroom', width: 1920, height: 1080 }
+      ],
+      'bathroom_walls': [
+        { thumb: '/images/gallery/bathroom/bathroom-walls/bathroom-wall-1.png', full: '/images/gallery/bathroom/bathroom-walls/bathroom-wall-1.png', caption: 'Bathroom Wall Installation', area: 'Bathroom', category: 'Walls', folder: 'bathroom', width: 1920, height: 1080 }
+      ],
+
+      // LIVING AREA
+      'floor': [
+        { thumb: '/images/gallery/living-area/floors/floor-sunset-1.png', full: '/images/gallery/living-area/floors/floor-sunset-1.png', caption: 'Acero Floor - Sunset Project', area: 'Living Area', category: 'Floors', folder: 'living-area', width: 1920, height: 1080 },
+        { thumb: '/images/gallery/living-area/floors/floor-beverly-hills-2.jpg', full: '/images/gallery/living-area/floors/floor-beverly-hills-2.jpg', caption: 'Blanco Rotto - Beverly Hills', area: 'Living Area', category: 'Floors', folder: 'living-area', width: 1920, height: 1080 },
+        { thumb: '/images/gallery/living-area/floors/floor-texas-3.jpg', full: '/images/gallery/living-area/floors/floor-texas-3.jpg', caption: 'Lido - Texas Project', area: 'Living Area', category: 'Floors', folder: 'living-area', width: 1920, height: 1080 },
+        { thumb: '/images/gallery/living-area/floors/floor-naples-4.png', full: '/images/gallery/living-area/floors/floor-naples-4.png', caption: 'Acero, Blanco Rotto, Trigo Mix - Naples', area: 'Living Area', category: 'Floors', folder: 'living-area', width: 1920, height: 1080 },
+        { thumb: '/images/gallery/living-area/floors/floor-beverly-hills-5.jpg', full: '/images/gallery/living-area/floors/floor-beverly-hills-5.jpg', caption: 'Blanco Rotto - Beverly Hills', area: 'Living Area', category: 'Floors', folder: 'living-area', width: 1920, height: 1080 }
+      ],
+      'fireplace': [
+        { thumb: '/images/gallery/living-area/fireplaces/fireplace-1.png', full: '/images/gallery/living-area/fireplaces/fireplace-1.png', caption: 'Custom Fireplace Installation', area: 'Living Area', category: 'Fireplace', folder: 'living-area', width: 1920, height: 1080 }
+      ],
+      'shelves': [
+        { thumb: '/images/gallery/living-area/furniture/furniture-1.png', full: '/images/gallery/living-area/furniture/furniture-1.png', caption: 'Custom Furniture Design', area: 'Living Area', category: 'Furniture', folder: 'living-area', width: 1920, height: 1080 }
+      ],
+      'coffee_table': [
+        { thumb: '/images/gallery/living-area/furniture/furniture-1.png', full: '/images/gallery/living-area/furniture/furniture-1.png', caption: 'Custom Coffee Table Design', area: 'Living Area', category: 'Furniture', folder: 'living-area', width: 1920, height: 1080 }
+      ],
+      'accent_wall': [
+        { thumb: '/images/gallery/living-area/walls/accent-wall-sunset-1.jpg', full: '/images/gallery/living-area/walls/accent-wall-sunset-1.jpg', caption: 'Modern Accent Wall', area: 'Living Area', category: 'Accent Walls', folder: 'living-area', width: 1920, height: 1080 },
+        { thumb: '/images/gallery/living-area/walls/wall-beverly-hills-2.jpg', full: '/images/gallery/living-area/walls/wall-beverly-hills-2.jpg', caption: 'Beverly Hills Wall Project', area: 'Living Area', category: 'Accent Walls', folder: 'living-area', width: 1920, height: 1080 }
+      ],
+
+      // OUTDOOR AREA
+      'outdoor_patio': [
+        { thumb: '/images/gallery/outdoor-patio.png', full: '/images/gallery/outdoor-patio.png', caption: 'Outdoor Patio Installation', area: 'Outdoor', category: 'Patio', folder: 'outdoor', width: 1920, height: 1080 }
+      ],
+
+      // COMMERCIAL AREAS
+      'restaurant_bar': [
+        { thumb: '/images/gallery/restaurant-bar.png', full: '/images/gallery/restaurant-bar.png', caption: 'Restaurant Bar Installation', area: 'Commercial', category: 'Bar', folder: 'commercial', width: 1920, height: 1080 }
+      ],
+      'staircase': [
+        { thumb: '/images/gallery/staircase.png', full: '/images/gallery/staircase.png', caption: 'Custom Staircase Design', area: 'Commercial', category: 'Staircase', folder: 'commercial', width: 1920, height: 1080 }
       ]
     };
 
-    const images = testData[hotspot] || [];
+    const images = galleryData[hotspot] || [];
     console.log('🖼️ Found images for', hotspot + ':', images.length);
 
     // If no images found, return fallback images
