@@ -1,6 +1,6 @@
-// Temporarily disable next-intl to test API routes
-// import createNextIntlPlugin from 'next-intl/plugin';
-// const withNextIntl = createNextIntlPlugin();
+import createNextIntlPlugin from 'next-intl/plugin';
+
+const withNextIntl = createNextIntlPlugin();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -18,4 +18,4 @@ const nextConfig = {
   // Add any other config you need here
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);
