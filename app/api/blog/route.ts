@@ -16,13 +16,23 @@ const blogs = [
     }
 ];
 
-export async function GET(
-    request: Request, 
-    { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: Request) {
     try {
-        const resolvedParams = await params;
-        const blog = blogs.filter((blog) => blog.id === resolvedParams.id);
+        const url = new URL(request.url);
+        const id = url.searchParams.get('id');
+        
+        console.log('📝 Blog API called with id:', id);
+        
+        if (!id) {
+            // Return all blogs if no id specified
+            return new Response(JSON.stringify(blogs), {
+                status: 200,
+                headers: { "Content-Type": "application/json" }
+            });
+        }
+        
+        // Find specific blog by id
+        const blog = blogs.filter((blog) => blog.id === id);
         
         if (blog.length === 0) {
             return new Response(JSON.stringify({ error: "Blog not found!" }), {
@@ -36,6 +46,7 @@ export async function GET(
             headers: { "Content-Type": "application/json" }
         });
     } catch (error) {
+        console.error('📝 Blog API error:', error);
         return new Response(JSON.stringify({ error: "Internal server error" }), {
             status: 500,
             headers: { "Content-Type": "application/json" }

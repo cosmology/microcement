@@ -463,8 +463,8 @@ export default function ScrollScene({
       const encodedCategory = encodeURIComponent(category);
       console.log('🖼️ API encodedCategory:', encodedCategory);
       const requestUrl = typeof window !== 'undefined'
-        ? `${window.location.origin}/api/gallery/${encodedCategory}`
-        : `/api/gallery/${encodedCategory}`;
+        ? `${window.location.origin}/api/gallery?hotspot=${encodedCategory}`
+        : `/api/gallery?hotspot=${encodedCategory}`;
       
       console.log('🖼️ ===== MAKING API CALL =====');
       console.log('🖼️ API requestUrl:', requestUrl);

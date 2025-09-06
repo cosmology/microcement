@@ -4,10 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ hotspot: string }> }
-) {
+export async function GET(request: NextRequest) {
   // Add CORS headers for Vercel
   const headers = {
     'Content-Type': 'application/json',
@@ -18,17 +15,17 @@ export async function GET(
   };
 
   try {
+    // Get hotspot from URL parameters instead of dynamic routing
+    const url = new URL(request.url);
+    const hotspot = url.searchParams.get('hotspot');
+    
     // Log request details for debugging
     console.log('🖼️ ===== GALLERY API CALLED =====');
     console.log('🖼️ Request URL:', request.url);
+    console.log('🖼️ Hotspot parameter:', hotspot);
     console.log('🖼️ Environment:', process.env.NODE_ENV);
     console.log('🖼️ Vercel:', process.env.VERCEL === '1' ? 'Yes' : 'No');
     console.log('🖼️ ================================');
-
-    // Await the params Promise (Next.js 15 requirement)
-    const resolvedParams = await params;
-    const hotspot: string | undefined = resolvedParams?.hotspot;
-    console.log('🖼️ Hotspot requested:', hotspot);
 
     // Validate hotspot parameter
     if (!hotspot || typeof hotspot !== 'string') {
@@ -48,6 +45,12 @@ export async function GET(
       ],
       'kitchen_countertop': [
         { thumb: '/images/gallery/kitchen/kitchen-countertops/kitchen-countertop-1.png', full: '/images/gallery/kitchen/kitchen-countertops/kitchen-countertop-1.png', caption: 'Modern Kitchen Countertop', width: 1920, height: 1080 }
+      ],
+      'fireplace': [
+        { thumb: '/images/gallery/living-area/fireplaces/fireplace-1.png', full: '/images/gallery/living-area/fireplaces/fireplace-1.png', caption: 'Custom Fireplace Installation', width: 1920, height: 1080 }
+      ],
+      'kitchen_cabinet': [
+        { thumb: '/images/gallery/kitchen/kitchen-cabinets/kitchen-cabinet-naples-1.jpg', full: '/images/gallery/kitchen/kitchen-cabinets/kitchen-cabinet-naples-1.jpg', caption: 'Modern Kitchen Cabinet Installation', width: 1920, height: 1080 }
       ]
     };
 
@@ -90,4 +93,4 @@ export async function OPTIONS() {
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
-} 
+}
