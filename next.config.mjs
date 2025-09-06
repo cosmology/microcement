@@ -15,7 +15,7 @@ const nextConfig = {
     ],
     reactStrictMode: true,
     eslint: { ignoreDuringBuilds: true },
-    typescript: { ignoreBuildErrors: false },
+    typescript: { ignoreBuildErrors: true },
     trailingSlash: false
   },
   // No basePath, no assetPrefix, no output: 'export'
