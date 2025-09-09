@@ -6,6 +6,7 @@ interface DebugInfoProps {
   scrollHeight: number;
   progress: number;
   progressPercent: number;
+  scrollPercentage?: number;
   windowHeight: number;
   windowWidth: number;
   currentSection: string;
@@ -20,6 +21,7 @@ export default function DebugInfo({
   scrollHeight,
   progress,
   progressPercent,
+  scrollPercentage,
   windowHeight,
   windowWidth,
   currentSection,
@@ -53,6 +55,7 @@ export default function DebugInfo({
       <div>Top: {scrollTop.toFixed(2)}px</div>
       <div>Height: {scrollHeight}px</div>
       <div>Progress: {progressPercent.toFixed(2)}%</div>
+      <div>Scroll %: {scrollPercentage ? scrollPercentage.toFixed(2) : '0.00'}%</div>
       <div style={{marginTop: "8px"}}><strong>Window:</strong></div>
       <div>Width: {windowWidth}px</div>
       <div>Height: {windowHeight}px</div>

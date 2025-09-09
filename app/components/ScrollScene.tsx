@@ -65,6 +65,11 @@ export default function ScrollScene({
     0xA05AFF, // Light purple
   ];
 
+  // Pulse marker colors
+  //const PULSE_MARKER_COLOR = 0x8b5cf6; // Purple color for inner dot
+  const PULSE_MARKER_COLOR = 0x8C33FF; // Bright Purple color for inner dot
+  const PULSE_RING_COLOR = 0xff00ff; // Magenta color for hover ring
+
   // Scene configuration constants
   const CUBE_SIZE = 5;
   const CUBE_POSITION = new THREE.Vector3(0, 0, 0); // Centered on X-axis
@@ -83,13 +88,13 @@ export default function ScrollScene({
   const CAMERA_FOV = 75;
   const CAMERA_NEAR = 0.1;
   const CAMERA_FAR = 1000;
-  const ORBITAL_HEIGHT = 30;
+  const ORBITAL_HEIGHT = 8;
   const ORBITAL_RADIUS_MULTIPLIER = 6;
   const ORBITAL_SPEED = 0.2;
   
   // Animation configuration
   const INTRO_START_POS = new THREE.Vector3(0, 50, 3); // Start perfectly above the cube center
-  const INTRO_END_POS = new THREE.Vector3(50, ORBITAL_HEIGHT, 0); // End at proper radius for centered scene
+  const INTRO_END_POS = new THREE.Vector3(30, ORBITAL_HEIGHT, 0); // End at proper radius for centered scene
   const ORBITAL_START_POS = new THREE.Vector3(50, ORBITAL_HEIGHT, 0); // Explicit orbital start position
   const ANIMATION_STEPS = 100;
   const ANIMATION_STEP_INTERVAL = 17; // 17ms per step = ~1.7 seconds total
@@ -227,21 +232,23 @@ export default function ScrollScene({
     new THREE.Vector3(20, 5, 0),
     new THREE.Vector3(-8, 6.5, 2),
     new THREE.Vector3(-14, 6.75, 7),
-    new THREE.Vector3(-10, 7, 27),
+    new THREE.Vector3(-8, 7, 24),
     new THREE.Vector3(-4, 7, 30),
     new THREE.Vector3(-2, 7.25, 32),
-    new THREE.Vector3(18, 7.5, 32),
-    new THREE.Vector3(20, 8, 20),
+    new THREE.Vector3(12, 7.5, 32),
+    new THREE.Vector3(20, 8, 25),
+    new THREE.Vector3(16, 8, 0),
   ];
   const gsapLookAtTargets = [
     new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(0, 3, 0),
-    new THREE.Vector3(0, 4, 0),
-    new THREE.Vector3(0, 5, 30),
+    new THREE.Vector3(4, 3, 0),
+    new THREE.Vector3(6, 4, 0),
+    new THREE.Vector3(7, 5, 30),
     new THREE.Vector3(10, 6, 50),
     new THREE.Vector3(20, 7, 60),
     new THREE.Vector3(30, 8, 40),
-    new THREE.Vector3(0, 0, -18),
+    new THREE.Vector3(30, 8, 20),
+    new THREE.Vector3(0, 8, -40),
   ];
   const gsapCurveRef = useRef<THREE.CatmullRomCurve3>(new THREE.CatmullRomCurve3(gsapCameraPoints, false, 'catmullrom', 0.1));
   const gsapLookAtTargetsRef = useRef<THREE.Vector3[]>(gsapLookAtTargets);
@@ -271,6 +278,12 @@ export default function ScrollScene({
       setDebugInfo((prev: any) => ({
         ...(prev || {}),
         cameraPos: [camera.position.x, camera.position.y, camera.position.z],
+        // Preserve scroll data
+        scrollTop: prev?.scrollTop || 0,
+        scrollHeight: prev?.scrollHeight || 0,
+        scrollPercentage: prev?.scrollPercentage || 0,
+        progress: prev?.progress || 0,
+        progressPercent: prev?.progressPercent || 0
       }));
     }
   };
@@ -886,7 +899,7 @@ export default function ScrollScene({
     if (SHOW_CAMERA_PATH) {
       const pts = curve.getPoints(300);
       const geom = new THREE.BufferGeometry().setFromPoints(pts);
-      const mat = new THREE.LineBasicMaterial({ color: 0x00ffff });
+      const mat = new THREE.LineBasicMaterial({ color: 0xff0000 });
       const line = new THREE.Line(geom, mat);
       line.renderOrder = 999;
       sceneRef.current.add(line);
@@ -1027,12 +1040,12 @@ export default function ScrollScene({
       const hotspotPosition = new THREE.Vector3();
       hotspot.getWorldPosition(hotspotPosition);
       
-      // Create the main pulse sphere (50% smaller)
-      const pulseGeometry = new THREE.SphereGeometry(0.4, 16, 16); // Reduced from 0.8 to 0.4 (50% smaller)
+      // Create the main pulse sphere - small inner dot always visible
+      const pulseGeometry = new THREE.SphereGeometry(0.6, 16, 16); // Much smaller dot
       const pulseMaterial = new THREE.MeshBasicMaterial({
-        color: 0x8B5CF6, // Purple color
+        color: PULSE_MARKER_COLOR, // Use constant for inner dot color
         transparent: true,
-        opacity: 0.9 // 90% opacity
+        opacity: 1 // Always visible inner dot
       });
       
       const pulseSphere = new THREE.Mesh(pulseGeometry, pulseMaterial);
@@ -1046,29 +1059,30 @@ export default function ScrollScene({
       pulseSphere.renderOrder = 1000; // High render order to appear on top
       pulseSphere.frustumCulled = false; // Ensure visibility
       
-      // Create glow effect (50% smaller)
-      const glowGeometry = new THREE.SphereGeometry(0.5, 16, 16); // Reduced from 1.0 to 0.5 (50% smaller)
-      const glowMaterial = new THREE.MeshBasicMaterial({
-        color: 0x8B5CF6,
+      // Create outer ring that will scale/fade on hover - 3D sphere ring
+      const ringGeometry = new THREE.SphereGeometry(0.5, 16, 16); // 3D sphere for ring
+      const ringMaterial = new THREE.MeshBasicMaterial({
+        color: PULSE_RING_COLOR, // Use constant for ring color
         transparent: true,
-        opacity: 0.6 // 60% opacity for glow
+        opacity: 0, // hidden until hover
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        wireframe: true // Make it a wireframe sphere (hollow)
       });
-      glowMaterial.depthWrite = false;
-      glowMaterial.depthTest = true; // Enable depth testing for proper layering
-      glowMaterial.blending = THREE.AdditiveBlending;
-      
-      const glowSphere = new THREE.Mesh(glowGeometry, glowMaterial);
-      glowSphere.position.copy(pulseSphere.position);
-      glowSphere.renderOrder = 1001; // Even higher render order for glow
-      glowSphere.frustumCulled = false; // Ensure visibility
+      const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+      ringMesh.position.copy(pulseSphere.position);
+      ringMesh.renderOrder = 1001; // Even higher render order for ring
+      ringMesh.frustumCulled = false; // Ensure visibility
+      // No billboard effect needed for 3D wireframe sphere
       
       // Add both spheres to the group
       pulseGroup.add(pulseSphere);
-      pulseGroup.add(glowSphere);
+      pulseGroup.add(ringMesh);
       
       // Store references for animation
       hotspotPulseRefs.current[index * 2] = pulseSphere;
-      hotspotPulseRefs.current[index * 2 + 1] = glowSphere;
+      hotspotPulseRefs.current[index * 2 + 1] = ringMesh;
       
       // Store pulse sphere reference for click handling (but don't add to main clickable objects)
       // This prevents conflicts with hover detection while maintaining clickability
@@ -1085,57 +1099,166 @@ export default function ScrollScene({
     console.log(`✅ Created ${hotspotPulseRefs.current.length / 2} pulse markers for mobile`);
     console.log('Pulse group added to scene:', pulseGroup);
     
-    // Start pulse animation
-    console.log('🎯 Starting pulse animation with', hotspotPulseRefs.current.length, 'markers');
-    animateHotspotPulses();
-    
     // Add cursor pointer CSS to the document for pulse markers
-    addPulseMarkerCursorStyles();
-    
-    // Set up a periodic check to ensure animation is running
-    const animationCheckInterval = setInterval(() => {
-      if (!pulseAnimationRef.current && hotspotPulseRefs.current.length > 0) {
-        console.log('🔍 Animation stopped, restarting...');
-        animateHotspotPulses();
-      }
-    }, 1000); // Check every second
-    
-    // Store the interval for cleanup
-    (window as any).__pulseAnimationCheckInterval = animationCheckInterval;
+    // addPulseMarkerCursorStyles();
   };
 
-  // Function to animate the pulse markers
+  // Function to show marker on hover (animate outer ring only, keep inner dot visible)
+  const showMarkerOnHover = (markerIndex: number) => {
+    const pulseSphere = hotspotPulseRefs.current[markerIndex * 2];
+    const ringMesh = hotspotPulseRefs.current[markerIndex * 2 + 1];
+    
+    if (pulseSphere && pulseSphere.material) {
+      const pulseMaterial = pulseSphere.material as THREE.MeshBasicMaterial;
+      pulseMaterial.opacity = 0.9; // ensure inner remains visible
+    }
+    
+    if (ringMesh && ringMesh.material) {
+      const ringMaterial = ringMesh.material as THREE.MeshBasicMaterial;
+      ringMaterial.opacity = 0.6; // show ring
+      
+      // Reset ring scale
+      ringMesh.scale.set(1, 1, 1);
+      
+      // Trigger brief scale-out/fade-out animation
+      const start = performance.now();
+      const duration = 1500; // 1.5s animation
+      const initialScale = 1;
+      const targetScale = 1.5; // Scale to 150%
+      
+      const animate = () => {
+        const now = performance.now();
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+        
+        const s = initialScale + (targetScale - initialScale) * eased;
+        ringMesh.scale.set(s, s, s);
+        ringMaterial.opacity = 0.6 * (1 - eased);
+        
+        if (t < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          // Hide ring after animation
+          ringMaterial.opacity = 0;
+        }
+      };
+      requestAnimationFrame(animate);
+    }
+  };
+
+  // Function to hide all markers (hide rings only, keep inner visible)
+  const hideAllMarkers = () => {
+    hotspotPulseRefs.current.forEach((marker, i) => {
+      if (marker && marker.material) {
+        const material = marker.material as THREE.MeshBasicMaterial;
+        if (i % 2 === 0) {
+          // inner dot - keep visible
+          material.opacity = 0.9;
+        } else {
+          // outer ring - hide and reset scale
+          material.opacity = 0;
+          marker.scale.set(1, 1, 1); // Reset scale
+        }
+      }
+    });
+  };
+
+  // Function to animate a single hotspot marker
+  const animateSingleHotspotPulse = (markerIndex: number) => {
+    const pulseSphere = hotspotPulseRefs.current[markerIndex * 2];
+    const glowSphere = hotspotPulseRefs.current[markerIndex * 2 + 1];
+    
+    if (!pulseSphere || !glowSphere || !pulseSphere.material || !glowSphere.material) {
+      console.log(`🎯 Marker ${markerIndex} not found for animation`);
+      return;
+    }
+    
+    const startTime = performance.now();
+    const pulseDuration = 2000; // Brief 2-second pulse
+    
+    const animate = () => {
+      const elapsed = performance.now() - startTime;
+      
+      if (elapsed > pulseDuration) {
+        // Stop animation after brief duration
+        console.log(`🎯 Brief pulse animation completed for marker ${markerIndex}`);
+        return;
+      }
+      
+      const time = elapsed * 0.001;
+      
+      // Animate pulse sphere
+      const pulseMaterial = pulseSphere.material as THREE.MeshBasicMaterial;
+      const pulseSpeed = 6.0;
+      const pulse = Math.sin(time * pulseSpeed) * 0.5 + 0.5;
+      pulseMaterial.opacity = 0.9 * pulse;
+      pulseMaterial.color.setHex(PULSE_MARKER_COLOR);
+      const scale = 0.7 + Math.sin(time * 6.0) * 0.3;
+      pulseSphere.scale.setScalar(scale);
+      
+      // Animate glow sphere
+      const glowMaterial = glowSphere.material as THREE.MeshBasicMaterial;
+      const glowSpeed = 4.0;
+      const glow = Math.sin(time * glowSpeed) * 0.5 + 0.5;
+      glowMaterial.opacity = 0.6 * glow;
+      glowMaterial.color.setHex(PULSE_RING_COLOR);
+      
+      // Continue animation
+      requestAnimationFrame(animate);
+    };
+    
+    animate();
+  };
+
+  // Function to animate the pulse markers with brief, swift pulses
   const animateHotspotPulses = () => {
     if (!hotspotPulseRefs.current.length) {
       console.log('🎯 No pulse markers to animate');
       return;
     }
     
-    const time = Date.now() * 0.003; // Slower animation
+    const startTime = performance.now();
+    const pulseDuration = 2000; // Brief 2-second pulse
     
-    hotspotPulseRefs.current.forEach((pulseMesh, index) => {
-      if (!pulseMesh || !pulseMesh.material) return;
+    const animate = () => {
+      const elapsed = performance.now() - startTime;
       
-      const material = pulseMesh.material as THREE.MeshBasicMaterial;
-      const baseOpacity = index % 2 === 0 ? 0.9 : 0.6; // Main sphere vs glow - updated base opacity
-      const pulseSpeed = index % 2 === 0 ? 1 : 0.7; // Different speeds for variety
-      
-      // Create pulsing effect with more visible range
-      const pulse = Math.sin(time * pulseSpeed) * 0.4 + 0.6; // Range from 0.2 to 1.0
-      material.opacity = baseOpacity * pulse;
-      
-      // Ensure color stays purple
-      material.color.setHex(0x8B5CF6);
-      
-      // Scale effect for main spheres only
-      if (index % 2 === 0) {
-        const scale = 0.8 + Math.sin(time * 1.2) * 0.2;
-        pulseMesh.scale.setScalar(scale);
+      if (elapsed > pulseDuration) {
+        // Stop animation after brief duration
+        console.log('🎯 Brief pulse animation completed');
+        return;
       }
-    });
+      
+      const time = elapsed * 0.001;
+      
+      hotspotPulseRefs.current.forEach((pulseMesh, index) => {
+        if (!pulseMesh || !pulseMesh.material) return;
+        
+        const material = pulseMesh.material as THREE.MeshBasicMaterial;
+        
+        // Brief, swift pulse with higher frequency
+        const pulseSpeed = index % 2 === 0 ? 6.0 : 4.0; // Very fast pulse
+        const pulse = Math.sin(time * pulseSpeed) * 0.5 + 0.5; // Range from 0.0 to 1.0 (more dramatic)
+        
+        // Base opacity
+        const baseOpacity = index % 2 === 0 ? 0.9 : 0.6;
+        material.opacity = baseOpacity * pulse;
+        
+        // Ensure color uses the appropriate constant
+        material.color.setHex(index % 2 === 0 ? PULSE_MARKER_COLOR : PULSE_RING_COLOR);
+        
+        // Swift scaling for main spheres
+        if (index % 2 === 0) {
+          const scale = 0.7 + Math.sin(time * 6.0) * 0.3; // Very fast, dramatic scaling
+          pulseMesh.scale.setScalar(scale);
+        }
+      });
+      
+      // Continue animation
+      pulseAnimationRef.current = requestAnimationFrame(animate);
+    };
     
-    // Continue animation - ALWAYS continue regardless of mouse events
-    pulseAnimationRef.current = requestAnimationFrame(animateHotspotPulses);
+    animate();
   };
 
   // Function to stop pulse animation
@@ -2613,6 +2736,12 @@ export default function ScrollScene({
           setDebugInfo((prev: any) => ({
             ...(prev || {}),
             cameraPos: [camera.position.x, camera.position.y, camera.position.z],
+            // Preserve scroll data
+            scrollTop: prev?.scrollTop || 0,
+            scrollHeight: prev?.scrollHeight || 0,
+            scrollPercentage: prev?.scrollPercentage || 0,
+            progress: prev?.progress || 0,
+            progressPercent: prev?.progressPercent || 0
           }));
         }
         
@@ -2630,6 +2759,12 @@ export default function ScrollScene({
           setDebugInfo((prev: any) => ({
             ...(prev || {}),
             cameraPos: [camera.position.x, camera.position.y, camera.position.z],
+            // Preserve scroll data
+            scrollTop: prev?.scrollTop || 0,
+            scrollHeight: prev?.scrollHeight || 0,
+            scrollPercentage: prev?.scrollPercentage || 0,
+            progress: prev?.progress || 0,
+            progressPercent: prev?.progressPercent || 0
           }));
         }
 
@@ -2750,6 +2885,7 @@ export default function ScrollScene({
       scrollHeight,
       progress,
       progressPercent,
+      scrollPercentage: scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0,
       windowHeight: window.innerHeight,
       windowWidth: window.innerWidth,
       currentSection
@@ -3205,7 +3341,16 @@ export default function ScrollScene({
         },
       });
       if (setDebugInfo) {
-        setDebugInfo((prev: any) => ({ ...(prev || {}), progress: t, progressPercent: t * 100 }));
+        const scrollPercentage = sh > 0 ? (st / sh) * 100 : 0;
+        console.log('🎯 Scroll Debug:', { st, sh, scrollPercentage, t, progressPercent: t * 100 });
+        setDebugInfo((prev: any) => ({ 
+          ...(prev || {}), 
+          progress: t, 
+          progressPercent: t * 100,
+          scrollTop: st,
+          scrollHeight: sh,
+          scrollPercentage: scrollPercentage
+        }));
       }
     };
     window.addEventListener('scroll', onScroll, { passive: true } as any);
@@ -3277,14 +3422,30 @@ export default function ScrollScene({
       // Check for intersections
       const intersects = raycasterRef.current.intersectObjects(hotspotObjects);
       
-      // Update cursor based on intersection
+      // Handle marker hover visibility
       if (intersects.length > 0) {
         const intersectedObject = intersects[0].object;
+        
+        // Check if hovering over a pulse marker
+        if (intersectedObject.userData && intersectedObject.userData.isPulseMarker) {
+          const markerIndex = hotspotPulseRefs.current.indexOf(intersectedObject);
+          if (markerIndex !== -1) {
+            const markerGroupIndex = Math.floor(markerIndex / 2);
+            showMarkerOnHover(markerGroupIndex);
+          }
+        } else {
+          // Hide all markers when hovering over other objects
+          hideAllMarkers();
+        }
+        
         // Set cursor to pointer for hotspots and pulse markers
         if (document.body) {
           document.body.style.cursor = 'pointer';
         }
       } else {
+        // Hide all markers when not hovering
+        hideAllMarkers();
+        
         // Reset cursor to default when not hovering over interactive elements
         if (document.body) {
           document.body.style.cursor = 'default';
@@ -3457,13 +3618,13 @@ export default function ScrollScene({
       }
     };
 
-    // Add event listeners with throttled mouse move to prevent flickering
+    // Add event listeners with optimized throttled mouse move
     const throttledMouseMove = (event: MouseEvent) => {
       if (throttleTimeout) return;
       throttleTimeout = setTimeout(() => {
         handleMouseMove(event);
         throttleTimeout = null as any;
-      }, 16); // 60fps throttle
+      }, 8); // Reduced from 16ms to 8ms for smoother 120fps
     };
     
     // Store references to original listeners for gallery mode management
@@ -3893,8 +4054,8 @@ export default function ScrollScene({
                 >
                   ×
                 </button>
-              </div>
-            </div>
+      </div>
+    </div>
           </div>
 
           {/* Scrollable Content */}

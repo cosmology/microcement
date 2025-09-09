@@ -66,3 +66,30 @@ export const getCurrentBreakpoint = () => {
   if (width < breakpoints['2xl']) return 'xl'
   return '2xl'
 }
+
+// Orientation detection utilities
+export const orientation = {
+  // Check if device is in portrait orientation
+  isPortrait: () => {
+    if (typeof window === 'undefined') return true
+    return window.innerHeight > window.innerWidth
+  },
+  
+  // Check if device is in landscape orientation
+  isLandscape: () => {
+    if (typeof window === 'undefined') return false
+    return window.innerWidth > window.innerHeight
+  },
+  
+  // Get current orientation as string
+  get: () => {
+    if (typeof window === 'undefined') return 'portrait'
+    return window.innerHeight > window.innerWidth ? 'portrait' : 'landscape'
+  },
+  
+  // Check if orientation matches media query
+  matches: (query: 'portrait' | 'landscape') => {
+    if (typeof window === 'undefined') return query === 'portrait'
+    return orientation.get() === query
+  }
+}

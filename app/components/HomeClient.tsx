@@ -165,6 +165,9 @@ export default function HomeClient() {
           console.log('🎯 HomeClient: Intro completed, enabling scroll and triggering ScrollDownCTA');
           setScrollEnabled(true);
           
+          // Dispatch custom event for ContentProgress
+          window.dispatchEvent(new CustomEvent('introComplete'));
+          
           // Trigger ScrollDownCTA intro completion with retry mechanism
           const triggerScrollDownCTA = () => {
             if ((window as any).__scrollDownCTAIntroComplete) {

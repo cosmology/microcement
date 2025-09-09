@@ -120,7 +120,7 @@ export default function NavigationSection() {
                 className="block sm:hidden h-8 w-auto"
               />
             </a>
-            <GeoLocationSection />
+            {/* <GeoLocationSection /> */}
             {/* Desktop Nav */}
             <ul className={`hidden md:flex items-center gap-2 sm:gap-4 md:gap-6 ${navFont}`}>
               {navLinks.map((link) =>
