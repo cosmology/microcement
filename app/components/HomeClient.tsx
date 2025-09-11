@@ -18,11 +18,13 @@ import NavigationSection from "./NavigationSection"
 import dynamic from "next/dynamic";
 import DebugInfo from "./DebugInfo";
 import ScrollDownCTA from "./ScrollDownCTA";
+import { getThemeColors } from "@/lib/utils";
 
 const ScrollScene = dynamic(() => import("./ScrollScene"), { ssr: false });
 
 export default function HomeClient() {
   const [mounted, setMounted] = useState(false)
+  const [themeKey, setThemeKey] = useState(0) // Force re-render on theme change
   const [preloadDone, setPreloadDone] = useState(false)
   const [sceneStage, setSceneStage] = useState(0);
   const [currentSection, setCurrentSection] = useState<string>('hero');
@@ -46,6 +48,110 @@ export default function HomeClient() {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Theme change listener for marker panels
+  useEffect(() => {
+    const handleThemeChange = () => {
+      setThemeKey(prev => prev + 1) // Force re-render
+    }
+
+    // Listen for theme changes
+    const observer = new MutationObserver(handleThemeChange)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    })
+
+    return () => observer.disconnect()
+  }, [])
+
+  // Mobile scroll fallback - ensure scrolling works on mobile devices
+  useEffect(() => {
+    if (!preloadDone) return
+
+    // Check if we're on mobile and intro hasn't completed after 3 seconds
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    
+    if (isMobileDevice) {
+      const fallbackTimer = setTimeout(() => {
+        if (!scrollEnabled) {
+          console.log('📱 Mobile scroll fallback: Enabling scroll after timeout')
+          setScrollEnabled(true)
+        }
+        
+        // Force restore scrolling CSS properties
+        document.body.style.overflow = 'auto'
+        document.body.style.touchAction = 'pan-y'
+        document.documentElement.style.overflow = 'auto'
+        document.documentElement.style.touchAction = 'pan-y'
+        
+        console.log('📱 Mobile scroll fallback: Forced CSS scroll restoration')
+      }, 3000) // 3 second fallback
+
+      return () => clearTimeout(fallbackTimer)
+    }
+  }, [preloadDone, scrollEnabled])
+
+  // Aggressive scroll restoration - ensure scrolling always works
+  useEffect(() => {
+    if (!preloadDone) return
+
+    const forceScrollRestore = () => {
+      // Force enable scrolling every 2 seconds if it's blocked
+      const interval = setInterval(() => {
+        if (document.body.style.overflow === 'hidden' || document.body.style.touchAction === 'none') {
+          console.log('🔧 Force restoring scroll - CSS was blocked')
+          document.body.style.overflow = 'auto'
+          document.body.style.touchAction = 'pan-y'
+          document.documentElement.style.overflow = 'auto'
+          document.documentElement.style.touchAction = 'pan-y'
+        }
+      }, 2000)
+
+      return () => clearInterval(interval)
+    }
+
+    const cleanup = forceScrollRestore()
+    return cleanup
+  }, [preloadDone])
+
+  // Touch scroll detection - enable scrolling when user tries to scroll
+  useEffect(() => {
+    if (!preloadDone) return
+
+    const handleTouchStart = (e: TouchEvent) => {
+      // If scrolling is blocked, force enable it when user tries to scroll
+      if (document.body.style.overflow === 'hidden' || document.body.style.touchAction === 'none') {
+        console.log('👆 Touch detected - forcing scroll enable')
+        document.body.style.overflow = 'auto'
+        document.body.style.touchAction = 'pan-y'
+        document.documentElement.style.overflow = 'auto'
+        document.documentElement.style.touchAction = 'pan-y'
+        setScrollEnabled(true)
+      }
+    }
+
+    const handleWheel = (e: WheelEvent) => {
+      // If scrolling is blocked, force enable it when user tries to scroll
+      if (document.body.style.overflow === 'hidden' || document.body.style.touchAction === 'none') {
+        console.log('🖱️ Wheel detected - forcing scroll enable')
+        document.body.style.overflow = 'auto'
+        document.body.style.touchAction = 'pan-y'
+        document.documentElement.style.overflow = 'auto'
+        document.documentElement.style.touchAction = 'pan-y'
+        setScrollEnabled(true)
+      }
+    }
+
+    // Add event listeners
+    document.addEventListener('touchstart', handleTouchStart, { passive: true })
+    document.addEventListener('wheel', handleWheel, { passive: true })
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart)
+      document.removeEventListener('wheel', handleWheel)
+    }
+  }, [preloadDone])
 
   // Intersection Observer for section detection
   useEffect(() => {
@@ -151,12 +257,198 @@ export default function HomeClient() {
     return () => observer.disconnect();
   }, [preloadDone]);
 
+  // GSAP ScrollTrigger for marker panels
+  useEffect(() => {
+    if (!preloadDone) return;
+
+    // Import GSAP ScrollTrigger dynamically
+    const initScrollTrigger = async () => {
+      // Wait a bit for DOM to be fully rendered
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const { ScrollTrigger } = await import('gsap/ScrollTrigger');
+      const gsap = (await import('gsap')).default;
+      
+      gsap.registerPlugin(ScrollTrigger);
+
+      // Panel Animation: Static background, text slides in/out
+      const panelNodes = Array.from(document.querySelectorAll('[data-marker-index]')) as HTMLElement[];
+      console.log('🔍 Found Panels:', panelNodes.length);
+      
+      // Sort panels by their start percentage
+      const sortedPanels = panelNodes.sort((a, b) => {
+        const startA = parseFloat(a.dataset.progressStart || '0');
+        const startB = parseFloat(b.dataset.progressStart || '0');
+        return startA - startB;
+      });
+
+      sortedPanels.forEach((panel, index) => {
+        const start = parseFloat(panel.dataset.progressStart || '0');
+        const end = parseFloat(panel.dataset.progressEnd || '0');
+        const name = panel.dataset.markerName || '';
+
+        // Find text content elements within the panel
+        const headerElement = panel.querySelector('h3');
+        const contentElement = panel.querySelector('p');
+
+        if (index === 0) {
+          // Floor panel: slide up from bottom with fade-in
+          gsap.set(panel, { 
+            y: '100%', // Start off-screen bottom
+            opacity: 0
+          });
+
+          ScrollTrigger.create({
+            trigger: 'body',
+            start: 'top top',
+            end: 'bottom bottom',
+            scrub: 1,
+            onUpdate: () => {
+              const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+              const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+              const scrollPercent = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+
+              if (scrollPercent < start) {
+                // Before start: hidden off-screen bottom
+                gsap.set(panel, { 
+                  y: '100%', 
+                  opacity: 0
+                });
+                return;
+              }
+
+              if (scrollPercent >= start && scrollPercent <= end) {
+                // During range: slide up from bottom with fade-in
+                const range = Math.max(1e-6, end - start);
+                const slideProgress = (scrollPercent - start) / range; // 0 → 1
+                
+                gsap.set(panel, { 
+                  y: `${100 - (slideProgress * 100)}%`, // 100% → 0%
+                  opacity: slideProgress // 0 → 1
+                });
+                return;
+              }
+
+              if (scrollPercent > end) {
+                // After end: slide out to left
+                gsap.set(panel, { 
+                  y: '0px',
+                  opacity: 0
+                });
+                return;
+              }
+            }
+          });
+        } else {
+          // Other panels: static background, text slides in/out
+          gsap.set(panel, { 
+            y: '0px', // Stay at bottom
+            opacity: 0 // Start hidden
+          });
+
+          // Initialize text content off-screen right
+          if (headerElement) gsap.set(headerElement, { x: '40px', opacity: 0 });
+          if (contentElement) gsap.set(contentElement, { x: '40px', opacity: 0 });
+
+          ScrollTrigger.create({
+            trigger: 'body',
+            start: 'top top',
+            end: 'bottom bottom',
+            scrub: 1,
+            onUpdate: () => {
+              const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+              const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+              const scrollPercent = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+
+              if (scrollPercent >= start && scrollPercent <= end) {
+                // During range: show panel and slide text in from right
+                const range = Math.max(1e-6, end - start);
+                const slideProgress = (scrollPercent - start) / range; // 0 → 1
+                
+                // Show the panel background
+                gsap.set(panel, { 
+                  y: '0px',
+                  opacity: 1
+                });
+                
+                if (headerElement) {
+                  gsap.set(headerElement, { 
+                    x: `${40 - (slideProgress * 40)}px`, // 40px → 0px
+                    opacity: slideProgress // 0 → 1
+                  });
+                }
+                if (contentElement) {
+                  gsap.set(contentElement, { 
+                    x: `${40 - (slideProgress * 40)}px`, // 40px → 0px
+                    opacity: slideProgress // 0 → 1
+                  });
+                }
+                return;
+              }
+
+              if (scrollPercent > end) {
+                // After end: slide text out to left and hide panel
+                if (headerElement) {
+                  gsap.set(headerElement, { 
+                    x: '-40px',
+                    opacity: 0
+                  });
+                }
+                if (contentElement) {
+                  gsap.set(contentElement, { 
+                    x: '-40px',
+                    opacity: 0
+                  });
+                }
+                
+                // Hide the panel background
+                gsap.set(panel, { 
+                  y: '0px',
+                  opacity: 0
+                });
+                return;
+              }
+
+              // Before start: hide panel and text off-screen right
+              gsap.set(panel, { 
+                y: '0px',
+                opacity: 0
+              });
+              
+              if (headerElement) {
+                gsap.set(headerElement, { 
+                  x: '40px',
+                  opacity: 0
+                });
+              }
+              if (contentElement) {
+                gsap.set(contentElement, { 
+                  x: '40px',
+                  opacity: 0
+                });
+              }
+            }
+          });
+        }
+      });
+    };
+
+    initScrollTrigger();
+
+    return () => {
+      // Cleanup ScrollTrigger instances
+      if (typeof window !== 'undefined' && (window as any).ScrollTrigger) {
+        (window as any).ScrollTrigger.getAll().forEach((trigger: any) => trigger.kill());
+      }
+    };
+  }, [preloadDone]);
+
   if (!mounted) return null
 
     return (
     <div className="relative">
  
-      {/* {!preloadDone && <Preloader onComplete={() => setPreloadDone(true)} />} */}
+      {!preloadDone && <Preloader onComplete={() => setPreloadDone(true)} />}
       <NavigationSection />
       <ScrollScene 
         sceneStage={sceneStage} 
@@ -191,13 +483,118 @@ export default function HomeClient() {
         style={{ 
           visibility: preloadDone ? 'visible' : 'hidden',
           pointerEvents: scrollEnabled ? 'auto' : 'none',
-          overflow: scrollEnabled ? 'auto' : 'hidden'
+          overflow: scrollEnabled ? 'auto' : 'hidden',
+          // Ensure proper scrolling on mobile
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-y'
         }}
       >
         <div ref={hero} className="min-h-screen">
           <HeroSection />
         </div>
-        <div ref={env} className="min-h-screen">
+        
+        {/* Virtual content sections for marker progression */}
+        {Array.from({ length: 10 }, (_, index) => {
+          const markerData = [
+            { 
+              name: "Floor", 
+              progress: "0-10%", 
+              content: "Durable, seamless floors perfect for high-traffic areas."
+            },
+            { 
+              name: "Kitchen Island", 
+              progress: "10-20%", 
+              content: "Seamless surface, heat-resistant centerpiece for your kitchen."
+            },
+            { 
+              name: "Kitchen Backsplash", 
+              progress: "20-30%", 
+              content: "Waterproof, stain-resistant wall protection with modern appeal."
+            },
+            { 
+              name: "Kitchen Cabinet", 
+              progress: "30-40%", 
+              content: "Seamless cabinet finishes for cohesive, modern kitchen design."
+            },
+            { 
+              name: "Kitchen Countertop", 
+              progress: "40-47%", 
+              content: "Heat-resistant, stain-proof countertop solution."
+            },
+            { 
+              name: "Bath Countertop", 
+              progress: "47-75%", 
+              content: "Waterproof, mold-resistant bathroom countertops."
+            },
+            { 
+              name: "Coffee Table", 
+              progress: "75-80%", 
+              content: "Seamless surface centerpiece for modern living spaces."
+            },
+            { 
+              name: "Fireplace", 
+              progress: "80-88%", 
+              content: "Heat-resistant finish for modern, minimalist fireplace design."
+            },
+            { 
+              name: "Shelves", 
+              progress: "88-95%", 
+              content: "Seamless shelving solutions for organized, elegant display."
+            },
+            { 
+              name: "Accent Wall", 
+              progress: "95-100%", 
+              content: "Bold focal points with seamless, durable finishes."
+            }
+          ];
+          
+          const marker = markerData[index];
+          const themeColors = getThemeColors();
+          
+          
+          return (
+            <div 
+              key={`marker-section-${index}-${themeKey}`} 
+              className="h-screen relative overflow-hidden"
+              style={{ 
+                opacity: 1,
+                // Ensure proper height on mobile devices
+                minHeight: '100vh',
+                minHeight: '100dvh' // Dynamic viewport height for mobile
+              }}
+            >
+              {/* Marker Panel - Responsive Full Width at Bottom */}
+              <div 
+                className="fixed z-50 w-full backdrop-blur-sm border-b border-light-dark dark:border-gray-700"
+                style={{
+                  bottom: '0px',
+                  height: window.innerWidth < 640 ? '100px' : window.innerWidth < 1024 ? '110px' : '120px',
+                  backgroundColor: `${themeColors.background}CC`,
+                  // Ensure proper touch interaction
+                  touchAction: 'none',
+                  WebkitTouchCallout: 'none',
+                  WebkitUserSelect: 'none',
+                  userSelect: 'none'
+                }}
+                data-marker-index={index}
+                data-marker-name={marker.name}
+                data-progress-start={marker.progress.split('-')[0].replace('%', '')}
+                data-progress-end={marker.progress.split('-')[1].replace('%', '')}
+              >
+                <div className="max-w-4xl mx-auto px-3 sm:px-4 py-1 sm:py-2 h-full flex flex-col justify-center">
+                  <h3 className="text-foreground text-lg sm:text-xl md:text-2xl font-bold mb-1 sm:mb-2 leading-tight">
+                    {marker.name}
+                  </h3>
+                  <p className="text-muted-foreground text-sm sm:text-base md:text-lg leading-relaxed">
+                    {marker.content}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        
+        {/* <div ref={env} className="min-h-screen">
           <EnvironmentalSection />
         </div>
         <div ref={comparison} className="min-h-screen opacity-90">
@@ -226,7 +623,7 @@ export default function HomeClient() {
         </div>
         <div ref={cta} className="min-h-screen">
           <CTASection />
-        </div>
+        </div> */}
       </main>
     </div>
   )

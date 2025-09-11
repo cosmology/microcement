@@ -41,7 +41,7 @@ export default function ContentProgress() {
           const scrollHeight = document.documentElement.scrollHeight - window.innerHeight
           const progress = scrollHeight > 0 ? scrollTop / scrollHeight : 0
           
-          console.log('🎬 ContentProgress: Custom scroll progress:', progress)
+          //console.log('🎬 ContentProgress: Custom scroll progress:', progress)
           progressValue.set(progress)
         }
         

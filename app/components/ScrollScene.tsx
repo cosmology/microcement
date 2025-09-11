@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { gsap } from "gsap";
 import SwiperGallery, { GalleryImage } from './SwiperGallery';
-import { isMobile } from '../../lib/utils';
+import MarkerDescriptionComponent from './MarkerDescriptionComponent';
+import { isMobile, getThemeColors, cssColorToHex } from '../../lib/utils';
 
 
 interface ScrollSceneProps {
@@ -99,13 +100,14 @@ export default function ScrollScene({
   const ANIMATION_STEPS = 100;
   const ANIMATION_STEP_INTERVAL = 17; // 17ms per step = ~1.7 seconds total
   
-  // Colors - Dynamic based on theme
-  const getThemeColors = () => {
-    const isDark = document.documentElement.classList.contains('dark');
+  // Colors - Dynamic based on theme (Three.js specific)
+  const getThreeJSThemeColors = () => {
+    const themeColors = getThemeColors();
+    const backgroundHex = cssColorToHex(themeColors.baseBackground);
     
-    if (isDark) {
+    if (themeColors.isDark) {
       return {
-        BACKGROUND_COLOR: 0x02030A, // Dark background #000254
+        BACKGROUND_COLOR: backgroundHex, // Dynamic from theme
         FLOOR_COLOR: 0x1f2937, // Dark floor
         WALL_COLOR: 0x04070E, // Dark walls
         CUBE_COLOR: 0x00ff00, // Green (keep same)
@@ -117,7 +119,7 @@ export default function ScrollScene({
       };
     } else {
       return {
-        BACKGROUND_COLOR: 0xf5f3ed, // BLANCO ROTO background (reverted)
+        BACKGROUND_COLOR: backgroundHex, // Dynamic from theme
         FLOOR_COLOR: 0xccc1b1, // LINO floor
         WALL_COLOR: 0xffffff, // White walls
         CUBE_COLOR: 0x00ff00, // Green
@@ -225,6 +227,9 @@ export default function ScrollScene({
   const [galleryLoading, setGalleryLoading] = useState(false);
   const [currentHotspot, setCurrentHotspot] = useState<string>('');
   const [galleryAnimating, setGalleryAnimating] = useState(false);
+  
+  // Marker description state
+  const [scrollProgress, setScrollProgress] = useState<number>(0);
   
   
   // GSAP-driven scroll path (preview path points and targets)
@@ -430,12 +435,12 @@ export default function ScrollScene({
     
     const touchEndHandler = () => {
       setEventCounts(prev => ({ ...prev, touchend: prev.touchend + 1 }));
-      console.log('📱 Touch end detected');
+      // console.log('📱 Touch end detected');
     };
     
     const wheelHandler = () => {
       setEventCounts(prev => ({ ...prev, wheel: prev.wheel + 1 }));
-      console.log('🖱️ Wheel event detected');
+      // console.log('🖱️ Wheel event detected');
     };
     
     // Add event listeners
@@ -994,6 +999,8 @@ export default function ScrollScene({
   const hotspotPulseRefs = useRef<THREE.Mesh[]>([]);
   const pulseAnimationRef = useRef<number>();
   const pulseMarkersCreatedRef = useRef<boolean>(false);
+  const animatingMarkersRef = useRef<Set<number>>(new Set()); // Track which markers are currently animating
+  const currentlyHoveredMarkerRef = useRef<number | null>(null); // Track which marker is currently being hovered
 
   // Function to create purple pulsing spheres for hotspots
   const createHotspotPulseMarkers = () => {
@@ -1068,7 +1075,7 @@ export default function ScrollScene({
         side: THREE.DoubleSide,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
-        wireframe: true // Make it a wireframe sphere (hollow)
+        wireframe: false // Make it a wireframe sphere (hollow)
       });
       const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
       ringMesh.position.copy(pulseSphere.position);
@@ -1105,12 +1112,27 @@ export default function ScrollScene({
 
   // Function to show marker on hover (animate outer ring only, keep inner dot visible)
   const showMarkerOnHover = (markerIndex: number) => {
+    // Check if this marker is already animating
+    if (animatingMarkersRef.current.has(markerIndex)) {
+      console.log(`🎯 Marker ${markerIndex} is already animating, skipping new animation`);
+      return;
+    }
+
+    // Check if we're still hovering the same marker
+    if (currentlyHoveredMarkerRef.current === markerIndex) {
+      console.log(`🎯 Still hovering marker ${markerIndex}, skipping new animation`);
+      return;
+    }
+
+    // Update the currently hovered marker
+    currentlyHoveredMarkerRef.current = markerIndex;
+
     const pulseSphere = hotspotPulseRefs.current[markerIndex * 2];
     const ringMesh = hotspotPulseRefs.current[markerIndex * 2 + 1];
     
     if (pulseSphere && pulseSphere.material) {
       const pulseMaterial = pulseSphere.material as THREE.MeshBasicMaterial;
-      pulseMaterial.opacity = 0.9; // ensure inner remains visible
+      pulseMaterial.opacity = 1; // ensure inner remains visible (updated opacity)
     }
     
     if (ringMesh && ringMesh.material) {
@@ -1120,11 +1142,14 @@ export default function ScrollScene({
       // Reset ring scale
       ringMesh.scale.set(1, 1, 1);
       
+      // Mark this marker as animating
+      animatingMarkersRef.current.add(markerIndex);
+      
       // Trigger brief scale-out/fade-out animation
       const start = performance.now();
-      const duration = 1500; // 1.5s animation
+      const duration = 700; // 1.5s animation
       const initialScale = 1;
-      const targetScale = 1.5; // Scale to 150%
+      const targetScale = 1.25; // Scale to 125%
       
       const animate = () => {
         const now = performance.now();
@@ -1138,8 +1163,10 @@ export default function ScrollScene({
         if (t < 1) {
           requestAnimationFrame(animate);
         } else {
-          // Hide ring after animation
+          // Hide ring after animation and mark as no longer animating
           ringMaterial.opacity = 0;
+          animatingMarkersRef.current.delete(markerIndex);
+          console.log(`🎯 Animation completed for marker ${markerIndex}`);
         }
       };
       requestAnimationFrame(animate);
@@ -1148,12 +1175,17 @@ export default function ScrollScene({
 
   // Function to hide all markers (hide rings only, keep inner visible)
   const hideAllMarkers = () => {
+    // Clear all animating markers when hiding all
+    animatingMarkersRef.current.clear();
+    // Clear currently hovered marker
+    currentlyHoveredMarkerRef.current = null;
+    
     hotspotPulseRefs.current.forEach((marker, i) => {
       if (marker && marker.material) {
         const material = marker.material as THREE.MeshBasicMaterial;
         if (i % 2 === 0) {
           // inner dot - keep visible
-          material.opacity = 0.9;
+          material.opacity = 1; // Updated opacity
         } else {
           // outer ring - hide and reset scale
           material.opacity = 0;
@@ -1625,7 +1657,7 @@ export default function ScrollScene({
       console.log('🧹 DEBUG MARKER CLEANUP SKIPPED (showDebug disabled)');
     }
     
-              // Create debug spheres only when showDebug is true
+    // Create debug spheres only when showDebug is true
     if (showDebug && sceneRef.current) {
       console.log('🎯 CREATING DEBUG SPHERES (showDebug enabled)...');
             console.log('  Scene has children:', sceneRef.current.children.length);
@@ -1667,11 +1699,11 @@ export default function ScrollScene({
               rendererRef.current.render(sceneRef.current, cameraRef.current);
               console.log('🎯 RENDER FORCED: Debug spheres should now be visible');
             }
-              } else if (!showDebug) {
+    } else if (!showDebug) {
       console.log('🎯 DEBUG SPHERES SKIPPED (showDebug disabled)');
-          } else {
-            console.log('❌ ERROR: Scene reference is null, cannot create debug spheres');
-          }
+    } else {
+      console.log('❌ ERROR: Scene reference is null, cannot create debug spheres');
+    }
     
     // CREATE SMOOTH FLY-IN CAMERA PATH
     console.log('🚀 CREATING SMOOTH FLY-IN CAMERA PATH:');
@@ -2184,7 +2216,7 @@ export default function ScrollScene({
   // Function to create and setup the scene
   const createScene = () => {
     const scene = new THREE.Scene();
-    const colors = getThemeColors();
+    const colors = getThreeJSThemeColors();
     
     // Setup all lighting for the scene
     setupSceneLighting(scene);
@@ -2348,7 +2380,7 @@ export default function ScrollScene({
                       // Ensure the hotspot has a material
                       if (!child.material) {
                         console.log('Creating material for hotspot:', child.name);
-                        const colors = getThemeColors();
+                        const colors = getThreeJSThemeColors();
                         child.material = new THREE.MeshStandardMaterial({ 
                           color: colors.HOTSPOT_NORMAL_COLOR,
                           // transparent: true,
@@ -2371,7 +2403,7 @@ export default function ScrollScene({
                       
                       // Set initial color to theme color
                       if (child.material) {
-                        const colors = getThemeColors();
+                        const colors = getThreeJSThemeColors();
                         (child.material as THREE.MeshStandardMaterial).color.setHex(colors.HOTSPOT_NORMAL_COLOR);
                         console.log('Set initial color for', child.name, 'to theme color');
                       }
@@ -2627,9 +2659,13 @@ export default function ScrollScene({
   // Function to create and setup the renderer
   const createRenderer = () => {
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    const colors = getThemeColors();
+    
+    // Get fresh theme colors for initial setup
+    const themeColors = getThemeColors();
+    const backgroundHex = cssColorToHex(themeColors.baseBackground);
+    
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(colors.BACKGROUND_COLOR, 1);
+    renderer.setClearColor(backgroundHex, 1);
     renderer.shadowMap.enabled = true; // Enable shadow mapping
     renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Use soft shadows
     // renderer.toneMapping = THREE.ACESFilmicToneMapping; // Use Reinhard tone mapping
@@ -2839,6 +2875,9 @@ export default function ScrollScene({
     const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
     const progress = scrollHeight > 0 ? scrollTop / scrollHeight : 0;
     const progressPercent = progress * 100;
+    
+    // Update scroll progress for marker descriptions
+    setScrollProgress(progress);
     
     // Calculate orbital position based on scroll when intro is complete
     let angle, radius;
@@ -3086,7 +3125,28 @@ export default function ScrollScene({
   useEffect(() => {
     const handleThemeChange = () => {
       if (rendererRef.current && sceneRef.current) {
-        const colors = getThemeColors();
+        // Get fresh theme colors on each theme change
+        const themeColors = getThemeColors();
+        const backgroundHex = cssColorToHex(themeColors.baseBackground);
+        
+        const colors = {
+          BACKGROUND_COLOR: backgroundHex,
+          FLOOR_COLOR: themeColors.isDark ? 0x1f2937 : 0xccc1b1,
+          WALL_COLOR: themeColors.isDark ? 0x04070E : 0xffffff,
+          CUBE_COLOR: 0x00ff00,
+          CUBE_EMISSIVE_COLOR: 0x003300,
+          GRID_COLOR_MAJOR: themeColors.isDark ? 0x444444 : 0x888888,
+          GRID_COLOR_MINOR: themeColors.isDark ? 0x222222 : 0xcccccc,
+          AXES_COLOR: themeColors.isDark ? 0x666666 : 0x333333,
+          HOTSPOT_NORMAL_COLOR: 0xC1B6A6,
+        };
+        
+        console.log('🎨 ScrollScene Theme Change:', {
+          isDark: themeColors.isDark,
+          backgroundHex: backgroundHex.toString(16),
+          backgroundColor: colors.BACKGROUND_COLOR
+        });
+        
         rendererRef.current.setClearColor(colors.BACKGROUND_COLOR);
         
         // Update scene materials
@@ -3342,7 +3402,7 @@ export default function ScrollScene({
       });
       if (setDebugInfo) {
         const scrollPercentage = sh > 0 ? (st / sh) * 100 : 0;
-        console.log('🎯 Scroll Debug:', { st, sh, scrollPercentage, t, progressPercent: t * 100 });
+        // console.log('🎯 Scroll Debug:', { st, sh, scrollPercentage, t, progressPercent: t * 100 });
         setDebugInfo((prev: any) => ({ 
           ...(prev || {}), 
           progress: t, 
@@ -3368,9 +3428,9 @@ export default function ScrollScene({
     const handleMouseMove = (event: MouseEvent) => {
       // 🛡️ PREVENT HOTSPOT INTERACTIONS WHEN GALLERY IS VISIBLE
       if (galleryVisibleRef.current || (window as any).__galleryMode) {
-        console.log('🚫 BLOCKING MOUSEMOVE - Gallery is visible or gallery mode is active');
-        console.log('  galleryVisibleRef.current:', galleryVisibleRef.current);
-        console.log('  __galleryMode:', (window as any).__galleryMode);
+        // console.log('🚫 BLOCKING MOUSEMOVE - Gallery is visible or gallery mode is active');
+        // console.log('  galleryVisibleRef.current:', galleryVisibleRef.current);
+        // console.log('  __galleryMode:', (window as any).__galleryMode);
         // Force stop all hotspot interactions
         if (hoveredHotspot) {
           setHoveredHotspot(null);
@@ -3461,7 +3521,7 @@ export default function ScrollScene({
               ((hoveredHotspot as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(CUBE_NORMAL_COLOR);
             } else {
               // Reset model hotspot to theme floor color with 80% transparency
-              const colors = getThemeColors();
+              const colors = getThreeJSThemeColors();
               ((hoveredHotspot as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(colors.HOTSPOT_NORMAL_COLOR);
             }
           }
@@ -3506,7 +3566,7 @@ export default function ScrollScene({
             ((hoveredHotspot as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(CUBE_NORMAL_COLOR);
           } else {
             // Reset model hotspot to theme floor color with 80% transparency
-            const colors = getThemeColors();
+            const colors = getThreeJSThemeColors();
             ((hoveredHotspot as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(colors.HOTSPOT_NORMAL_COLOR);
           }
         }

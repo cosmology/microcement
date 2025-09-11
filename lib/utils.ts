@@ -93,3 +93,60 @@ export const orientation = {
     return orientation.get() === query
   }
 }
+
+// Convert CSS color string to Three.js hex value
+export const cssColorToHex = (cssColor: string): number => {
+  // Create a temporary canvas to get computed color
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return 0x000000
+  
+  // Set the color and get RGB values
+  ctx.fillStyle = cssColor
+  ctx.fillRect(0, 0, 1, 1)
+  const imageData = ctx.getImageData(0, 0, 1, 1)
+  const [r, g, b] = imageData.data
+  
+  // Convert RGB to hex
+  const hex = (r << 16) | (g << 8) | b
+  
+  
+  return hex
+}
+
+// Theme color utilities
+export const getThemeColors = () => {
+  if (typeof window === 'undefined') {
+    return {
+      gradient: `
+        linear-gradient(
+          to bottom,
+          hsl(var(--background) / 0.9) 0%,
+          hsl(var(--background) / 0.5) 70%,
+          hsl(var(--background) / 0) 100%
+        )
+      `,
+      baseBackground: isDark ? '#02030A' : '#f5f3ed'
+    }
+  }
+
+  const isDark = document.documentElement.classList.contains('dark')
+  
+  
+  return {
+    gradient: `
+      linear-gradient(
+        to bottom,
+        hsl(var(--background) / 0.9) 0%,
+        hsl(var(--background) / 0.5) 70%,
+        hsl(var(--background) / 0) 100%
+      )
+    `,
+    baseBackground: isDark ? '#02030A' : '#f5f3ed',
+    isDark,
+    background: isDark ? '#02030A' : '#f5f3ed', // Different colors for light/dark
+    foreground: isDark ? 'hsl(var(--foreground))' : 'hsl(var(--foreground))',
+    muted: isDark ? 'hsl(var(--muted))' : 'hsl(var(--muted))',
+    mutedForeground: isDark ? 'hsl(var(--muted-foreground))' : 'hsl(var(--muted-foreground))'
+  }
+}

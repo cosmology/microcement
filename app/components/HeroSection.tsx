@@ -5,6 +5,7 @@ import { useRef, useEffect, useState, useMemo, useCallback } from "react"
 import { globalNavigation } from "@/lib/navigation"
 import { useTranslations } from 'next-intl';
 import { AnimatePresence } from "framer-motion"
+import { getThemeColors } from "@/lib/utils"
 
 export default function HeroSection() {
   const sectionRef = useRef<HTMLDivElement>(null)
@@ -19,10 +20,33 @@ export default function HeroSection() {
   const [currentLine, setCurrentLine] = useState(0)
   const [showAnimated, setShowAnimated] = useState(true)
   const [rainfall, setRainfall] = useState(false)
+  const [scrollOpacity, setScrollOpacity] = useState(1)
 
   // Animate main line in on mount
   useEffect(() => {
     setMainIn(true)
+  }, [])
+
+  // Scroll-based fade out effect
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY
+      const windowHeight = window.innerHeight
+      const fadeStart = windowHeight * 0.3 // Start fading after 30% of viewport
+      const fadeEnd = windowHeight * 0.8 // Complete fade at 80% of viewport
+      
+      if (scrollY <= fadeStart) {
+        setScrollOpacity(1)
+      } else if (scrollY >= fadeEnd) {
+        setScrollOpacity(0)
+      } else {
+        const fadeProgress = (scrollY - fadeStart) / (fadeEnd - fadeStart)
+        setScrollOpacity(1 - fadeProgress)
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   // Rotating animated lines
@@ -52,11 +76,18 @@ export default function HeroSection() {
   // Helper to split line into letters
   const splitLetters = useCallback((line: string) => line.toUpperCase().split("").map((char, i) => ({ char, i })), [])
 
+  // Get theme colors
+  const themeColors = getThemeColors()
+
   return (
     <section
       ref={sectionRef}
       className="relative min-h-screen w-full flex items-center justify-center px-6 overflow-hidden transition-colors duration-200"
-      style={{ scrollSnapAlign: "start", opacity: 0.5 }}
+      style={{ 
+        scrollSnapAlign: "start", 
+        opacity: scrollOpacity,
+        background: themeColors.gradient
+      }}
     >
       <div className="w-full max-w-4xl flex flex-col items-center justify-center text-center relative z-10">
         {/* Main line slides in from top and stays */}

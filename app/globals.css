@@ -62,14 +62,19 @@
   html, body {
     overflow-x: auto;
     overflow-y: auto;
-    touch-action: auto;
+    touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
+    /* Better mobile scrolling */
+    overscroll-behavior: contain;
   }
   
   /* Prevent horizontal scrolling on mobile */
   @media (max-width: 768px) {
     html, body {
       overflow-x: hidden;
+      touch-action: pan-y;
+      /* Ensure smooth scrolling on mobile */
+      scroll-behavior: smooth;
     }
   }
   

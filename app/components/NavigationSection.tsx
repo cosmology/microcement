@@ -26,7 +26,6 @@ const galleryDropdown = [
 const navLinks = [
   { name: "Eco Friendly", href: "#environmental" },
   { name: "Speed", href: "#speed" },
-  { name: "Seamless Finishes", href: "#seamless" },
   {
     name: "Gallery",
     dropdown: galleryDropdown,
@@ -106,17 +105,17 @@ export default function NavigationSection() {
             {/* Logo or Brand */}
             <a href="#" className={`font-bold ${navFont} text-light-dark dark:text-white`}>
               <Image
-                src="/images/logo-horizontal.jpg"
+                src="/images/logo-procemento.png"
                 alt="Microcement"
-                width={120}
-                height={50}
+                width={200}
+                height={105}
                 className="hidden sm:block h-8 w-auto"
               />
               <Image
-                src="/images/logo.jpg"
+                src="/images/logo-procemento.png"
                 alt="Microcement"
-                width={80}
-                height={80}
+                width={200}
+                height={105}
                 className="block sm:hidden h-8 w-auto"
               />
             </a>

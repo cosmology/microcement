@@ -5,6 +5,14 @@ import { motion, AnimatePresence } from "framer-motion";
 export default function Preloader({ onComplete }: { onComplete: () => void }) {
   const [progress, setProgress] = useState(0);
   const [blowUp, setBlowUp] = useState(false);
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof document !== 'undefined') {
+      return document.documentElement.classList.contains('dark') ||
+        window.matchMedia?.('(prefers-color-scheme: dark)').matches ||
+        false;
+    }
+    return false;
+  });
 
   useEffect(() => {
     if (progress < 100) {
@@ -15,6 +23,29 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
       setTimeout(() => onComplete(), 1200);
     }
   }, [progress, onComplete]);
+
+  // Watch for theme changes
+  useEffect(() => {
+    const updateTheme = () => {
+      const darkClass = document.documentElement.classList.contains('dark');
+      const mql = window.matchMedia?.('(prefers-color-scheme: dark)');
+      setIsDark(darkClass || (!!mql && mql.matches));
+    };
+
+    updateTheme();
+
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+    const mql = window.matchMedia?.('(prefers-color-scheme: dark)');
+    const mqlHandler = () => updateTheme();
+    mql?.addEventListener?.('change', mqlHandler as any);
+
+    return () => {
+      observer.disconnect();
+      mql?.removeEventListener?.('change', mqlHandler as any);
+    };
+  }, []);
 
   // Circle parameters
   const radius = 60;
@@ -36,7 +67,7 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
           position: "fixed",
           inset: 0,
           zIndex: 9999,
-          background: "#fff",
+          background: 'hsl(var(--background))',
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -55,7 +86,7 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
               cy={80}
               r={radius}
               fill="none"
-              stroke="#eee"
+              stroke={isDark ? 'hsla(0,0%,100%,0.15)' : 'hsl(var(--muted-foreground) / 0.2)'}
               strokeWidth={10}
             />
             {/* Progress circle */}
@@ -64,31 +95,16 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
               cy={80}
               r={radius}
               fill="none"
-              stroke="#222"
+              stroke={isDark ? '#8b5cf6' : 'hsl(var(--foreground))'}
               strokeWidth={10}
               strokeDasharray={circumference}
               strokeDashoffset={offset}
               strokeLinecap="round"
+              transform="rotate(-90 80 80)"
               initial={false}
               animate={{ strokeDashoffset: offset }}
               transition={{ duration: 0.1, ease: "linear" }}
             />
-            {/* Trowel icon (simple polygon) */}
-            <motion.g
-              initial={false}
-              animate={{ x: trowelX - 80, y: trowelY - 80, rotate: (progress / 100) * 360 }}
-              transition={{ type: "spring", stiffness: 100, damping: 20 }}
-            >
-              <polygon
-                points="0,-12 8,0 0,12 -8,0"
-                fill="#888"
-                stroke="#444"
-                strokeWidth={2}
-                transform="scale(1.2)"
-              />
-              {/* Handle */}
-              <rect x={-2} y={12} width={4} height={16} fill="#bfa76a" rx={2} />
-            </motion.g>
           </svg>
         </motion.div>
         <motion.div
