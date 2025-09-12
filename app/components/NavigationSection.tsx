@@ -9,6 +9,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { GeoLocationSection } from "./GeoLocationSection";
+import LocaleSwitcherSelect from "./LocaleSwitcherSelect"
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -38,6 +39,35 @@ export default function NavigationSection() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [showNav, setShowNav] = useState(false) // Start hidden
+  const [isDark, setIsDark] = useState(false)
+
+  // Theme detection for logo filtering
+  useEffect(() => {
+    const checkTheme = () => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    };
+    
+    checkTheme();
+    
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    
+    return () => observer.disconnect();
+  }, []);
+
+  // Get logo filter based on theme
+  const getLogoFilter = () => {
+    if (isDark) {
+      // Dark theme: make logo light/white
+      return 'brightness(0) invert(1) contrast(0.9)';
+    } else {
+      // Light theme: make logo dark/gray
+      return 'brightness(0) invert(0) contrast(1.2)';
+    }
+  };
   const [navVisible, setNavVisible] = useState(false) // Start hidden
   const lastScrollY = useRef(0)
   const animating = useRef(false)
@@ -99,7 +129,7 @@ export default function NavigationSection() {
           animate={navVisible ? "visible" : "hidden"}
           exit="hidden"
           variants={navVariants}
-          className="fixed top-0 left-0 right-0 z-50 w-full bg-light-light dark:bg-gray-900 border-b border-light-dark dark:border-gray-700 backdrop-blur-md"
+          className="fixed top-0 left-0 right-0 z-50 w-full bg-light-light dark:bg-gray-900 border-b border-light-dark/30 dark:border-gray-700/30 backdrop-blur-md"
         >
           <div className="max-w-7xl mx-auto flex items-center justify-between h-12 sm:h-14 md:h-16 px-8 py-10">
             {/* Logo or Brand */}
@@ -109,14 +139,24 @@ export default function NavigationSection() {
                 alt="Microcement"
                 width={200}
                 height={105}
-                className="hidden sm:block h-8 w-auto"
+                className="hidden sm:block h-8 w-auto transition-all duration-200"
+                style={{
+                  filter: getLogoFilter(), // Dynamic theme-aware filtering
+                  opacity: 0.9,
+                  transition: 'filter 0.3s ease-in-out'
+                }}
               />
               <Image
                 src="/images/logo-procemento.png"
                 alt="Microcement"
                 width={200}
                 height={105}
-                className="block sm:hidden h-8 w-auto"
+                className="block sm:hidden h-8 w-auto transition-all duration-200"
+                style={{
+                  filter: getLogoFilter(), // Dynamic theme-aware filtering
+                  opacity: 0.9,
+                  transition: 'filter 0.3s ease-in-out'
+                }}
               />
             </a>
             {/* <GeoLocationSection /> */}
@@ -176,8 +216,12 @@ export default function NavigationSection() {
             </ul>
             {/* Right side controls - Theme Toggle, Hamburger, and Language Toggle */}
             <div className="flex items-center gap-2">
-                            {/* Language Dropdown */}
-                            <div className="relative">
+            <LocaleSwitcherSelect
+              defaultValue={useLocale()}
+              label="Select Language"
+            />
+              {/* Language Dropdown */}
+              {/* <div className="relative">
                 <button
                   className="px-2 py-1 rounded border border-light-dark dark:border-gray-700 bg-white dark:bg-gray-800 text-light-dark dark:text-white hover:bg-light-main dark:hover:bg-gray-700 transition-colors flex items-center gap-1"
                   onClick={() => setLangOpen(v => !v)}
@@ -204,7 +248,7 @@ export default function NavigationSection() {
                     ))}
                   </ul>
                 )}
-              </div>
+              </div> */}
               {/* Theme Toggle */}
               <div className="flex-shrink-0">
                 <ThemeToggle />

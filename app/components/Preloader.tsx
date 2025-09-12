@@ -107,25 +107,6 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
             />
           </svg>
         </motion.div>
-        <motion.div
-          className="absolute"
-          style={{
-            left: trowelX - 12,
-            top: trowelY - 12,
-          }}
-          animate={{
-            scale: progress >= 100 ? 20 : 1,
-            opacity: progress >= 100 ? 0 : 1,
-          }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M12 2L14.5 8.5L21 11L14.5 13.5L12 20L9.5 13.5L3 11L9.5 8.5L12 2Z"
-              fill="currentColor"
-            />
-          </svg>
-        </motion.div>
       </motion.div>
     </AnimatePresence>
   );

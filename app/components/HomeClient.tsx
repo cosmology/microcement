@@ -594,7 +594,7 @@ export default function HomeClient() {
           );
         })}
         
-        {/* <div ref={env} className="min-h-screen">
+        <div ref={env} className="min-h-screen">
           <EnvironmentalSection />
         </div>
         <div ref={comparison} className="min-h-screen opacity-90">
@@ -623,7 +623,7 @@ export default function HomeClient() {
         </div>
         <div ref={cta} className="min-h-screen">
           <CTASection />
-        </div> */}
+        </div>
       </main>
     </div>
   )
