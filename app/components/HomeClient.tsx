@@ -24,7 +24,6 @@ const ScrollScene = dynamic(() => import("./ScrollScene"), { ssr: false });
 
 export default function HomeClient() {
   const [mounted, setMounted] = useState(false)
-  const [themeKey, setThemeKey] = useState(0) // Force re-render on theme change
   const [preloadDone, setPreloadDone] = useState(false)
   const [sceneStage, setSceneStage] = useState(0);
   const [currentSection, setCurrentSection] = useState<string>('hero');
@@ -50,21 +49,6 @@ export default function HomeClient() {
     setMounted(true)
   }, [])
 
-  // Theme change listener for marker panels
-  useEffect(() => {
-    const handleThemeChange = () => {
-      setThemeKey(prev => prev + 1) // Force re-render
-    }
-
-    // Listen for theme changes
-    const observer = new MutationObserver(handleThemeChange)
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class']
-    })
-
-    return () => observer.disconnect()
-  }, [])
 
   // Mobile scroll fallback - ensure scrolling works on mobile devices
   useEffect(() => {
@@ -550,12 +534,11 @@ export default function HomeClient() {
           ];
           
           const marker = markerData[index];
-          const themeColors = getThemeColors();
           
           
           return (
             <div 
-              key={`marker-section-${index}-${themeKey}`} 
+              key={`marker-section-${index}`} 
               className="h-screen relative overflow-hidden"
               style={{ 
                 opacity: 1,
@@ -569,7 +552,7 @@ export default function HomeClient() {
                 style={{
                   bottom: '0px',
                   height: window.innerWidth < 640 ? '100px' : window.innerWidth < 1024 ? '110px' : '120px',
-                  backgroundColor: `${themeColors.background}CC`,
+                  backgroundColor: `hsl(var(--background) / 0.8)`,
                   // Ensure proper touch interaction
                   touchAction: 'none',
                   WebkitTouchCallout: 'none',
