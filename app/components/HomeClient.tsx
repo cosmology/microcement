@@ -31,6 +31,7 @@ export default function HomeClient() {
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [debugData, setDebugData] = useState<any>(null);
   const t = useTranslations('Index');
+  const tMarker = useTranslations('MarkerPanels');
 
   // Section refs
   const hero = useRef<HTMLDivElement>(null);
@@ -497,54 +498,54 @@ export default function HomeClient() {
         {Array.from({ length: 10 }, (_, index) => {
           const markerData = [
             { 
-              name: "Floor", 
+              name: tMarker('floor.name'), 
               progress: "0-10%", 
-              content: "Durable, seamless floors perfect for high-traffic areas."
+              content: tMarker('floor.content')
             },
             { 
-              name: "Kitchen Island", 
+              name: tMarker('kitchenIsland.name'), 
               progress: "10-20%", 
-              content: "Seamless surface, heat-resistant centerpiece for your kitchen."
+              content: tMarker('kitchenIsland.content')
             },
             { 
-              name: "Kitchen Backsplash", 
+              name: tMarker('kitchenBacksplash.name'), 
               progress: "20-30%", 
-              content: "Waterproof, stain-resistant wall protection with modern appeal."
+              content: tMarker('kitchenBacksplash.content')
             },
             { 
-              name: "Kitchen Cabinet", 
+              name: tMarker('kitchenCabinet.name'), 
               progress: "30-40%", 
-              content: "Seamless cabinet finishes for cohesive, modern kitchen design."
+              content: tMarker('kitchenCabinet.content')
             },
             { 
-              name: "Kitchen Countertop", 
+              name: tMarker('kitchenCountertop.name'), 
               progress: "40-47%", 
-              content: "Heat-resistant, stain-proof countertop solution."
+              content: tMarker('kitchenCountertop.content')
             },
             { 
-              name: "Bath Countertop", 
+              name: tMarker('bathCountertop.name'), 
               progress: "47-75%", 
-              content: "Waterproof, mold-resistant bathroom countertops."
+              content: tMarker('bathCountertop.content')
             },
             { 
-              name: "Coffee Table", 
+              name: tMarker('coffeeTable.name'), 
               progress: "75-80%", 
-              content: "Seamless surface centerpiece for modern living spaces."
+              content: tMarker('coffeeTable.content')
             },
             { 
-              name: "Fireplace", 
+              name: tMarker('fireplace.name'), 
               progress: "80-88%", 
-              content: "Heat-resistant finish for modern, minimalist fireplace design."
+              content: tMarker('fireplace.content')
             },
             { 
-              name: "Shelves", 
+              name: tMarker('shelves.name'), 
               progress: "88-95%", 
-              content: "Seamless shelving solutions for organized, elegant display."
+              content: tMarker('shelves.content')
             },
             { 
-              name: "Accent Wall", 
+              name: tMarker('accentWall.name'), 
               progress: "95-100%", 
-              content: "Bold focal points with seamless, durable finishes."
+              content: tMarker('accentWall.content')
             }
           ];
           

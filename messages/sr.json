@@ -235,5 +235,47 @@
   "Upload": {
     "title": "Otpremite Sliku",
     "description": "Koristite formular ispod da otpremite sliku. Maksimalna veličina: 200kB. Prihvaćeni formati: jpg, jpeg, png, webp, gif."
+  },
+  "MarkerPanels": {
+    "floor": {
+      "name": "Podovi",
+      "content": "Izdržljivi, bezšavni podovi savršeni za prostorije sa velikim protokom."
+    },
+    "kitchenIsland": {
+      "name": "Kuhinjski Ostrvo",
+      "content": "Bezšavna površina, otporna na toplotu, centralni deo vaše kuhinje."
+    },
+    "kitchenBacksplash": {
+      "name": "Kuhinjski Zidovi",
+      "content": "Vodootporna, flekootporna zaštita zida sa modernim privlačnostima."
+    },
+    "kitchenCabinet": {
+      "name": "Kuhinjski Kabineti",
+      "content": "Bezšavni završni radovi ormara za kohezivni, moderni dizajn kuhinje."
+    },
+    "kitchenCountertop": {
+      "name": "Kuhinjske Radne Ploce",
+      "content": "Površine otporne na toplotu i fleke, savršene za kulinarsku kreativnost."
+    },
+    "bathCountertop": {
+      "name": "Kupatilske Ploce",
+      "content": "Vodootporne, higijenske površine idealne za kupatilski prostor."
+    },
+    "coffeeTable": {
+      "name": "Sto za Kafu",
+      "content": "Prilagođeni komadi nameštaja sa bezšavnim, izdržljivim mikrocementnim završnim radovima."
+    },
+    "fireplace": {
+      "name": "Kamini",
+      "content": "Otporni na toplotu okviri koji se uklapaju u bilo koji arhitektonski stil."
+    },
+    "shelves": {
+      "name": "Police",
+      "content": "Plutajuće police sa bezšavnom integracijom i modernom estetikom."
+    },
+    "accentWall": {
+      "name": "Akcentni Zid",
+      "content": "Zidovi koji transformišu prostore sa teksturom, reljefom, patternom i bojom."
+    }
   }
 } 

@@ -235,5 +235,47 @@
   "Upload": {
     "title": "Upload an Image",
     "description": "Use the form below to upload an image. Max file size: 200kB. Accepted formats: jpg, jpeg, png, webp, gif."
+  },
+  "MarkerPanels": {
+    "floor": {
+      "name": "Floor",
+      "content": "Durable, seamless floors perfect for high-traffic areas."
+    },
+    "kitchenIsland": {
+      "name": "Kitchen Island",
+      "content": "Seamless surface, heat-resistant centerpiece for your kitchen."
+    },
+    "kitchenBacksplash": {
+      "name": "Kitchen Backsplash",
+      "content": "Waterproof, stain-resistant wall protection with modern appeal."
+    },
+    "kitchenCabinet": {
+      "name": "Kitchen Cabinet",
+      "content": "Seamless cabinet finishes for cohesive, modern kitchen design."
+    },
+    "kitchenCountertop": {
+      "name": "Kitchen Countertop",
+      "content": "Heat-resistant, stain-proof surfaces perfect for culinary creativity."
+    },
+    "bathCountertop": {
+      "name": "Bath Countertop",
+      "content": "Waterproof, hygienic surfaces ideal for bathroom environments."
+    },
+    "coffeeTable": {
+      "name": "Coffee Table",
+      "content": "Custom furniture pieces with seamless, durable micro-cement finishes."
+    },
+    "fireplace": {
+      "name": "Fireplace",
+      "content": "Heat-resistant surrounds that complement any architectural style."
+    },
+    "shelves": {
+      "name": "Shelves",
+      "content": "Floating shelves with seamless integration and modern aesthetics."
+    },
+    "accentWall": {
+      "name": "Accent Wall",
+      "content": "Statement walls that transform spaces with texture and color."
+    }
   }
 } 

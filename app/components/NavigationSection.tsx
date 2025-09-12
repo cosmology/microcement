@@ -216,39 +216,10 @@ export default function NavigationSection() {
             </ul>
             {/* Right side controls - Theme Toggle, Hamburger, and Language Toggle */}
             <div className="flex items-center gap-2">
-            <LocaleSwitcherSelect
-              defaultValue={useLocale()}
-              label="Select Language"
-            />
               {/* Language Dropdown */}
-              {/* <div className="relative">
-                <button
-                  className="px-2 py-1 rounded border border-light-dark dark:border-gray-700 bg-white dark:bg-gray-800 text-light-dark dark:text-white hover:bg-light-main dark:hover:bg-gray-700 transition-colors flex items-center gap-1"
-                  onClick={() => setLangOpen(v => !v)}
-                  aria-haspopup="listbox"
-                  aria-expanded={langOpen}
-                >
-                  {currentLang.label}
-                  <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" /></svg>
-                </button>
-                {langOpen && (
-                  <ul className="absolute right-0 mt-2 min-w-[120px] bg-white dark:bg-gray-800 rounded shadow-lg border border-light-dark dark:border-gray-700 z-50" role="listbox">
-                    {otherLangs.map(lang => (
-                      <li key={lang.code}>
-                        <Link
-                          href={`/${lang.code}`}
-                          className="block px-4 py-2 text-light-dark dark:text-white hover:bg-light-main dark:hover:bg-gray-700 rounded transition-colors"
-                          onClick={() => setLangOpen(false)}
-                          role="option"
-                          aria-selected={false}
-                        >
-                          {lang.label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div> */}
+              <LocaleSwitcherSelect
+                defaultValue={locale}
+                label="Select Language"/>
               {/* Theme Toggle */}
               <div className="flex-shrink-0">
                 <ThemeToggle />

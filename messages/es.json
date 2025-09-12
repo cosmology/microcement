@@ -235,5 +235,47 @@
   "Upload": {
     "title": "Subir una Imagen",
     "description": "Usa el formulario de abajo para subir una imagen. Tamaño máximo: 200kB. Formatos aceptados: jpg, jpeg, png, webp, gif."
+  },
+  "MarkerPanels": {
+    "floor": {
+      "name": "Piso",
+      "content": "Pisos duraderos y sin costuras perfectos para áreas de alto tráfico."
+    },
+    "kitchenIsland": {
+      "name": "Isla de Cocina",
+      "content": "Superficie sin costuras y resistente al calor, pieza central de tu cocina."
+    },
+    "kitchenBacksplash": {
+      "name": "Respaldo de Cocina",
+      "content": "Protección de pared impermeable y resistente a manchas con atractivo moderno."
+    },
+    "kitchenCabinet": {
+      "name": "Gabinete de Cocina",
+      "content": "Acabados de gabinetes sin costuras para un diseño de cocina cohesivo y moderno."
+    },
+    "kitchenCountertop": {
+      "name": "Encimera de Cocina",
+      "content": "Superficies resistentes al calor y a las manchas perfectas para la creatividad culinaria."
+    },
+    "bathCountertop": {
+      "name": "Encimera de Baño",
+      "content": "Superficies impermeables e higiénicas ideales para ambientes de baño."
+    },
+    "coffeeTable": {
+      "name": "Mesa de Centro",
+      "content": "Piezas de muebles personalizados con acabados de micro-cemento sin costuras y duraderos."
+    },
+    "fireplace": {
+      "name": "Chimenea",
+      "content": "Rodeos resistentes al calor que complementan cualquier estilo arquitectónico."
+    },
+    "shelves": {
+      "name": "Estantes",
+      "content": "Estantes flotantes con integración sin costuras y estética moderna."
+    },
+    "accentWall": {
+      "name": "Pared de Acento",
+      "content": "Paredes de declaración que transforman espacios con textura y color."
+    }
   }
 } 

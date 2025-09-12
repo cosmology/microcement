@@ -13,7 +13,7 @@ export function ThemeToggle() {
   return (
     <motion.button
       onClick={toggleTheme}
-      className="relative p-2 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 border border-gray-200 dark:border-gray-600"
+      className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200"
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       title={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -35,7 +35,7 @@ export function ThemeToggle() {
         </motion.svg>
         {/* Moon icon */}
         <motion.svg
-          className="absolute inset-0 w-5 h-5 text-blue-400"
+          className="absolute inset-0 w-5 h-5 text-white"
           fill="currentColor"
           viewBox="0 0 24 24"
           initial={false}
