@@ -560,7 +560,6 @@ export default function HomeClient() {
               style={{ 
                 opacity: 1,
                 // Ensure proper height on mobile devices
-                minHeight: '100vh',
                 minHeight: '100dvh' // Dynamic viewport height for mobile
               }}
             >

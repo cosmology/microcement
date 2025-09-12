@@ -126,7 +126,7 @@ export const getThemeColors = () => {
           hsl(var(--background) / 0) 100%
         )
       `,
-      baseBackground: isDark ? '#02030A' : '#f5f3ed'
+      baseBackground: '#02030A' // Default dark background for SSR
     }
   }
 

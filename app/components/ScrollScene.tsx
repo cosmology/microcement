@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { gsap } from "gsap";
 import SwiperGallery, { GalleryImage } from './SwiperGallery';
-import MarkerDescriptionComponent from './MarkerDescriptionComponent';
 import { isMobile, getThemeColors, cssColorToHex } from '../../lib/utils';
 
 
@@ -3488,7 +3487,7 @@ export default function ScrollScene({
         
         // Check if hovering over a pulse marker
         if (intersectedObject.userData && intersectedObject.userData.isPulseMarker) {
-          const markerIndex = hotspotPulseRefs.current.indexOf(intersectedObject);
+          const markerIndex = hotspotPulseRefs.current.indexOf(intersectedObject as THREE.Mesh);
           if (markerIndex !== -1) {
             const markerGroupIndex = Math.floor(markerIndex / 2);
             showMarkerOnHover(markerGroupIndex);
