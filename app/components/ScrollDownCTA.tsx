@@ -12,6 +12,7 @@ export default function ScrollDownCTA({ className = "", onIntroComplete }: Scrol
   const [isIntroFinished, setIsIntroFinished] = useState(false);
   const [isFadeIn, setIsFadeIn] = useState(false);
   const [isFadeOut, setIsFadeOut] = useState(false);
+  const [suppressHideUntil, setSuppressHideUntil] = useState<number | null>(null);
 
   // Handle intro completion - only trigger when explicitly called
   const handleIntroComplete = () => {
@@ -19,6 +20,8 @@ export default function ScrollDownCTA({ className = "", onIntroComplete }: Scrol
     console.log('🎯 ScrollDownCTA: Current states - isVisible:', isVisible, 'isIntroFinished:', isIntroFinished, 'isFadeIn:', isFadeIn);
     setIsIntroFinished(true);
     setIsVisible(true);
+    // Prevent immediate auto-hide if page is already scrolled
+    setSuppressHideUntil(Date.now() + 1500);
     
     // Add fadeIn effect after a small delay
     setTimeout(() => {
@@ -42,6 +45,11 @@ export default function ScrollDownCTA({ className = "", onIntroComplete }: Scrol
   useEffect(() => {
     const checkScrollPosition = () => {
       const scrollY = window.scrollY;
+      // Respect suppression window (e.g., after returning to main path)
+      if (suppressHideUntil && Date.now() < suppressHideUntil) {
+        return;
+      }
+      // Hide when page is scrolled
       if (scrollY > 0 && isVisible && !isFadeOut) {
         console.log('🎯 ScrollDownCTA: Starting fadeOut due to scroll position:', scrollY);
         setIsFadeOut(true);
@@ -68,14 +76,14 @@ export default function ScrollDownCTA({ className = "", onIntroComplete }: Scrol
     return () => {
       window.removeEventListener('scroll', checkScrollPosition);
     };
-  }, [isVisible, isIntroFinished, isFadeIn, isFadeOut]); // Include all animation states
+  }, [isVisible, isIntroFinished, isFadeIn, isFadeOut, suppressHideUntil]); // Include all animation states
 
   if (!isVisible) return null;
 
   console.log('🎯 ScrollDownCTA: Rendering component with fadeIn:', isFadeIn, 'fadeOut:', isFadeOut);
 
   return (
-    <div className={`fixed z-[9999] left-1/2 top-4 transform -translate-x-1/2 scroll-down-cta ${isFadeIn ? 'fade-in' : ''} ${isFadeOut ? 'fade-out' : ''} ${className}`}>
+    <div className={`fixed z-[9999] left-1/2 bottom-4 transform -translate-x-1/2 mb-10 scroll-down-cta ${isFadeIn ? 'fade-in' : ''} ${isFadeOut ? 'fade-out' : ''} ${className}`}>
       <div className="arrow arrow-first"></div>
       <div className="arrow arrow-second"></div>
     </div>

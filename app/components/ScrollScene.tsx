@@ -49,21 +49,27 @@ export default function ScrollScene({
   const CUBE_HIGHLIGHT_COLOR = 0xff0000; // Red for cube
   const CUBE_NORMAL_COLOR = 0x00ff00; // Green for cube normal state
   
-  // Array of lighter purple variations for hotspot hover colors (within 25% range)
-  const PASTEL_COLORS = [
-    0xF8F4FF, // Very light violet
-    0xF0E6FF, // Light violet
-    0xE8D8FF, // Soft light purple
-    0xE0CAFF, // Light lavender
-    0xD8BCFF, // Soft purple
-    0xD0AEFF, // Light purple
-    0xC8A0FF, // Medium light purple
-    0xC092FF, // Light violet purple
-    0xB884FF, // Soft violet
-    0xB076FF, // Light purple violet
-    0xA868FF, // Medium light violet
-    0xA05AFF, // Light purple
-  ];
+  // Single bright purple color for all hotspot hovers
+  const HOTSPOT_HOVER_COLOR = 0x8C33FF; // Bright purple - same as pulse markers
+  const HOTSPOT_COMPLEMENTARY_HOVER_COLOR = 0xb2d926; // Bright green - same as pulse markers
+
+  // Edge (contour) colors for outlines
+  const EDGE_COLOR_NORMAL = 0x000000; // black
+  const EDGE_COLOR_HOVER = 0xffffff; // white
+
+  // Safely recolor any edge line children added via EdgesGeometry under a mesh
+  const setEdgeLineColorForMesh = (object: THREE.Object3D | null, colorHex: number) => {
+    if (!object) return;
+    object.traverse((child) => {
+      const anyChild = child as any;
+      if (anyChild?.userData?.isEdgeLine && anyChild.material) {
+        const mat = anyChild.material as THREE.LineBasicMaterial;
+        if (mat && typeof (mat as any).color?.setHex === 'function') {
+          mat.color.setHex(colorHex);
+        }
+      }
+    });
+  };
 
   // Pulse marker colors
   //const PULSE_MARKER_COLOR = 0x8b5cf6; // Purple color for inner dot
@@ -94,7 +100,7 @@ export default function ScrollScene({
   
   // Animation configuration
   const INTRO_START_POS = new THREE.Vector3(0, 50, 3); // Start perfectly above the cube center
-  const INTRO_END_POS = new THREE.Vector3(30, ORBITAL_HEIGHT, 0); // End at proper radius for centered scene
+  const INTRO_END_POS = new THREE.Vector3(50, ORBITAL_HEIGHT, 0); // End at proper radius for centered scene
   const ORBITAL_START_POS = new THREE.Vector3(50, ORBITAL_HEIGHT, 0); // Explicit orbital start position
   const ANIMATION_STEPS = 100;
   const ANIMATION_STEP_INTERVAL = 17; // 17ms per step = ~1.7 seconds total
@@ -114,7 +120,7 @@ export default function ScrollScene({
         GRID_COLOR_MAJOR: 0x444444, // Dark grid major lines
         GRID_COLOR_MINOR: 0x222222, // Dark grid minor lines
         AXES_COLOR: 0x666666, // Dark axes color
-        HOTSPOT_NORMAL_COLOR: 0xC1B6A6, // LINO
+        HOTSPOT_NORMAL_COLOR: 0xffffff, // LINO
       };
     } else {
       return {
@@ -126,7 +132,7 @@ export default function ScrollScene({
         GRID_COLOR_MAJOR: 0x888888, // Light grid major lines
         GRID_COLOR_MINOR: 0xcccccc, // Light grid minor lines
         AXES_COLOR: 0x333333, // Light axes color
-        HOTSPOT_NORMAL_COLOR: 0xC1B6A6, // LINO
+        HOTSPOT_NORMAL_COLOR: 0xffffff, // LINO
       };
     }
   };
@@ -1047,11 +1053,11 @@ export default function ScrollScene({
       hotspot.getWorldPosition(hotspotPosition);
       
       // Create the main pulse sphere - small inner dot always visible
-      const pulseGeometry = new THREE.SphereGeometry(0.6, 16, 16); // Much smaller dot
+      const pulseGeometry = new THREE.SphereGeometry(0.5, 16, 16); // Small inner dot
       const pulseMaterial = new THREE.MeshBasicMaterial({
         color: PULSE_MARKER_COLOR, // Use constant for inner dot color
         transparent: true,
-        opacity: 1 // Always visible inner dot
+        opacity: 0.9 // Semi-transparent inner dot
       });
       
       const pulseSphere = new THREE.Mesh(pulseGeometry, pulseMaterial);
@@ -1065,22 +1071,28 @@ export default function ScrollScene({
       pulseSphere.renderOrder = 1000; // High render order to appear on top
       pulseSphere.frustumCulled = false; // Ensure visibility
       
-      // Create outer ring that will scale/fade on hover - 3D sphere ring
-      const ringGeometry = new THREE.SphereGeometry(0.5, 16, 16); // 3D sphere for ring
+      // Create outer ring that will scale/fade on hover - proper ring geometry
+      const ringGeometry = new THREE.RingGeometry(0.2, 0.4, 16); // Inner radius 0.2, outer radius 0.4
       const ringMaterial = new THREE.MeshBasicMaterial({
         color: PULSE_RING_COLOR, // Use constant for ring color
         transparent: true,
         opacity: 0, // hidden until hover
         side: THREE.DoubleSide,
         depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        wireframe: false // Make it a wireframe sphere (hollow)
+        blending: THREE.AdditiveBlending
       });
       const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
       ringMesh.position.copy(pulseSphere.position);
       ringMesh.renderOrder = 1001; // Even higher render order for ring
       ringMesh.frustumCulled = false; // Ensure visibility
-      // No billboard effect needed for 3D wireframe sphere
+      
+      // Make ring face the camera (billboard effect)
+      {
+        const cam = cameraRef.current;
+        if (cam) {
+          ringMesh.lookAt(cam.position);
+        }
+      }
       
       // Add both spheres to the group
       pulseGroup.add(pulseSphere);
@@ -1131,24 +1143,32 @@ export default function ScrollScene({
     
     if (pulseSphere && pulseSphere.material) {
       const pulseMaterial = pulseSphere.material as THREE.MeshBasicMaterial;
-      pulseMaterial.opacity = 1; // ensure inner remains visible (updated opacity)
+      pulseMaterial.opacity = 0.9; // ensure inner remains semi-transparent
     }
     
     if (ringMesh && ringMesh.material) {
       const ringMaterial = ringMesh.material as THREE.MeshBasicMaterial;
-      ringMaterial.opacity = 0.6; // show ring
+      ringMaterial.opacity = 0.8; // show ring with higher opacity
       
       // Reset ring scale
       ringMesh.scale.set(1, 1, 1);
+      
+      // Update ring to face camera
+      {
+        const cam = cameraRef.current;
+        if (cam) {
+          ringMesh.lookAt(cam.position);
+        }
+      }
       
       // Mark this marker as animating
       animatingMarkersRef.current.add(markerIndex);
       
       // Trigger brief scale-out/fade-out animation
       const start = performance.now();
-      const duration = 700; // 1.5s animation
+      const duration = 800; // Slightly longer animation
       const initialScale = 1;
-      const targetScale = 1.25; // Scale to 125%
+      const targetScale = 1.5; // Scale to 150% for better visibility
       
       const animate = () => {
         const now = performance.now();
@@ -1157,7 +1177,7 @@ export default function ScrollScene({
         
         const s = initialScale + (targetScale - initialScale) * eased;
         ringMesh.scale.set(s, s, s);
-        ringMaterial.opacity = 0.6 * (1 - eased);
+        ringMaterial.opacity = 0.8 * (1 - eased);
         
         if (t < 1) {
           requestAnimationFrame(animate);
@@ -1184,11 +1204,18 @@ export default function ScrollScene({
         const material = marker.material as THREE.MeshBasicMaterial;
         if (i % 2 === 0) {
           // inner dot - keep visible
-          material.opacity = 1; // Updated opacity
+          material.opacity = 0.9; // Semi-transparent inner dot
         } else {
           // outer ring - hide and reset scale
           material.opacity = 0;
           marker.scale.set(1, 1, 1); // Reset scale
+          // Update ring to face camera
+          {
+            const cam = cameraRef.current;
+            if (cam) {
+              marker.lookAt(cam.position);
+            }
+          }
         }
       }
     });
@@ -2059,6 +2086,19 @@ export default function ScrollScene({
         // Set back to main path mode since we're returning to the main scroll path
         cameraStateRef.current.isOnMainPath = true;
         
+        // Show ScrollDownCTA when returning to main path, unless near end of content
+        try {
+          const st = window.scrollY || document.documentElement.scrollTop || 0;
+          const sh = (document.documentElement.scrollHeight || 0) - (window.innerHeight || 0);
+          const scrollPercentage = sh > 0 ? (st / sh) * 100 : 0;
+          if (scrollPercentage < 96) {
+            const handler = (window as any).__scrollDownCTAIntroComplete;
+            if (typeof handler === 'function') {
+              handler();
+            }
+          }
+        } catch {}
+        
         // CRITICAL: Verify the camera is at the expected end position
         // Use the targetPosition from the animation, not the cleared targetCameraPositionRef
         const expectedEndPosition = targetPosition;
@@ -2278,7 +2318,7 @@ export default function ScrollScene({
 
         const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
         const gltfLoader = new GLTFLoader();
-        const modelUrl = `/models/ivan.glb?cb=${Date.now()}`;
+        const modelUrl = `/models/no-material.glb?cb=${Date.now()}`;
 
         // Obtain total bytes via cache-busted HEAD so percent stays accurate
         try {
@@ -2334,7 +2374,6 @@ export default function ScrollScene({
                   // CRITICAL FIX: Collect hotspots AFTER transformations are applied
                   // This ensures hotspots have their final world positions
                   const clickableObjects: THREE.Object3D[] = [];
-                  const usedColors = new Set<number>();
                   
                   console.log('Starting hotspot collection AFTER transformations...');
                   console.log('Total objects in model:', model.children.length);
@@ -2391,14 +2430,8 @@ export default function ScrollScene({
                       child.visible = true;
                       child.frustumCulled = false;
                       
-                      // Assign unique pastel color to this hotspot
-                      let assignedColor: number;
-                      do {
-                        assignedColor = PASTEL_COLORS[Math.floor(Math.random() * PASTEL_COLORS.length)];
-                      } while (usedColors.has(assignedColor));
-                      
-                      usedColors.add(assignedColor);
-                      hotspotColorsRef.current.set(child, assignedColor);
+                      // Assign consistent bright purple color to this hotspot
+                      hotspotColorsRef.current.set(child, HOTSPOT_COMPLEMENTARY_HOVER_COLOR);
                       
                       // Set initial color to theme color
                       if (child.material) {
@@ -2407,7 +2440,7 @@ export default function ScrollScene({
                         console.log('Set initial color for', child.name, 'to theme color');
                       }
                       
-                      console.log('Transformed hotspot setup complete:', child.name, 'with color:', '#' + assignedColor.toString(16).padStart(6, '0'));
+                      console.log('Transformed hotspot setup complete:', child.name, 'with color:', '#' + HOTSPOT_COMPLEMENTARY_HOVER_COLOR.toString(16).padStart(6, '0'));
                     }
                   });
                   
@@ -2417,6 +2450,7 @@ export default function ScrollScene({
                   // Log total hotspots found
                   console.log('Total transformed hotspots collected:', clickableObjects.length);
                   console.log('All transformed hotspots:', clickableObjects);
+                  console.log('Hotspot names:', clickableObjects.map(obj => obj.name));
                   
                   // Create pulse markers for hotspots after they're loaded
                   if (clickableObjects.length > 0) {
@@ -2434,7 +2468,30 @@ export default function ScrollScene({
                   console.log('🔍 ORIGINAL GLTF SCENE (BEFORE TRANSFORMATIONS):');
                   console.log('  Original gltf.scene children count:', gltf.scene.children.length);
                   
-                  gltf.scene.traverse((originalChild: any) => {
+                    gltf.scene.traverse((originalChild: any) => {
+                      
+                      if (originalChild.isMesh) {
+                        // Add edge lines for contour effect on all meshes (including hotspots)
+                        try {
+                          const edges = new THREE.EdgesGeometry(originalChild.geometry);
+                          const line = new THREE.LineSegments(
+                            edges,
+                            new THREE.LineBasicMaterial({ 
+                              color: 0x000000,
+                              transparent: true,
+                              opacity: 0.8
+                            })
+                          );
+                          // Make sure edges don't interfere with raycasting
+                          line.userData.isEdgeLine = true;
+                          line.userData.isContourEdge = true;
+                          line.visible = true;
+                          originalChild.add(line);
+                        } catch (error) {
+                          console.warn(`Failed to create edges for mesh: ${originalChild.name}`, error);
+                        }
+                      }
+
                     if (originalChild.name.includes("Hotspot")) {
                       console.log(`  Original ${originalChild.name}:`);
                       console.log(`    Type: ${originalChild.type}`);
@@ -3137,7 +3194,7 @@ export default function ScrollScene({
           GRID_COLOR_MAJOR: themeColors.isDark ? 0x444444 : 0x888888,
           GRID_COLOR_MINOR: themeColors.isDark ? 0x222222 : 0xcccccc,
           AXES_COLOR: themeColors.isDark ? 0x666666 : 0x333333,
-          HOTSPOT_NORMAL_COLOR: 0xC1B6A6,
+          HOTSPOT_NORMAL_COLOR: 0xffffff,
         };
         
         console.log('🎨 ScrollScene Theme Change:', {
@@ -3466,9 +3523,12 @@ export default function ScrollScene({
         hotspotObjects.push(cubeRef.current);
       }
       
-      // Add model hotspots (excluding pulse markers)
+      // Add model hotspots (excluding pulse markers and edge lines)
       if (clickableObjectsRef.current.length > 0) {
-        const actualHotspots = clickableObjectsRef.current.filter(obj => !obj.name?.startsWith('pulse_'));
+        const actualHotspots = clickableObjectsRef.current.filter(obj => 
+          !obj.name?.startsWith('pulse_') && 
+          !obj.userData?.isEdgeLine
+        );
         hotspotObjects.push(...actualHotspots);
       }
       
@@ -3523,6 +3583,8 @@ export default function ScrollScene({
               const colors = getThreeJSThemeColors();
               ((hoveredHotspot as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(colors.HOTSPOT_NORMAL_COLOR);
             }
+            // Reset outline to normal (black)
+            setEdgeLineColorForMesh(hoveredHotspot, EDGE_COLOR_NORMAL);
           }
           // Set new hotspot
           setHoveredHotspot(intersectedObject);
@@ -3533,6 +3595,12 @@ export default function ScrollScene({
           if (intersectedObject.name?.startsWith('pulse_')) {
             hotspotName = intersectedObject.userData.hotspotName || intersectedObject.name.replace('pulse_', '');
           }
+          console.log('🔍 Hotspot Debug:', {
+            intersectedObjectName: intersectedObject.name,
+            hotspotName: hotspotName,
+            userDataHotspotName: intersectedObject.userData?.hotspotName,
+            category: HOTSPOT_CATEGORIES[hotspotName]
+          });
           const category = HOTSPOT_CATEGORIES[hotspotName] || 'Unknown';
           setHoverTooltip({
             visible: true,
@@ -3540,21 +3608,19 @@ export default function ScrollScene({
             position: { x: event.clientX, y: event.clientY }
           });
           
-          if ((intersectedObject as THREE.Mesh).material && !intersectedObject.name?.startsWith('pulse_')) {
+          if ((intersectedObject as THREE.Mesh).material && 
+              !intersectedObject.name?.startsWith('pulse_') && 
+              !intersectedObject.userData?.isEdgeLine) {
             if (intersectedObject === cubeRef.current) {
               // Highlight cube in red
               ((intersectedObject as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(CUBE_HIGHLIGHT_COLOR);
               console.log('Changed cube color to red!');
             } else {
-              // Highlight model hotspot with its assigned random pastel color
-              const assignedColor = hotspotColorsRef.current.get(intersectedObject);
-              if (assignedColor) {
-                ((intersectedObject as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(assignedColor);
-              } else {
-                // Fallback to bright green if no color assigned
-                ((intersectedObject as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(0x00ff00);
-              }
+              // Highlight model hotspot with consistent bright purple color
+              ((intersectedObject as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(HOTSPOT_COMPLEMENTARY_HOVER_COLOR);
             }
+            // Set outline to hover (white)
+            setEdgeLineColorForMesh(intersectedObject, EDGE_COLOR_HOVER);
           }
         }
       } else {
