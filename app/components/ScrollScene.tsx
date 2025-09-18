@@ -71,6 +71,9 @@ export default function ScrollScene({
     });
   };
 
+  // Track which object currently has its edge lines forced to hover color
+  const lastOutlinedObjectRef = useRef<THREE.Object3D | null>(null);
+
   // Pulse marker colors
   //const PULSE_MARKER_COLOR = 0x8b5cf6; // Purple color for inner dot
   const PULSE_MARKER_COLOR = 0x8C33FF; // Bright Purple color for inner dot
@@ -94,7 +97,7 @@ export default function ScrollScene({
   const CAMERA_FOV = 75;
   const CAMERA_NEAR = 0.1;
   const CAMERA_FAR = 1000;
-  const ORBITAL_HEIGHT = 8;
+  const ORBITAL_HEIGHT = 40;
   const ORBITAL_RADIUS_MULTIPLIER = 6;
   const ORBITAL_SPEED = 0.2;
   
@@ -478,20 +481,34 @@ export default function ScrollScene({
     setCurrentHotspot(hotspotName);
     
     try {
-      // Extract the category from hotspot name (e.g., "Hotspot_geo_floor" -> "floor")
-
-      const category = hotspotName.replace('Hotspot_geo_', '');
+      // Extract the category from hotspot name and normalize to API keys
+      const rawKey = hotspotName.replace('Hotspot_geo_', '');
+      const API_HOTSPOT_KEY_ALIASES: Record<string, string> = {
+        // Bathroom variants
+        'bathroom_countertop': 'bath_countertop',
+        'bathroom_countertops': 'bath_countertop',
+        'bath_countertops': 'bath_countertop',
+        // Kitchen variants
+        'kitchen_countertops': 'kitchen_countertop',
+        // Common singular/plural drift
+        'backsplashes': 'backsplash',
+        'islands': 'island',
+        'cabinets': 'kitchen_cabinet',
+        'coffee_tables': 'coffee_table',
+      };
+      const normalizedKey = API_HOTSPOT_KEY_ALIASES[rawKey] || rawKey;
       
       // Try API first, then fallback to static data
-      const encodedCategory = encodeURIComponent(category);
-      console.log('🖼️ API encodedCategory:', encodedCategory);
+      const encodedCategory = encodeURIComponent(normalizedKey);
+      console.log('🖼️ API hotspot key:', rawKey, '→ normalized:', normalizedKey, '→ encoded:', encodedCategory);
       const requestUrl = typeof window !== 'undefined'
         ? `${window.location.origin}/api/gallery?hotspot=${encodedCategory}`
         : `/api/gallery?hotspot=${encodedCategory}`;
       
-      console.log('🖼️ ===== MAKING API CALL =====');
+      console.log('🖼️ ===== MAKING API CALL (hotspot click) =====');
       console.log('🖼️ API requestUrl:', requestUrl);
       console.log('🖼️ Window location origin:', window.location.origin);
+      console.log('🖼️ Hotspot click payload:', { hotspotName, rawKey, normalizedKey, encodedCategory });
       
       const response = await fetch(requestUrl, {
         headers: { 'Accept': 'application/json' },
@@ -509,6 +526,7 @@ export default function ScrollScene({
           throw new Error(`Invalid content-type: ${contentType}. Body starts with: ${text.slice(0, 200)}`);
         }
         const images = await response.json();
+        console.log('🖼️ API JSON parsed. Images length:', Array.isArray(images) ? images.length : 'N/A');
         setGalleryImages(images);
       } else {
         const errorText = await response.text().catch(() => '');
@@ -1872,6 +1890,12 @@ export default function ScrollScene({
         
         // 🎨 TRIGGER GALLERY ON ANIMATION COMPLETION
         console.log('🎨 ANIMATION COMPLETE - TRIGGERING GALLERY FOR:', hotspot.name);
+        console.log('🎨 Hotspot object details:', {
+          name: hotspot.name,
+          type: hotspot.type,
+          uuid: hotspot.uuid,
+          userData: hotspot.userData
+        });
         setCurrentHotspot(hotspot.name);
         loadGalleryImages(hotspot.name);
         setGalleryAnimating(true);
@@ -2409,13 +2433,28 @@ export default function ScrollScene({
                   
                   // Traverse the TRANSFORMED model, not the original gltf.scene
                   model.traverse((child: any) => {
+                    // Propagate hotspot identity down the hierarchy so sub-mesh clicks can resolve
+                    if (child && child.isMesh) {
+                      let ancestor: THREE.Object3D | null = child.parent;
+                      while (ancestor) {
+                        if (ancestor.name && ancestor.name.includes('Hotspot')) {
+                          child.userData = child.userData || {};
+                          if (!child.userData.hotspotName) {
+                            child.userData.hotspotName = ancestor.name;
+                            console.log(`🔗 Propagated hotspot name "${ancestor.name}" to child mesh "${child.name}"`);
+                          }
+                          break;
+                        }
+                        ancestor = ancestor.parent;
+                      }
+                    }
                     console.log('Checking transformed object:', child.name, 'type:', child.type, 'hasMaterial:', !!child.material);
                     
                     if (child.name.includes("Hotspot")) {  // e.g. "Hotspot_Cabinet1"
                       console.log('Found transformed hotspot:', child.name, 'type:', child.type);
                       clickableObjects.push(child);
                       
-                      // Ensure the hotspot has a material
+                      // Ensure the hotspot has a material (and make it unique so color changes don't bleed)
                       if (!child.material) {
                         console.log('Creating material for hotspot:', child.name);
                         const colors = getThreeJSThemeColors();
@@ -2424,6 +2463,16 @@ export default function ScrollScene({
                           // transparent: true,
                           // opacity: 0.8  // Increased from 0.2 to 0.8 for better visibility
                         });
+                      } else {
+                        // Clone material to avoid shared instances across multiple meshes
+                        try {
+                          const srcMat = child.material as THREE.MeshStandardMaterial;
+                          const cloned = srcMat.clone();
+                          (cloned as any).userData = { ...(srcMat as any).userData };
+                          child.material = cloned;
+                        } catch (e) {
+                          console.warn('Could not clone hotspot material for', child.name, e);
+                        }
                       }
                       
                       // Make sure the hotspot is visible
@@ -3501,7 +3550,7 @@ export default function ScrollScene({
       }
       
       // Debug: Log when hotspot detection is working
-      console.log('✅ MOUSEMOVE ALLOWED - Processing hotspot detection');
+      // console.debug('MOUSEMOVE hotspot detection');
       
       if (!raycasterRef.current || !cameraRef.current || !sceneRef.current) {
         console.log('Missing refs:', { raycaster: !!raycasterRef.current, camera: !!cameraRef.current, scene: !!sceneRef.current });
@@ -3543,10 +3592,29 @@ export default function ScrollScene({
       
       // Handle marker hover visibility
       if (intersects.length > 0) {
-        const intersectedObject = intersects[0].object;
+        // Prefer the first true hotspot mesh (or its parent) rather than arbitrary first hit
+        const pick = () => {
+          for (const it of intersects) {
+            let obj: THREE.Object3D = it.object;
+            if ((obj as any)?.userData?.isEdgeLine && obj.parent) obj = obj.parent;
+            if (obj.name?.includes('Hotspot') && !(obj as any).userData?.isPulseMarker) {
+              return obj;
+            }
+          }
+          // Fallback to first hit after resolving edge parent
+          let fallback: THREE.Object3D = intersects[0].object;
+          if ((fallback as any)?.userData?.isEdgeLine && fallback.parent) fallback = fallback.parent;
+          return fallback;
+        };
+        let intersectedObject: THREE.Object3D = pick();
         
         // Check if hovering over a pulse marker
         if (intersectedObject.userData && intersectedObject.userData.isPulseMarker) {
+          // Leaving any outlined mesh: revert edges to black
+          if (lastOutlinedObjectRef.current) {
+            setEdgeLineColorForMesh(lastOutlinedObjectRef.current, EDGE_COLOR_NORMAL);
+            lastOutlinedObjectRef.current = null;
+          }
           const markerIndex = hotspotPulseRefs.current.indexOf(intersectedObject as THREE.Mesh);
           if (markerIndex !== -1) {
             const markerGroupIndex = Math.floor(markerIndex / 2);
@@ -3564,6 +3632,11 @@ export default function ScrollScene({
       } else {
         // Hide all markers when not hovering
         hideAllMarkers();
+        // Also ensure any outlined edges are reverted to black on hover-out
+        if (lastOutlinedObjectRef.current) {
+          setEdgeLineColorForMesh(lastOutlinedObjectRef.current, EDGE_COLOR_NORMAL);
+          lastOutlinedObjectRef.current = null;
+        }
         
         // Reset cursor to default when not hovering over interactive elements
         if (document.body) {
@@ -3572,7 +3645,16 @@ export default function ScrollScene({
       }
       
       if (intersects.length > 0) {
-        const intersectedObject = intersects[0].object;
+        let intersectedObject: THREE.Object3D = intersects[0].object;
+        if ((intersectedObject as any)?.userData?.isEdgeLine && intersectedObject.parent) {
+          intersectedObject = intersectedObject.parent;
+        }
+        // If the intersected object has a propagated hotspotName, prefer resolving to that hotspot
+        if ((intersectedObject as any)?.userData?.hotspotName) {
+          const byName = clickableObjectsRef.current.find(obj => obj.name === (intersectedObject as any).userData.hotspotName);
+          if (byName) intersectedObject = byName;
+        }
+        // console.debug('Raycast Intersection:', intersects.length);
         if (hoveredHotspot !== intersectedObject) {
           // Reset previous hotspot (excluding pulse markers)
           if (hoveredHotspot && (hoveredHotspot as THREE.Mesh).material && !hoveredHotspot.name?.startsWith('pulse_')) {
@@ -3583,23 +3665,65 @@ export default function ScrollScene({
               const colors = getThreeJSThemeColors();
               ((hoveredHotspot as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(colors.HOTSPOT_NORMAL_COLOR);
             }
-            // Reset outline to normal (black)
+            // Reset outline to normal (black) and clear last outlined ref if matches
             setEdgeLineColorForMesh(hoveredHotspot, EDGE_COLOR_NORMAL);
+            if (lastOutlinedObjectRef.current === hoveredHotspot) {
+              lastOutlinedObjectRef.current = null;
+            }
           }
           // Set new hotspot
           setHoveredHotspot(intersectedObject);
           
           // Show category tooltip
-          let hotspotName = intersectedObject.name;
+          // Resolve the correct hotspot name for complex multi-mesh objects
+          let hotspotName = intersectedObject.name || '';
           // If this is a pulse marker, get the actual hotspot name from userData
-          if (intersectedObject.name?.startsWith('pulse_')) {
-            hotspotName = intersectedObject.userData.hotspotName || intersectedObject.name.replace('pulse_', '');
+          if (hotspotName?.startsWith('pulse_')) {
+            hotspotName = (intersectedObject.userData?.hotspotName as string) || hotspotName.replace('pulse_', '');
+          }
+          // If still unknown or not mapped, walk up the parent chain to find a named hotspot
+          if (!HOTSPOT_CATEGORIES[hotspotName]) {
+            let cursor: THREE.Object3D | null = intersectedObject.parent || null;
+            while (cursor) {
+              const candidate = cursor.name || '';
+              if (candidate && (candidate.includes('Hotspot') || HOTSPOT_CATEGORIES[candidate])) {
+                hotspotName = candidate;
+                break;
+              }
+              cursor = cursor.parent || null;
+            }
+          }
+          // Final fallback: if userData on any level carries hotspotName
+          if (!HOTSPOT_CATEGORIES[hotspotName]) {
+            const tryUserDataChain = (obj: THREE.Object3D | null) => {
+              let cur = obj;
+              while (cur) {
+                const udName = (cur.userData?.hotspotName as string) || '';
+                if (udName) return udName;
+                cur = cur.parent || null;
+              }
+              return '';
+            };
+            const udResolved = tryUserDataChain(intersectedObject);
+            if (udResolved) hotspotName = udResolved;
           }
           console.log('🔍 Hotspot Debug:', {
             intersectedObjectName: intersectedObject.name,
             hotspotName: hotspotName,
             userDataHotspotName: intersectedObject.userData?.hotspotName,
-            category: HOTSPOT_CATEGORIES[hotspotName]
+            category: HOTSPOT_CATEGORIES[hotspotName],
+            objectType: intersectedObject.type,
+            objectUuid: intersectedObject.uuid,
+            objectParent: intersectedObject.parent?.name,
+            objectChildren: intersectedObject.children?.map(c => c.name),
+            objectUserData: intersectedObject.userData,
+            objectMaterial: intersectedObject.material ? 'has material' : 'no material',
+            objectVisible: intersectedObject.visible,
+            objectPosition: intersectedObject.position ? {
+              x: intersectedObject.position.x.toFixed(3),
+              y: intersectedObject.position.y.toFixed(3),
+              z: intersectedObject.position.z.toFixed(3)
+            } : 'no position'
           });
           const category = HOTSPOT_CATEGORIES[hotspotName] || 'Unknown';
           setHoverTooltip({
@@ -3619,8 +3743,12 @@ export default function ScrollScene({
               // Highlight model hotspot with consistent bright purple color
               ((intersectedObject as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(HOTSPOT_COMPLEMENTARY_HOVER_COLOR);
             }
-            // Set outline to hover (white)
+            // Reset previous outlined object to black, then set current to white
+            if (lastOutlinedObjectRef.current && lastOutlinedObjectRef.current !== intersectedObject) {
+              setEdgeLineColorForMesh(lastOutlinedObjectRef.current, EDGE_COLOR_NORMAL);
+            }
             setEdgeLineColorForMesh(intersectedObject, EDGE_COLOR_HOVER);
+            lastOutlinedObjectRef.current = intersectedObject;
           }
         }
       } else {
@@ -3695,7 +3823,10 @@ export default function ScrollScene({
       
       // Update cursor based on intersection for click detection
       if (intersects.length > 0) {
-        const intersectedObject = intersects[0].object;
+        let intersectedObject: THREE.Object3D = intersects[0].object;
+        if ((intersectedObject as any)?.userData?.isEdgeLine && intersectedObject.parent) {
+          intersectedObject = intersectedObject.parent;
+        }
         // Set cursor to pointer for hotspots and pulse markers
         if (document.body) {
           document.body.style.cursor = 'pointer';
@@ -3708,8 +3839,22 @@ export default function ScrollScene({
       }
       
       if (intersects.length > 0) {
-        const clickedObject = intersects[0].object;
+        let clickedObject: THREE.Object3D = intersects[0].object;
         const intersection = intersects[0];
+        
+        // Apply the same resolution logic as mousemove handler
+        if ((clickedObject as any)?.userData?.isEdgeLine && clickedObject.parent) {
+          console.log(`🔗 Resolving edge line "${clickedObject.name}" to parent "${clickedObject.parent.name}"`);
+          clickedObject = clickedObject.parent;
+        }
+        // If the intersected object has a propagated hotspotName, prefer resolving to that hotspot
+        if ((clickedObject as any)?.userData?.hotspotName) {
+          const byName = clickableObjectsRef.current.find(obj => obj.name === (clickedObject as any).userData.hotspotName);
+          if (byName) {
+            console.log(`🔗 Resolving child mesh "${clickedObject.name}" to hotspot "${byName.name}"`);
+            clickedObject = byName;
+          }
+        }
         
         console.log("🎯 CLICKED OBJECT:", clickedObject.name);
         // console.log("  Object type:", clickedObject.type);
@@ -3725,6 +3870,13 @@ export default function ScrollScene({
           actualHotspot = clickableObjectsRef.current.find(obj => obj.name === hotspotName) || clickedObject;
           console.log('🎯 Pulse marker clicked, actual hotspot:', actualHotspot.name);
         }
+        
+        console.log('🎯 CLICK DEBUG - Hotspot details:', {
+          clickedObjectName: clickedObject.name,
+          actualHotspotName: actualHotspot.name,
+          actualHotspotType: actualHotspot.type,
+          actualHotspotUserData: actualHotspot.userData
+        });
         
         // Store the clicked hotspot for debug display
         setClickedHotspot(actualHotspot);

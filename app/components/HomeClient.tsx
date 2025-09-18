@@ -534,6 +534,7 @@ export default function HomeClient() {
           ];
           
           const marker = markerData[index];
+          const themeColors = getThemeColors();
           
           
           return (
