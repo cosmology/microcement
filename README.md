@@ -61,6 +61,45 @@ This prototype features:
    npm start
    ```
 
+## 🔧 Development Tools
+
+### TypeScript Verification
+
+Run the verification script to check TypeScript types, linting, and build:
+
+```bash
+./scripts/verify.sh
+```
+
+This script will:
+- Check if the Docker container is running (start it if needed)
+- Run TypeScript type checking
+- Run ESLint for code quality
+- Test the build process
+- Exit with error code if any checks fail
+
+### Dependency Management
+
+#### Clean and Regenerate Lock File
+
+If you encounter dependency issues or want to ensure a clean dependency tree:
+
+```bash
+# Clean and regenerate lockfile in one command
+docker exec -it microcement-app-dev-1 sh -c "
+  pnpm store prune &&
+  rm -f pnpm-lock.yaml &&
+  pnpm store prune --force &&
+  pnpm install
+"
+```
+
+This command will:
+- Clean the pnpm store
+- Remove the existing lock file
+- Force clean the store again
+- Reinstall all dependencies with a fresh lock file
+
 ## 📁 Project Structure 
 ``` bash
 microcement/

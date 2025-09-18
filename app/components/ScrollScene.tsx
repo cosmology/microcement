@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { gsap } from "gsap";
 import SwiperGallery, { GalleryImage } from './SwiperGallery';
 import { isMobile, getThemeColors, cssColorToHex } from '../../lib/utils';
+import { ModelLoader, SCENE_CONFIG, getCameraPathData, getHotspotSettings } from '@/lib/services';
 
 
 interface ScrollSceneProps {
@@ -49,9 +50,14 @@ export default function ScrollScene({
   const CUBE_HIGHLIGHT_COLOR = 0xff0000; // Red for cube
   const CUBE_NORMAL_COLOR = 0x00ff00; // Green for cube normal state
   
+  // Get hotspot settings from configuration
+  const hotspotSettings = getHotspotSettings();
+  const HOTSPOT_FOCAL_DISTANCES = hotspotSettings.focalDistances;
+  const HOTSPOT_CATEGORIES = hotspotSettings.categories;
+  
   // Single bright purple color for all hotspot hovers
-  const HOTSPOT_HOVER_COLOR = 0x8C33FF; // Bright purple - same as pulse markers
-  const HOTSPOT_COMPLEMENTARY_HOVER_COLOR = 0xb2d926; // Bright green - same as pulse markers
+  const HOTSPOT_HOVER_COLOR = hotspotSettings.colors.HOVER;
+  const HOTSPOT_COMPLEMENTARY_HOVER_COLOR = hotspotSettings.colors.HOVER;
 
   // Edge (contour) colors for outlines
   const EDGE_COLOR_NORMAL = 0x000000; // black
@@ -94,12 +100,12 @@ export default function ScrollScene({
   const FRONT_WALL_Z = 20; // Add front wall position
   
   // Camera configuration
-  const CAMERA_FOV = 75;
-  const CAMERA_NEAR = 0.1;
-  const CAMERA_FAR = 1000;
-  const ORBITAL_HEIGHT = 40;
-  const ORBITAL_RADIUS_MULTIPLIER = 6;
-  const ORBITAL_SPEED = 0.2;
+  const CAMERA_FOV = SCENE_CONFIG.CAMERA_FOV;
+  const CAMERA_NEAR = SCENE_CONFIG.CAMERA_NEAR;
+  const CAMERA_FAR = SCENE_CONFIG.CAMERA_FAR;
+  const ORBITAL_HEIGHT = SCENE_CONFIG.ORBITAL_HEIGHT;
+  const ORBITAL_RADIUS_MULTIPLIER = SCENE_CONFIG.ORBITAL_RADIUS_MULTIPLIER;
+  const ORBITAL_SPEED = SCENE_CONFIG.ORBITAL_SPEED;
   
   // Animation configuration
   const INTRO_START_POS = new THREE.Vector3(0, 50, 3); // Start perfectly above the cube center
@@ -241,28 +247,10 @@ export default function ScrollScene({
   
   
   // GSAP-driven scroll path (preview path points and targets)
-  const gsapCameraPoints = [
-    new THREE.Vector3(20, 5, 0),
-    new THREE.Vector3(-8, 6.5, 2),
-    new THREE.Vector3(-14, 6.75, 7),
-    new THREE.Vector3(-8, 7, 24),
-    new THREE.Vector3(-4, 7, 30),
-    new THREE.Vector3(-2, 7.25, 32),
-    new THREE.Vector3(12, 7.5, 32),
-    new THREE.Vector3(20, 8, 25),
-    new THREE.Vector3(16, 8, 0),
-  ];
-  const gsapLookAtTargets = [
-    new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(4, 3, 0),
-    new THREE.Vector3(6, 4, 0),
-    new THREE.Vector3(7, 5, 30),
-    new THREE.Vector3(10, 6, 50),
-    new THREE.Vector3(20, 7, 60),
-    new THREE.Vector3(30, 8, 40),
-    new THREE.Vector3(30, 8, 20),
-    new THREE.Vector3(0, 8, -40),
-  ];
+  // Get camera path data from configuration
+  const cameraPathData = getCameraPathData();
+  const gsapCameraPoints = cameraPathData.cameraPoints;
+  const gsapLookAtTargets = cameraPathData.lookAtTargets;
   const gsapCurveRef = useRef<THREE.CatmullRomCurve3>(new THREE.CatmullRomCurve3(gsapCameraPoints, false, 'catmullrom', 0.1));
   const gsapLookAtTargetsRef = useRef<THREE.Vector3[]>(gsapLookAtTargets);
   const gsapLookCurveRef = useRef<THREE.CatmullRomCurve3 | null>(new THREE.CatmullRomCurve3(gsapLookAtTargets, false, 'catmullrom', 0.1));
@@ -483,19 +471,7 @@ export default function ScrollScene({
     try {
       // Extract the category from hotspot name and normalize to API keys
       const rawKey = hotspotName.replace('Hotspot_geo_', '');
-      const API_HOTSPOT_KEY_ALIASES: Record<string, string> = {
-        // Bathroom variants
-        'bathroom_countertop': 'bath_countertop',
-        'bathroom_countertops': 'bath_countertop',
-        'bath_countertops': 'bath_countertop',
-        // Kitchen variants
-        'kitchen_countertops': 'kitchen_countertop',
-        // Common singular/plural drift
-        'backsplashes': 'backsplash',
-        'islands': 'island',
-        'cabinets': 'kitchen_cabinet',
-        'coffee_tables': 'coffee_table',
-      };
+      const API_HOTSPOT_KEY_ALIASES = SCENE_CONFIG.API_HOTSPOT_KEY_ALIASES;
       const normalizedKey = API_HOTSPOT_KEY_ALIASES[rawKey] || rawKey;
       
       // Try API first, then fallback to static data
@@ -947,37 +923,6 @@ export default function ScrollScene({
     }
   };
 
-  // Configuration for focal distances for each hotspot
-  // Customize these values to control how close the camera gets to each hotspot
-  // Lower values = closer camera, Higher values = farther camera
-  const HOTSPOT_FOCAL_DISTANCES: { [key: string]: number } = {
-    
-    "Hotspot_geo_accent_wall": 8,
-    "Hotspot_geo_backsplash": 5,
-    "Hotspot_geo_kitchen_cabinet": 5,
-    "Hotspot_geo_bath_countertop": 5,
-    "Hotspot_geo_floor": 10,
-    "Hotspot_geo_fireplace": 12,
-    "Hotspot_geo_coffee_table": 5,
-    "Hotspot_geo_kitchen_countertop": 5,
-    "Hotspot_geo_island": 5,
-    "Hotspot_geo_shelves": 5,
-  };
-
-  // Hotspot category mapping for display labels
-  const HOTSPOT_CATEGORIES: { [key: string]: string } = {
-    "Hotspot_geo_shelves": "Furniture",
-    "Hotspot_geo_accent_wall": "Accent Wall",
-    "Hotspot_geo_bath_countertop": "Bath Countertops",
-    "Hotspot_geo_kitchen_cabinet": "Kitchen Cabinets",
-    "Hotspot_geo_fireplace": "Fireplaces",
-    "Hotspot_geo_floor": "Floors",
-    "Hotspot_geo_kitchen_countertop": "Kitchen Countertops",
-    "Hotspot_geo_coffee_table": "Furniture",
-    "Hotspot_geo_island": "Kitchen Islands",
-    "Hotspot_geo_backsplash": "Kitchen Backsplashes",
-    "Hotspot_geo_bathroom_walls": "Bathroom Walls"
-  };
 
   // Store the current camera position for continuous path calculation
   // This ensures we always continue from where we are, not return to initial position
@@ -2707,8 +2652,117 @@ export default function ScrollScene({
       console.log('Placeholder added to scene');
     };
     
+    // Load the floor plan model using ModelLoader service
+    const loadModelWithService = async () => {
+      try {
+        // Show loader immediately
+        createLoaderOverlay();
+        updateLoaderOverlay(0, 0, null);
+
+        const modelLoader = ModelLoader.getInstance();
+        const modelPath = SCENE_CONFIG.DEFAULT_MODEL_PATH;
+        
+        const result = await modelLoader.loadModel({
+          modelPath,
+          targetSize: SCENE_CONFIG.TARGET_SIZE,
+          rotationY: SCENE_CONFIG.ROTATION_Y,
+          scaleMultiplier: SCENE_CONFIG.SCALE_MULTIPLIER,
+          enableContourEdges: true,
+          enableShadows: true,
+          onProgress: (progress, loaded, total) => {
+            updateLoaderOverlay(progress, loaded, total);
+          },
+          onComplete: () => {
+            hideLoaderOverlay();
+          },
+          onError: (error) => {
+            console.error('ModelLoader error:', error);
+            hideLoaderOverlay();
+            createFloorPlanPlaceholder();
+          }
+        });
+
+        const { model, clickableObjects, boundingSphere } = result;
+        
+        // Store hotspots for interaction
+        clickableObjectsRef.current = clickableObjects;
+        
+        // Log total hotspots found
+        console.log('Total transformed hotspots collected:', clickableObjects.length);
+        console.log('All transformed hotspots:', clickableObjects);
+        console.log('Hotspot names:', clickableObjects.map(obj => obj.name));
+        
+        // Create pulse markers for hotspots after they're loaded
+        if (clickableObjects.length > 0) {
+          setTimeout(() => {
+            createHotspotPulseMarkers();
+          }, 100); // Small delay to ensure scene is ready
+        }
+
+        // Apply shadows to the transformed model
+        model.traverse((child: any) => {
+          if (child instanceof THREE.Mesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+
+        scene.add(model);
+
+        // Fit camera so the model is visible
+        if (cameraRef.current) {
+          const camera = cameraRef.current;
+          const fitOffset = 1.6;
+          const radius = Math.max(1e-3, boundingSphere.radius);
+          const distance = fitOffset * radius / Math.tan((camera.fov * Math.PI / 180) / 2);
+          const direction = new THREE.Vector3(1, 0.6, 1).normalize();
+          const target = boundingSphere.center.clone();
+          camera.position.copy(target.clone().add(direction.multiplyScalar(distance)));
+          camera.near = Math.max(0.01, radius / 100);
+          camera.far = Math.max(camera.near + 10, radius * 100);
+          camera.updateProjectionMatrix();
+          camera.lookAt(target);
+        }
+
+        if (rendererRef.current && sceneRef.current && cameraRef.current) {
+          // Avoid rendering a pre-intro still frame
+          if (!WITH_INTRO || introCompletedRef.current) {
+            rendererRef.current.render(sceneRef.current, cameraRef.current);
+          }
+        }
+
+        // Start intro now that model is loaded (second intro only)
+        if (WITH_INTRO && cameraRef.current && rendererRef.current && sceneRef.current) {
+          // Set exact intro start frame (top view over cube)
+          cameraRef.current.up.set(0, 1, 0);
+          cameraRef.current.position.copy(INTRO_START_POS);
+          cameraRef.current.lookAt(cubePos.current);
+          cameraRef.current.updateProjectionMatrix();
+          cameraRef.current.updateMatrixWorld();
+          
+          // CRITICAL: Update camera state with the actual starting position
+          cameraStateRef.current.mainPathPosition.copy(INTRO_START_POS);
+          cameraStateRef.current.journeyStartPosition.copy(INTRO_START_POS);
+          cameraStateRef.current.isOnMainPath = true;
+          
+          console.log('🎯 UPDATED camera state with INTRO_START_POS:', {
+            mainPathPosition: cameraStateRef.current.mainPathPosition,
+            journeyStartPosition: cameraStateRef.current.journeyStartPosition,
+            isOnMainPath: cameraStateRef.current.isOnMainPath
+          });
+          
+          startIntroAnimation(cameraRef.current, rendererRef.current, sceneRef.current);
+        }
+
+      } catch (error) {
+        console.error('Error loading model:', error);
+        hideLoaderOverlay();
+        createFloorPlanPlaceholder();
+      }
+    };
+
     // Load the floor plan model
-    loadFloorPlanModel();
+    loadModelWithService();
     
     // Cube
     if (SHOW_CUBE) {
@@ -3717,7 +3771,7 @@ export default function ScrollScene({
             objectParent: intersectedObject.parent?.name,
             objectChildren: intersectedObject.children?.map(c => c.name),
             objectUserData: intersectedObject.userData,
-            objectMaterial: intersectedObject.material ? 'has material' : 'no material',
+            objectMaterial: (intersectedObject as THREE.Mesh).material ? 'has material' : 'no material',
             objectVisible: intersectedObject.visible,
             objectPosition: intersectedObject.position ? {
               x: intersectedObject.position.x.toFixed(3),
