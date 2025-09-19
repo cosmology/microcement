@@ -23,6 +23,40 @@ export default function ScrollScene({
   onIntroStart,
   onDebugUpdate
 }: ScrollSceneProps) {
+  const [hotspotSettings, setHotspotSettings] = useState<any>(null);
+  const [cameraPathData, setCameraPathData] = useState<any>(null);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const [hotspot, camera] = await Promise.all([
+          getHotspotSettings(),
+          getCameraPathData()
+        ]);
+        setHotspotSettings(hotspot);
+        setCameraPathData(camera);
+      } catch (error) {
+        console.error('Failed to load scene settings:', error);
+        // Fallback to default settings
+        setHotspotSettings({
+          focalDistances: {},
+          categories: {},
+          colors: { HOVER: 0xb2d926 }
+        });
+        setCameraPathData({
+          cameraPoints: [],
+          lookAtTargets: []
+        });
+      }
+    };
+    
+    loadSettings();
+  }, []);
+
+  // Don't render until settings are loaded
+  if (!hotspotSettings || !cameraPathData) {
+    return <div>Loading...</div>;
+  }
 
   // Toggle flags
   const WITH_INTRO = true; // Toggle to control intro vs orbital
@@ -51,7 +85,6 @@ export default function ScrollScene({
   const CUBE_NORMAL_COLOR = 0x00ff00; // Green for cube normal state
   
   // Get hotspot settings from configuration
-  const hotspotSettings = getHotspotSettings();
   const HOTSPOT_FOCAL_DISTANCES = hotspotSettings.focalDistances;
   const HOTSPOT_CATEGORIES = hotspotSettings.categories;
   
@@ -248,7 +281,6 @@ export default function ScrollScene({
   
   // GSAP-driven scroll path (preview path points and targets)
   // Get camera path data from configuration
-  const cameraPathData = getCameraPathData();
   const gsapCameraPoints = cameraPathData.cameraPoints;
   const gsapLookAtTargets = cameraPathData.lookAtTargets;
   const gsapCurveRef = useRef<THREE.CatmullRomCurve3>(new THREE.CatmullRomCurve3(gsapCameraPoints, false, 'catmullrom', 0.1));

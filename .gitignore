@@ -28,6 +28,11 @@ dist-ssr
 .env
 .env.*
 
+# Temporary environment files (security risk)
+env-local.txt
+supabase-env.txt
+*-env.txt
+
 frontend/tsconfig.tsbuildinfo
 frontend/tsconfig.tsbuildinfo
 .qodo
@@ -37,3 +42,28 @@ frontend/tsconfig.tsbuildinfo
 
 # Next.js
 .next/
+
+# Supabase
+
+# Supabase secrets and local volumes
+# The .env file in the `supabase` directory holds local database
+# credentials and the local JWT secret. It should never be committed.
+supabase/.env
+
+# The `volumes` directory contains the binary files of your local
+# Postgres database. Committing this will lead to a bloated repository
+# and data conflicts among developers.
+supabase/volumes/
+
+# Supabase branch state
+# The `.branches` directory holds metadata about the linked project
+# branches for the CLI. It's automatically generated and should be ignored.
+supabase/.branches
+
+# Supabase Edge Function environment variables
+# If you use environment variables for your Edge Functions,
+# the corresponding .env files should be ignored.
+supabase/functions/.env*
+
+# MCP Configuration (contains sensitive tokens)
+.cursor/mcp.json

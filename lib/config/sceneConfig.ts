@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SceneConfigService } from '@/lib/services/SceneConfigService';
 
 /**
  * Global configuration constants for the 3D scene
@@ -107,15 +108,34 @@ export const SCENE_CONFIG = {
 
 /**
  * Get camera path data for a specific model
- * In the future, this could load from a database or user preferences
+ * Now supports user-specific configurations from the database
  */
-export function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT_MODEL_PATH) {
-  // For now, return default data
-  // In the future, this could:
-  // 1. Load from UserLoader based on current user
-  // 2. Load from a database
-  // 3. Load from a JSON file
+export async function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT_MODEL_PATH, userId?: string) {
+  if (userId) {
+    try {
+      const sceneConfigService = SceneConfigService.getInstance();
+      sceneConfigService.setUser({ id: userId });
+      
+      // Try to get user's default config first
+      let userConfig = await sceneConfigService.getDefaultConfig();
+      
+      // If no default config exists, create one
+      if (!userConfig) {
+        userConfig = await sceneConfigService.createDefaultConfigIfNotExists();
+      }
+      
+      if (userConfig) {
+        return {
+          cameraPoints: userConfig.camera_points.map(point => new THREE.Vector3(point.x, point.y, point.z)),
+          lookAtTargets: userConfig.look_at_targets.map(target => new THREE.Vector3(target.x, target.y, target.z))
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to load user config, falling back to default:', error);
+    }
+  }
   
+  // Fallback to default data
   return {
     cameraPoints: SCENE_CONFIG.DEFAULT_CAMERA_POINTS.map(point => point.clone()),
     lookAtTargets: SCENE_CONFIG.DEFAULT_LOOK_AT_TARGETS.map(target => target.clone())
@@ -124,13 +144,70 @@ export function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT_MODEL
 
 /**
  * Get hotspot settings for a specific model/user combination
- * In the future, this could load from user preferences or database
+ * Now supports user-specific configurations from the database
  */
-export function getHotspotSettings(modelPath: string = SCENE_CONFIG.DEFAULT_MODEL_PATH) {
+export async function getHotspotSettings(modelPath: string = SCENE_CONFIG.DEFAULT_MODEL_PATH, userId?: string) {
+  if (userId) {
+    try {
+      const sceneConfigService = SceneConfigService.getInstance();
+      sceneConfigService.setUser({ id: userId });
+      
+      // Try to get user's default config first
+      let userConfig = await sceneConfigService.getDefaultConfig();
+      
+      // If no default config exists, create one
+      if (!userConfig) {
+        userConfig = await sceneConfigService.createDefaultConfigIfNotExists();
+      }
+      
+      if (userConfig) {
+        return {
+          colors: userConfig.hotspot_colors,
+          pulseAnimation: userConfig.pulse_animation,
+          focalDistances: userConfig.hotspot_focal_distances,
+          categories: userConfig.hotspot_categories
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to load user config, falling back to default:', error);
+    }
+  }
+  
+  // Fallback to default settings
   return {
     colors: SCENE_CONFIG.HOTSPOT_COLORS,
     pulseAnimation: SCENE_CONFIG.PULSE_ANIMATION,
     focalDistances: SCENE_CONFIG.HOTSPOT_FOCAL_DISTANCES,
     categories: SCENE_CONFIG.HOTSPOT_CATEGORIES
   };
+}
+
+/**
+ * Get complete scene configuration for a user
+ * This is the main function to use for getting user-specific scene configs
+ */
+export async function getUserSceneConfig(userId?: string) {
+  if (userId) {
+    try {
+      const sceneConfigService = SceneConfigService.getInstance();
+      sceneConfigService.setUser({ id: userId });
+      
+      // Try to get user's default config first
+      let userConfig = await sceneConfigService.getDefaultConfig();
+      
+      // If no default config exists, create one
+      if (!userConfig) {
+        userConfig = await sceneConfigService.createDefaultConfigIfNotExists();
+      }
+      
+      if (userConfig) {
+        return sceneConfigService.convertToSceneConfig(userConfig);
+      }
+    } catch (error) {
+      console.warn('Failed to load user config, falling back to default:', error);
+    }
+  }
+  
+  // Fallback to default configuration
+  return SCENE_CONFIG;
 }

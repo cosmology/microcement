@@ -7,10 +7,12 @@
         "-i",
         "microcement-mcp-supabase-1",
         "npx",
-        "@supabase/mcp-server-supabase",
-        "--project-ref=lxsbolsjavowlymvpyxo",
-        "--access-token=SUPABASE_ACCESS_TOKEN_PLACEHOLDER"
-      ]
+        "@supabase/mcp-server-supabase"
+      ],
+      "env": {
+        "SUPABASE_PROJECT_REF": "lxsbolsjavowlymvpyxo",
+        "SUPABASE_SERVICE_ROLE_KEY": "SUPABASE_ACCESS_TOKEN_PLACEHOLDER"
+      }
     }
   }
 }
