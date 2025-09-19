@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "microcement-mcp-supabase-1",
+        "npx",
+        "@supabase/mcp-server-supabase",
+        "--project-ref=lxsbolsjavowlymvpyxo",
+        "--access-token=SUPABASE_ACCESS_TOKEN_PLACEHOLDER"
+      ]
+    }
+  }
+}
