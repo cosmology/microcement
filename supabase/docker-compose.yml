@@ -120,19 +120,28 @@ services:
 
       GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP}
       GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: ${ENABLE_ANONYMOUS_USERS}
-      GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM}
+      GOTRUE_MAILER_AUTOCONFIRM: true
 
       # Uncomment to bypass nonce check in ID Token flow. Commonly set to true when using Google Sign In on mobile.
       # GOTRUE_EXTERNAL_SKIP_NONCE_CHECK: true
 
-      # GOTRUE_MAILER_SECURE_EMAIL_CHANGE_ENABLED: true
+      GOTRUE_MAILER_SECURE_EMAIL_CHANGE_ENABLED: false
       # GOTRUE_SMTP_MAX_FREQUENCY: 1s
-      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
-      GOTRUE_SMTP_HOST: ${SMTP_HOST}
-      GOTRUE_SMTP_PORT: ${SMTP_PORT}
-      GOTRUE_SMTP_USER: ${SMTP_USER}
-      GOTRUE_SMTP_PASS: ${SMTP_PASS}
-      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME}
+      # Production SMTP Configuration (for Vercel deployment)
+      # GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
+      # GOTRUE_SMTP_HOST: ${SMTP_HOST}
+      # GOTRUE_SMTP_PORT: ${SMTP_PORT}
+      # GOTRUE_SMTP_USER: ${SMTP_USER}
+      # GOTRUE_SMTP_PASS: ${SMTP_PASS}
+      # GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME}
+      
+      # Local Development SMTP Configuration (MailHog)
+      GOTRUE_SMTP_ADMIN_EMAIL: admin@localhost
+      GOTRUE_SMTP_HOST: mailhog
+      GOTRUE_SMTP_PORT: "1025"
+      GOTRUE_SMTP_USER: 
+      GOTRUE_SMTP_PASS: 
+      GOTRUE_SMTP_SENDER_NAME: Supabase Local
       GOTRUE_MAILER_URLPATHS_INVITE: ${MAILER_URLPATHS_INVITE}
       GOTRUE_MAILER_URLPATHS_CONFIRMATION: ${MAILER_URLPATHS_CONFIRMATION}
       GOTRUE_MAILER_URLPATHS_RECOVERY: ${MAILER_URLPATHS_RECOVERY}
@@ -478,7 +487,7 @@ services:
     image: supabase/supavisor:2.5.7
     restart: unless-stopped
     ports:
-      - ${POSTGRES_PORT}:5432
+      - 5433:5432
       - ${POOLER_PROXY_PORT_TRANSACTION}:6543
     volumes:
       - ./volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro,z
@@ -526,5 +535,20 @@ services:
         "/app/bin/migrate && /app/bin/supavisor eval \"$$(cat /etc/pooler/pooler.exs)\" && /app/bin/server"
       ]
 
+  # SMTP Server for email testing
+  mailhog:
+    container_name: supabase-mailhog
+    image: mailhog/mailhog:latest
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI port
+    environment:
+      - MH_STORAGE=maildir
+      - MH_MAILDIR_PATH=/maildir
+    volumes:
+      - mailhog-data:/maildir
+
 volumes:
   db-config:
+  mailhog-data:

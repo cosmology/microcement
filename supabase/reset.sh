@@ -1,6 +1,7 @@
 #!/bin/bash
 
-echo "WARNING: This will remove all containers and container data, and will reset the .env file. This action cannot be undone!"
+echo "WARNING: This will remove all containers and container data. This action cannot be undone!"
+echo "NOTE: Your .env file will be preserved unless you choose to reset it."
 read -p "Are you sure you want to proceed? (y/N) " -n 1 -r
 echo    # Move to a new line
 if [[ ! $REPLY =~ ^[Yy]$ ]]
@@ -26,19 +27,34 @@ for DIR in "${BIND_MOUNTS[@]}"; do
   fi
 done
 
-echo "Resetting .env file..."
+echo "Checking .env file..."
 if [ -f ".env" ]; then
-  echo "Removing existing .env file..."
-  rm -f .env
+  echo "Your .env file exists and will be preserved."
+  read -p "Do you want to reset the .env file to defaults? (y/N) " -n 1 -r
+  echo    # Move to a new line
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "Backing up current .env file..."
+    cp .env .env.backup
+    echo "Resetting .env file to defaults..."
+    if [ -f ".env.example" ]; then
+      cp .env.example .env
+      echo ".env file reset from .env.example"
+    else
+      echo "ERROR: .env.example file not found. Cannot reset .env file."
+      echo "Your original .env file has been backed up as .env.backup"
+    fi
+  else
+    echo ".env file preserved."
+  fi
 else
-  echo "No .env file found. Skipping .env removal step..."
-fi
-
-if [ -f ".env.example" ]; then
-  echo "Copying .env.example to .env..."
-  cp .env.example .env
-else
-  echo ".env.example file not found. Skipping .env reset step..."
+  echo "No .env file found. Creating from .env.example..."
+  if [ -f ".env.example" ]; then
+    cp .env.example .env
+    echo ".env file created from .env.example"
+  else
+    echo "ERROR: .env.example file not found. Cannot create .env file."
+    echo "You will need to create the .env file manually."
+  fi
 fi
 
 echo "Cleanup complete!"
