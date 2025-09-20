@@ -111,30 +111,41 @@ export const SCENE_CONFIG = {
  * Now supports user-specific configurations from the database
  */
 export async function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT_MODEL_PATH, userId?: string) {
+  console.log('🎬 getCameraPathData called with userId:', userId ? 'present' : 'none');
+  
   if (userId) {
     try {
+      console.log('🔍 Attempting to load user-specific camera path data from Supabase...');
       const sceneConfigService = SceneConfigService.getInstance();
       sceneConfigService.setUser({ id: userId });
       
       // Try to get user's default config first
       let userConfig = await sceneConfigService.getDefaultConfig();
+      console.log('📊 User config found:', userConfig ? 'yes' : 'no');
       
       // If no default config exists, create one
       if (!userConfig) {
+        console.log('🆕 Creating default config for user...');
         userConfig = await sceneConfigService.createDefaultConfigIfNotExists();
+        console.log('✅ Default config created:', userConfig ? 'yes' : 'no');
       }
       
       if (userConfig) {
+        console.log('🎯 Using Supabase camera data:');
+        console.log('  - Camera points:', userConfig.camera_points?.length || 0);
+        console.log('  - Look at targets:', userConfig.look_at_targets?.length || 0);
+        
         return {
           cameraPoints: userConfig.camera_points.map(point => new THREE.Vector3(point.x, point.y, point.z)),
           lookAtTargets: userConfig.look_at_targets.map(target => new THREE.Vector3(target.x, target.y, target.z))
         };
       }
     } catch (error) {
-      console.warn('Failed to load user config, falling back to default:', error);
+      console.warn('❌ Failed to load user config, falling back to default:', error);
     }
   }
   
+  console.log('🔄 Using default camera path data (no userId or Supabase error)');
   // Fallback to default data
   return {
     cameraPoints: SCENE_CONFIG.DEFAULT_CAMERA_POINTS.map(point => point.clone()),
@@ -147,20 +158,32 @@ export async function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT
  * Now supports user-specific configurations from the database
  */
 export async function getHotspotSettings(modelPath: string = SCENE_CONFIG.DEFAULT_MODEL_PATH, userId?: string) {
+  console.log('🎨 getHotspotSettings called with userId:', userId ? 'present' : 'none');
+  
   if (userId) {
     try {
+      console.log('🔍 Attempting to load user-specific hotspot settings from Supabase...');
       const sceneConfigService = SceneConfigService.getInstance();
       sceneConfigService.setUser({ id: userId });
       
       // Try to get user's default config first
       let userConfig = await sceneConfigService.getDefaultConfig();
+      console.log('📊 User config found:', userConfig ? 'yes' : 'no');
       
       // If no default config exists, create one
       if (!userConfig) {
+        console.log('🆕 Creating default config for user...');
         userConfig = await sceneConfigService.createDefaultConfigIfNotExists();
+        console.log('✅ Default config created:', userConfig ? 'yes' : 'no');
       }
       
       if (userConfig) {
+        console.log('🎯 Using Supabase hotspot data:');
+        console.log('  - Colors:', userConfig.hotspot_colors);
+        console.log('  - Pulse animation:', userConfig.pulse_animation);
+        console.log('  - Focal distances:', Object.keys(userConfig.hotspot_focal_distances || {}).length);
+        console.log('  - Categories:', Object.keys(userConfig.hotspot_categories || {}).length);
+        
         return {
           colors: userConfig.hotspot_colors,
           pulseAnimation: userConfig.pulse_animation,
@@ -169,10 +192,11 @@ export async function getHotspotSettings(modelPath: string = SCENE_CONFIG.DEFAUL
         };
       }
     } catch (error) {
-      console.warn('Failed to load user config, falling back to default:', error);
+      console.warn('❌ Failed to load user config, falling back to default:', error);
     }
   }
   
+  console.log('🔄 Using default hotspot settings (no userId or Supabase error)');
   // Fallback to default settings
   return {
     colors: SCENE_CONFIG.HOTSPOT_COLORS,

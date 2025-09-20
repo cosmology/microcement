@@ -23,40 +23,65 @@ export default function ScrollScene({
   onIntroStart,
   onDebugUpdate
 }: ScrollSceneProps) {
-  const [hotspotSettings, setHotspotSettings] = useState<any>(null);
-  const [cameraPathData, setCameraPathData] = useState<any>(null);
+  const [hotspotSettings, setHotspotSettings] = useState<any>({
+    focalDistances: {},
+    categories: {},
+    colors: { HOVER: 0xb2d926 }
+  });
+  const [cameraPathData, setCameraPathData] = useState<any>({
+    cameraPoints: [
+      new THREE.Vector3(20, 5, 0),
+      new THREE.Vector3(-8, 6.5, 2),
+      new THREE.Vector3(-14, 6.75, 7),
+      new THREE.Vector3(-8, 7, 24),
+      new THREE.Vector3(-4, 7, 30),
+      new THREE.Vector3(-2, 7.25, 32),
+      new THREE.Vector3(12, 7.5, 32),
+      new THREE.Vector3(20, 8, 25),
+      new THREE.Vector3(16, 8, 0),
+    ],
+    lookAtTargets: [
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(4, 3, 0),
+      new THREE.Vector3(6, 4, 0),
+      new THREE.Vector3(7, 5, 30),
+      new THREE.Vector3(10, 6, 50),
+      new THREE.Vector3(20, 7, 60),
+      new THREE.Vector3(30, 8, 40),
+      new THREE.Vector3(30, 8, 20),
+      new THREE.Vector3(0, 8, -40),
+    ]
+  });
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
+        console.log('🔄 Loading scene settings from Supabase...');
         const [hotspot, camera] = await Promise.all([
           getHotspotSettings(),
           getCameraPathData()
         ]);
+        
+        console.log('✅ Scene settings loaded successfully:');
+        console.log('📍 Camera Points:', camera.cameraPoints?.length || 0, 'points');
+        console.log('🎯 Look At Targets:', camera.lookAtTargets?.length || 0, 'targets');
+        console.log('🎨 Hotspot Colors:', hotspot.colors);
+        console.log('📏 Hotspot Focal Distances:', Object.keys(hotspot.focalDistances || {}).length, 'distances');
+        console.log('🏷️ Hotspot Categories:', Object.keys(hotspot.categories || {}).length, 'categories');
+        
         setHotspotSettings(hotspot);
         setCameraPathData(camera);
+        
+        console.log('✅ Scene settings state updated successfully');
       } catch (error) {
-        console.error('Failed to load scene settings:', error);
-        // Fallback to default settings
-        setHotspotSettings({
-          focalDistances: {},
-          categories: {},
-          colors: { HOVER: 0xb2d926 }
-        });
-        setCameraPathData({
-          cameraPoints: [],
-          lookAtTargets: []
-        });
+        console.error('❌ Failed to load scene settings:', error);
+        console.log('🔄 Using default scene settings');
+        // Keep the default values already set
       }
     };
     
     loadSettings();
   }, []);
-
-  // Don't render until settings are loaded
-  if (!hotspotSettings || !cameraPathData) {
-    return <div>Loading...</div>;
-  }
 
   // Toggle flags
   const WITH_INTRO = true; // Toggle to control intro vs orbital
@@ -283,13 +308,26 @@ export default function ScrollScene({
   // Get camera path data from configuration
   const gsapCameraPoints = cameraPathData.cameraPoints;
   const gsapLookAtTargets = cameraPathData.lookAtTargets;
-  const gsapCurveRef = useRef<THREE.CatmullRomCurve3>(new THREE.CatmullRomCurve3(gsapCameraPoints, false, 'catmullrom', 0.1));
+  const gsapCurveRef = useRef<THREE.CatmullRomCurve3 | null>(null);
   const gsapLookAtTargetsRef = useRef<THREE.Vector3[]>(gsapLookAtTargets);
-  const gsapLookCurveRef = useRef<THREE.CatmullRomCurve3 | null>(new THREE.CatmullRomCurve3(gsapLookAtTargets, false, 'catmullrom', 0.1));
+  const gsapLookCurveRef = useRef<THREE.CatmullRomCurve3 | null>(null);
   const pathProgressRef = useRef<{ t: number }>({ t: 0 });
   const gsapPathInitializedRef = useRef<boolean>(false);
 
+  // Create curves when we have valid data
+  useEffect(() => {
+    if (gsapCameraPoints && gsapCameraPoints.length > 0) {
+      gsapCurveRef.current = new THREE.CatmullRomCurve3(gsapCameraPoints, false, 'catmullrom', 0.1);
+    }
+    if (gsapLookAtTargets && gsapLookAtTargets.length > 0) {
+      gsapLookAtTargetsRef.current = gsapLookAtTargets;
+      gsapLookCurveRef.current = new THREE.CatmullRomCurve3(gsapLookAtTargets, false, 'catmullrom', 0.1);
+    }
+  }, [gsapCameraPoints, gsapLookAtTargets]);
+
   const updateCameraAlongCurve = (camera: THREE.PerspectiveCamera, t: number) => {
+    if (!gsapCurveRef.current) return; // Safety check
+    
     const clampedT = Math.max(0, Math.min(1, t));
     const point = gsapCurveRef.current.getPointAt(clampedT);
     camera.position.copy(point);

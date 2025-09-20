@@ -14,9 +14,13 @@ services:
     environment:
       - NODE_ENV=development
       - NEXT_TELEMETRY_DISABLED=1
+      - NEXT_PUBLIC_SUPABASE_URL=http://kong:8000
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=SUPABASE_ANON_KEY_PLACEHOLDER
     command: npm run dev
     profiles:
       - dev
+    networks:
+      - supabase_default
 
   # Production service
   app-prod:
@@ -57,4 +61,8 @@ services:
       - SUPABASE_ACCESS_TOKEN=SUPABASE_ACCESS_TOKEN_PLACEHOLDER
       - SUPABASE_PROJECT_REF=lxsbolsjavowlymvpyxo
     profiles:
-      - mcp 
+      - mcp
+
+networks:
+  supabase_default:
+    external: true 
