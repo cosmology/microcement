@@ -9,12 +9,13 @@ import { supabase } from '@/lib/supabase'
 
 interface UserProfileProps {
   onUserChange?: (user: any) => void
+  forceShowAuth?: boolean
 }
 
-export default function UserProfile({ onUserChange }: UserProfileProps) {
+export default function UserProfile({ onUserChange, forceShowAuth = false }: UserProfileProps) {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [showAuthModal, setShowAuthModal] = useState(forceShowAuth)
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -46,6 +47,13 @@ export default function UserProfile({ onUserChange }: UserProfileProps) {
 
     return () => subscription.unsubscribe()
   }, [onUserChange])
+
+  // Handle forceShowAuth prop changes
+  useEffect(() => {
+    if (forceShowAuth) {
+      setShowAuthModal(true)
+    }
+  }, [forceShowAuth])
 
   const handleSignOut = async () => {
     try {
