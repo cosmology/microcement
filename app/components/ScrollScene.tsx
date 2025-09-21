@@ -3,9 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { gsap } from "gsap";
+import { Settings } from "lucide-react";
 import SwiperGallery, { GalleryImage } from './SwiperGallery';
 import { isMobile, getThemeColors, cssColorToHex } from '../../lib/utils';
 import { ModelLoader, SCENE_CONFIG, getCameraPathData, getHotspotSettings } from '@/lib/services';
+import { SceneConfigService } from '@/lib/services/SceneConfigService';
 
 
 interface ScrollSceneProps {
@@ -14,6 +16,7 @@ interface ScrollSceneProps {
   onIntroComplete?: () => void;
   onIntroStart?: () => void;
   onDebugUpdate?: (data: any) => void;
+  user?: any; // Add user prop
 }
 
 export default function ScrollScene({ 
@@ -21,8 +24,11 @@ export default function ScrollScene({
   currentSection = 'hero',
   onIntroComplete,
   onIntroStart,
-  onDebugUpdate
+  onDebugUpdate,
+  user
 }: ScrollSceneProps) {
+  const [hasUserConfig, setHasUserConfig] = useState(false);
+  const [loadingConfig, setLoadingConfig] = useState(false);
   const [hotspotSettings, setHotspotSettings] = useState<any>({
     focalDistances: {},
     categories: {},
@@ -56,32 +62,57 @@ export default function ScrollScene({
   useEffect(() => {
     const loadSettings = async () => {
       try {
+        setLoadingConfig(true);
         console.log('🔄 Loading scene settings from Supabase...');
-        const [hotspot, camera] = await Promise.all([
-          getHotspotSettings(),
-          getCameraPathData()
-        ]);
         
+        const userId = user?.id;
+        console.log('🔍 ScrollScene: User object:', user);
+        console.log('🔍 ScrollScene: User ID:', userId);
+        console.log('🔍 ScrollScene: User email:', user?.email);
+        
+        const [hotspot, camera] = await Promise.all([
+          getHotspotSettings(undefined, userId),
+          getCameraPathData(undefined, userId)
+        ]);
+
         console.log('✅ Scene settings loaded successfully:');
         console.log('📍 Camera Points:', camera.cameraPoints?.length || 0, 'points');
         console.log('🎯 Look At Targets:', camera.lookAtTargets?.length || 0, 'targets');
         console.log('🎨 Hotspot Colors:', hotspot.colors);
         console.log('📏 Hotspot Focal Distances:', Object.keys(hotspot.focalDistances || {}).length, 'distances');
         console.log('🏷️ Hotspot Categories:', Object.keys(hotspot.categories || {}).length, 'categories');
-        
+
         setHotspotSettings(hotspot);
         setCameraPathData(camera);
         
+        // Check if user has a custom configuration
+        if (userId) {
+          try {
+            const sceneConfigService = SceneConfigService.getInstance();
+            sceneConfigService.setUser({ id: userId });
+            const userConfigs = await sceneConfigService.getUserConfigs();
+            setHasUserConfig(userConfigs.length > 0);
+          } catch (error) {
+            console.warn('Failed to check user configs:', error);
+            setHasUserConfig(false);
+          }
+        } else {
+          setHasUserConfig(false);
+        }
+
         console.log('✅ Scene settings state updated successfully');
       } catch (error) {
         console.error('❌ Failed to load scene settings:', error);
         console.log('🔄 Using default scene settings');
+        setHasUserConfig(false);
         // Keep the default values already set
+      } finally {
+        setLoadingConfig(false);
       }
     };
-    
+
     loadSettings();
-  }, []);
+  }, [user]);
 
   // Toggle flags
   const WITH_INTRO = true; // Toggle to control intro vs orbital
@@ -110,12 +141,13 @@ export default function ScrollScene({
   const CUBE_NORMAL_COLOR = 0x00ff00; // Green for cube normal state
   
   // Get hotspot settings from configuration
-  const HOTSPOT_FOCAL_DISTANCES = hotspotSettings.focalDistances;
-  const HOTSPOT_CATEGORIES = hotspotSettings.categories;
+  const HOTSPOT_FOCAL_DISTANCES = hotspotSettings?.focalDistances || {};
+  const HOTSPOT_CATEGORIES = hotspotSettings?.categories || {};
+  
   
   // Single bright purple color for all hotspot hovers
-  const HOTSPOT_HOVER_COLOR = hotspotSettings.colors.HOVER;
-  const HOTSPOT_COMPLEMENTARY_HOVER_COLOR = hotspotSettings.colors.HOVER;
+  const HOTSPOT_HOVER_COLOR = hotspotSettings?.colors?.HOVER || 0xb2d926;
+  const HOTSPOT_COMPLEMENTARY_HOVER_COLOR = hotspotSettings?.colors?.HOVER || 0xb2d926;
 
   // Edge (contour) colors for outlines
   const EDGE_COLOR_NORMAL = 0x000000; // black
@@ -1171,6 +1203,11 @@ export default function ScrollScene({
     // Update the currently hovered marker
     currentlyHoveredMarkerRef.current = markerIndex;
 
+    // Show corresponding marker panel (only if in scroll range)
+    if ((window as any).showMarkerPanel) {
+      (window as any).showMarkerPanel(markerIndex);
+    }
+
     const pulseSphere = hotspotPulseRefs.current[markerIndex * 2];
     const ringMesh = hotspotPulseRefs.current[markerIndex * 2 + 1];
     
@@ -1231,6 +1268,11 @@ export default function ScrollScene({
     animatingMarkersRef.current.clear();
     // Clear currently hovered marker
     currentlyHoveredMarkerRef.current = null;
+    
+    // Hide all marker panels (let GSAP handle scroll-based visibility)
+    if ((window as any).hideAllMarkerPanels) {
+      (window as any).hideAllMarkerPanels();
+    }
     
     hotspotPulseRefs.current.forEach((marker, i) => {
       if (marker && marker.material) {
@@ -2685,7 +2727,7 @@ export default function ScrollScene({
               // Unknown total: show MB and keep mid-width bar
               loaderLoadedBytesRef.current = loaded;
               if (loaderBarRef.current) loaderBarRef.current.style.width = `${Math.round(window.innerWidth * 0.5)}px`;
-              if (loaderTextRef.current) loaderTextRef.current.textContent = `${bytesToMB(loaded).toFixed(2)} MB`;
+              if (loaderTextRef.current) loaderTextRef.current.textContent = 'Loading...';
             }
           },
           (err: any) => {
@@ -3178,6 +3220,20 @@ export default function ScrollScene({
   const createLoaderOverlay = () => {
     if (typeof window === 'undefined') return;
     if (loaderOverlayRef.current) return;
+    
+    // Don't show loader if preloader is still active
+    const preloader = document.querySelector('[data-preloader]');
+    if (preloader) {
+      console.log('[LoaderOverlay] Preloader still active, skipping loader creation');
+      return;
+    }
+
+    // Additional check: don't show loader if preloader has just completed
+    const preloaderCompleted = sessionStorage.getItem('preloader-completed');
+    if (preloaderCompleted) {
+      console.log('[LoaderOverlay] Preloader recently completed, skipping loader creation');
+      return;
+    }
 
     // Inject keyframes once for indeterminate animation
     if (!loaderStyleRef.current) {
@@ -3274,16 +3330,8 @@ export default function ScrollScene({
     const px = Math.max(0, (window.innerWidth * clamped) / 100);
     loaderBarRef.current.style.width = `${px}px`;
 
-    let loadedMB: number | undefined;
-    let totalMB: number | undefined;
-    if (typeof loadedBytes === 'number') loadedMB = bytesToMB(loadedBytes);
-    if (typeof totalBytes === 'number' && totalBytes > 0) totalMB = bytesToMB(totalBytes);
-
-    // Build text exactly like the debug panel values
-    const percentText = `${clamped.toFixed(0)}%`;
-    const loadedText = typeof loadedMB === 'number' ? `${loadedMB.toFixed(2)} MB` : 'N/A';
-    const totalText = typeof totalMB === 'number' ? `${totalMB.toFixed(2)} MB` : 'N/A';
-    const fullText = `Percent: ${percentText} | Loaded: ${loadedText} | Total: ${totalText}`;
+    // Simple loading text without percentages or totals
+    const fullText = clamped < 100 ? 'Loading...' : 'Complete';
     loaderTextRef.current.textContent = fullText;
     if (loaderInfoRef.current) loaderInfoRef.current.textContent = fullText;
 
@@ -3292,8 +3340,8 @@ export default function ScrollScene({
       setDebugInfo((prev: any) => ({
         ...(prev || {}),
         loaderPercent: clamped,
-        loaderLoadedMB: loadedMB,
-        loaderTotalMB: totalMB,
+        loaderLoadedMB: typeof loadedBytes === 'number' ? bytesToMB(loadedBytes) : undefined,
+        loaderTotalMB: typeof totalBytes === 'number' && totalBytes > 0 ? bytesToMB(totalBytes) : undefined,
       }));
     }
   };
@@ -3325,7 +3373,7 @@ export default function ScrollScene({
       const loaded = (evt as ProgressEvent).loaded || 0;
       loaderLoadedBytesRef.current = loaded;
       const loadedMB = bytesToMB(loaded);
-      loaderTextRef.current.textContent = `${loadedMB.toFixed(2)} MB`;
+      loaderTextRef.current.textContent = 'Loading...';
     }
   };
 
@@ -3732,18 +3780,27 @@ export default function ScrollScene({
         };
         let intersectedObject: THREE.Object3D = pick();
         
-        // Check if hovering over a pulse marker
-        if (intersectedObject.userData && intersectedObject.userData.isPulseMarker) {
-          // Leaving any outlined mesh: revert edges to black
-          if (lastOutlinedObjectRef.current) {
-            setEdgeLineColorForMesh(lastOutlinedObjectRef.current, EDGE_COLOR_NORMAL);
-            lastOutlinedObjectRef.current = null;
-          }
-          const markerIndex = hotspotPulseRefs.current.indexOf(intersectedObject as THREE.Mesh);
-          if (markerIndex !== -1) {
-            const markerGroupIndex = Math.floor(markerIndex / 2);
-            showMarkerOnHover(markerGroupIndex);
-          }
+          // Check if hovering over a pulse marker
+          if (intersectedObject.userData && intersectedObject.userData.isPulseMarker) {
+            // Leaving any outlined mesh: revert edges to black
+            if (lastOutlinedObjectRef.current) {
+              setEdgeLineColorForMesh(lastOutlinedObjectRef.current, EDGE_COLOR_NORMAL);
+              lastOutlinedObjectRef.current = null;
+            }
+            
+            // Find the marker index more reliably
+            let markerGroupIndex = -1;
+            for (let i = 0; i < hotspotPulseRefs.current.length; i += 2) {
+              if (hotspotPulseRefs.current[i] === intersectedObject) {
+                markerGroupIndex = i / 2;
+                console.log(`🎯 Found marker at group index ${markerGroupIndex} for hotspot: ${intersectedObject.userData.hotspotName}`);
+                break;
+              }
+            }
+            
+            if (markerGroupIndex !== -1) {
+              showMarkerOnHover(markerGroupIndex);
+            }
         } else {
           // Hide all markers when hovering over other objects
           hideAllMarkers();
@@ -3849,7 +3906,24 @@ export default function ScrollScene({
               z: intersectedObject.position.z.toFixed(3)
             } : 'no position'
           });
-          const category = HOTSPOT_CATEGORIES[hotspotName] || 'Unknown';
+          // Use fallback categories if hotspotSettings is not loaded
+          const fallbackCategories = {
+            "Hotspot_geo_shelves": "Furniture",
+            "Hotspot_geo_accent_wall": "Accent Wall",
+            "Hotspot_geo_bath_countertop": "Bath Countertops",
+            "Hotspot_geo_kitchen_cabinet": "Kitchen Cabinets",
+            "Hotspot_geo_fireplace": "Fireplaces",
+            "Hotspot_geo_floor": "Floors",
+            "Hotspot_geo_kitchen_countertop": "Kitchen Countertops",
+            "Hotspot_geo_coffee_table": "Furniture",
+            "Hotspot_geo_island": "Kitchen Islands",
+            "Hotspot_geo_backsplash": "Kitchen Backsplashes",
+            "Hotspot_geo_bathroom_walls": "Bathroom Walls"
+          };
+          
+          const allCategories = { ...fallbackCategories, ...HOTSPOT_CATEGORIES };
+          const category = allCategories[hotspotName] || 'General';
+          
           setHoverTooltip({
             visible: true,
             text: category,

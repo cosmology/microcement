@@ -1,0 +1,262 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { UserRound, LogOut, Settings } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { supabase } from '@/lib/supabase'
+
+interface UserProfileProps {
+  onUserChange?: (user: any) => void
+}
+
+export default function UserProfile({ onUserChange }: UserProfileProps) {
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [authLoading, setAuthLoading] = useState(false)
+  const [authError, setAuthError] = useState('')
+
+  useEffect(() => {
+    // Check if user is already authenticated
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        setUser(session?.user ?? null)
+        onUserChange?.(session?.user ?? null)
+      } catch (error) {
+        console.error('Auth check failed:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    checkAuth()
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      onUserChange?.(session?.user ?? null)
+      setLoading(false)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [onUserChange])
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut()
+      setUser(null)
+      onUserChange?.(null)
+    } catch (error) {
+      console.error('Sign out error:', error)
+    }
+  }
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setAuthLoading(true)
+    setAuthError('')
+
+    try {
+      if (authMode === 'signup') {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+        })
+        if (error) throw error
+        // Success will be handled by auth state change
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+        if (error) throw error
+        // Success will be handled by auth state change
+      }
+    } catch (error: any) {
+      setAuthError(error.message)
+    } finally {
+      setAuthLoading(false)
+    }
+  }
+
+  const openAuthModal = (mode: 'signin' | 'signup') => {
+    setAuthMode(mode)
+    setShowAuthModal(true)
+    setAuthError('')
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {/* User Profile Icon */}
+      <div className="relative">
+        {!user ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => openAuthModal('signin')}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors duration-200"
+            title="Sign in to your account"
+          >
+            <UserRound className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+          </Button>
+        ) : (
+          <div className="relative group">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors duration-200"
+              title={`Signed in as ${user.email}`}
+            >
+              <UserRound className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            </Button>
+            
+            {/* Dropdown Menu */}
+            <div className="absolute right-0 top-full w-64 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="p-4">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                    <UserRound className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{user.email}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Authenticated</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                    onClick={() => setShowAuthModal(true)}
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Account Settings
+                  </Button>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Authentication Modal */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50">
+            <CardHeader>
+              <CardTitle className="text-center">
+                {authMode === 'signin' ? 'Sign In' : 'Sign Up'}
+              </CardTitle>
+              <CardDescription className="text-center">
+                {authMode === 'signin' 
+                  ? 'Sign in to access your scene configurations'
+                  : 'Create a new account to get started'
+                }
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleAuth} className="space-y-4">
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Email
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    placeholder="Enter your email"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Password
+                  </label>
+                  <input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    placeholder="Enter your password"
+                    required
+                    minLength={6}
+                  />
+                </div>
+
+                {authError && (
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                    <p className="text-sm text-red-600 dark:text-red-400">{authError}</p>
+                  </div>
+                )}
+
+                <div className="flex space-x-2">
+                  <Button 
+                    type="submit" 
+                    className="flex-1" 
+                    disabled={authLoading}
+                  >
+                    {authLoading ? 'Loading...' : (authMode === 'signin' ? 'Sign In' : 'Sign Up')}
+                  </Button>
+                  
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowAuthModal(false)}
+                    className="px-4"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode(authMode === 'signin' ? 'signup' : 'signin')
+                    setAuthError('')
+                  }}
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300"
+                >
+                  {authMode === 'signin' 
+                    ? "Don't have an account? Sign up" 
+                    : "Already have an account? Sign in"
+                  }
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </>
+  )
+}

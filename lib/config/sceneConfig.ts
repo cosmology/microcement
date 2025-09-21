@@ -103,7 +103,61 @@ export const SCENE_CONFIG = {
     'islands': 'island',
     'cabinets': 'kitchen_cabinet',
     'coffee_tables': 'coffee_table',
-  }
+  },
+
+  // Marker panel progress ranges
+  MARKER_PANELS: [
+    { 
+      name: 'floor', 
+      progress: "0-10%", 
+      content: 'floor'
+    },
+    { 
+      name: 'kitchenIsland', 
+      progress: "10-20%", 
+      content: 'kitchenIsland'
+    },
+    { 
+      name: 'kitchenBacksplash', 
+      progress: "20-30%", 
+      content: 'kitchenBacksplash'
+    },
+    { 
+      name: 'kitchenCabinet', 
+      progress: "30-40%", 
+      content: 'kitchenCabinet'
+    },
+    { 
+      name: 'kitchenCountertop', 
+      progress: "40-47%", 
+      content: 'kitchenCountertop'
+    },
+    { 
+      name: 'bathCountertop', 
+      progress: "47-75%", 
+      content: 'bathCountertop'
+    },
+    { 
+      name: 'coffeeTable', 
+      progress: "75-80%", 
+      content: 'coffeeTable'
+    },
+    { 
+      name: 'fireplace', 
+      progress: "80-88%", 
+      content: 'fireplace'
+    },
+    { 
+      name: 'shelves', 
+      progress: "88-95%", 
+      content: 'shelves'
+    },
+    { 
+      name: 'accentWall', 
+      progress: "95-100%", 
+      content: 'accentWall'
+    }
+  ]
 } as const;
 
 /**
@@ -123,11 +177,13 @@ export async function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT
       let userConfig = await sceneConfigService.getDefaultConfig();
       console.log('📊 User config found:', userConfig ? 'yes' : 'no');
       
-      // If no default config exists, create one
+      // If no default config exists, return default data without creating DB entry
       if (!userConfig) {
-        console.log('🆕 Creating default config for user...');
-        userConfig = await sceneConfigService.createDefaultConfigIfNotExists();
-        console.log('✅ Default config created:', userConfig ? 'yes' : 'no');
+        console.log('🔄 No user config found, using default data without creating DB entry');
+        return {
+          cameraPoints: SCENE_CONFIG.DEFAULT_CAMERA_POINTS.map(point => point.clone()),
+          lookAtTargets: SCENE_CONFIG.DEFAULT_LOOK_AT_TARGETS.map(target => target.clone())
+        };
       }
       
       if (userConfig) {
@@ -170,11 +226,15 @@ export async function getHotspotSettings(modelPath: string = SCENE_CONFIG.DEFAUL
       let userConfig = await sceneConfigService.getDefaultConfig();
       console.log('📊 User config found:', userConfig ? 'yes' : 'no');
       
-      // If no default config exists, create one
+      // If no default config exists, return default data without creating DB entry
       if (!userConfig) {
-        console.log('🆕 Creating default config for user...');
-        userConfig = await sceneConfigService.createDefaultConfigIfNotExists();
-        console.log('✅ Default config created:', userConfig ? 'yes' : 'no');
+        console.log('🔄 No user config found, using default data without creating DB entry');
+        return {
+          colors: SCENE_CONFIG.HOTSPOT_COLORS,
+          pulseAnimation: SCENE_CONFIG.PULSE_ANIMATION,
+          focalDistances: SCENE_CONFIG.HOTSPOT_FOCAL_DISTANCES,
+          categories: SCENE_CONFIG.HOTSPOT_CATEGORIES
+        };
       }
       
       if (userConfig) {
@@ -219,9 +279,10 @@ export async function getUserSceneConfig(userId?: string) {
       // Try to get user's default config first
       let userConfig = await sceneConfigService.getDefaultConfig();
       
-      // If no default config exists, create one
+      // If no default config exists, return default config without creating DB entry
       if (!userConfig) {
-        userConfig = await sceneConfigService.createDefaultConfigIfNotExists();
+        console.log('🔄 No user config found, returning default config without creating DB entry');
+        return SCENE_CONFIG;
       }
       
       if (userConfig) {

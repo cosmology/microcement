@@ -277,5 +277,25 @@
       "name": "Accent Wall",
       "content": "Statement walls that transform spaces with texture and color."
     }
+  },
+  "NoDesignAvailable": {
+    "title": "Design Studio",
+    "subtitle": "Premium Interior Solutions",
+    "description": "Finest finishings with latest technology for sophisticated, comfortable spaces in minimal time.",
+    "loggedInMessage": "Your design studio is being prepared.",
+    "notLoggedInMessage": "Access your personalized design experience.",
+    "features": {
+      "latestTech": "Latest Technology",
+      "sophisticatedDesign": "Sophisticated Design", 
+      "minimalTime": "Minimal Time",
+      "premiumQuality": "Premium Quality",
+      "customVisualization": "Custom Visualization",
+      "brandedExperience": "Branded Experience"
+    },
+    "signInButton": "Enter Studio",
+    "signUpPrompt": "Ready to transform your space?",
+    "loggedInPrompt": "Your studio is being prepared.",
+    "contactPrompt": "Contact our specialists to configure your experience.",
+    "signOutButton": "Sign Out"
   }
 } 

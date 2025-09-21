@@ -20,7 +20,11 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
       return () => clearTimeout(timer);
     } else {
       setTimeout(() => setBlowUp(true), 300);
-      setTimeout(() => onComplete(), 1200);
+      setTimeout(() => {
+        // Mark preloader as completed
+        sessionStorage.setItem('preloader-completed', 'true');
+        onComplete();
+      }, 1200);
     }
   }, [progress, onComplete]);
 
@@ -63,6 +67,7 @@ export default function Preloader({ onComplete }: { onComplete: () => void }) {
         initial={{ opacity: 1 }}
         animate={{ opacity: blowUp ? 1 : 1 }}
         exit={{ opacity: 0 }}
+        data-preloader="true"
         style={{
           position: "fixed",
           inset: 0,

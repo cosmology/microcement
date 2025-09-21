@@ -21,6 +21,12 @@ export class SceneConfigService {
       throw new Error('User not authenticated')
     }
 
+    // Special case: ivanprokic@yahoo.com should NEVER have scene configs
+    if (this.currentUser.email === 'ivanprokic@yahoo.com') {
+      console.log('🚫 User ivanprokic@yahoo.com is blocked from accessing scene configs');
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('user_scene_configs')
       .select('*')
@@ -61,6 +67,12 @@ export class SceneConfigService {
       throw new Error('User not authenticated')
     }
 
+    // Special case: ivanprokic@yahoo.com should NEVER have scene configs
+    if (this.currentUser.email === 'ivanprokic@yahoo.com') {
+      console.log('🚫 User ivanprokic@yahoo.com is blocked from accessing default config');
+      return null;
+    }
+
     const { data, error } = await supabase
       .from('user_scene_configs')
       .select('*')
@@ -81,6 +93,11 @@ export class SceneConfigService {
   async createConfig(configData: Partial<UserSceneConfig>, configName: string = 'default'): Promise<UserSceneConfig> {
     if (!this.currentUser) {
       throw new Error('User not authenticated')
+    }
+
+    // Special case: ivanprokic@yahoo.com should NEVER have scene configs
+    if (this.currentUser.email === 'ivanprokic@yahoo.com') {
+      throw new Error('Scene configurations are not allowed for this user')
     }
 
     const { data, error } = await supabase
@@ -136,9 +153,37 @@ export class SceneConfigService {
     }
   }
 
+  async setDefaultConfig(id: string): Promise<void> {
+    if (!this.currentUser) {
+      throw new Error('User not authenticated')
+    }
+
+    // First, unset all other default configs for this user
+    await supabase
+      .from('user_scene_configs')
+      .update({ is_default: false })
+      .eq('user_id', this.currentUser.id)
+
+    // Then set the specified config as default
+    const { error } = await supabase
+      .from('user_scene_configs')
+      .update({ is_default: true })
+      .eq('id', id)
+      .eq('user_id', this.currentUser.id)
+
+    if (error) {
+      throw new Error(error.message)
+    }
+  }
+
   async createDefaultConfigIfNotExists(): Promise<UserSceneConfig> {
     if (!this.currentUser) {
       throw new Error('User not authenticated')
+    }
+
+    // Special case: ivanprokic@yahoo.com should NEVER have scene configs
+    if (this.currentUser.email === 'ivanprokic@yahoo.com') {
+      throw new Error('Scene configurations are not allowed for this user')
     }
 
     // Check if default config already exists

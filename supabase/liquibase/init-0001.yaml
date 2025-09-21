@@ -1,0 +1,177 @@
+databaseChangeLog:
+  - changeSet:
+      id: init-0001
+      author: microcement-dev
+      comment: "Create user_scene_configs table with all necessary constraints, indexes, and RLS policies"
+      changes:
+        - createTable:
+            tableName: user_scene_configs
+            schemaName: public
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  defaultValueComputed: gen_random_uuid()
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: config_name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                  defaultValue: 'default'
+              - column:
+                  name: model_path
+                  type: varchar(500)
+                  defaultValue: '/models/no-material.glb'
+              - column:
+                  name: camera_fov
+                  type: integer
+                  defaultValue: 75
+              - column:
+                  name: camera_near
+                  type: decimal
+                  defaultValue: 0.1
+              - column:
+                  name: camera_far
+                  type: decimal
+                  defaultValue: 1000
+              - column:
+                  name: orbital_height
+                  type: decimal
+                  defaultValue: 40
+              - column:
+                  name: orbital_radius_multiplier
+                  type: decimal
+                  defaultValue: 6
+              - column:
+                  name: orbital_speed
+                  type: decimal
+                  defaultValue: 0.2
+              - column:
+                  name: target_size
+                  type: decimal
+                  defaultValue: 30
+              - column:
+                  name: scale_multiplier
+                  type: decimal
+                  defaultValue: 2
+              - column:
+                  name: rotation_y
+                  type: decimal
+                  defaultValue: 1.5707963267948966
+              - column:
+                  name: intro_duration
+                  type: integer
+                  defaultValue: 3000
+              - column:
+                  name: intro_start_pos
+                  type: jsonb
+                  defaultValue: '{"x": 0, "y": 20, "z": 0}'
+              - column:
+                  name: intro_end_pos
+                  type: jsonb
+                  defaultValue: '{"x": -6.554798188035982, "y": 7.001298362376955, "z": 26.293127720925533}'
+              - column:
+                  name: hotspot_colors
+                  type: jsonb
+                  defaultValue: '{"normal": 9223167, "hover": 11722918, "pulse": 9223167}'
+              - column:
+                  name: pulse_animation
+                  type: jsonb
+                  defaultValue: '{"duration": 800, "scale": 1.5, "opacity": 0.8}'
+              - column:
+                  name: hotspot_focal_distances
+                  type: jsonb
+                  defaultValue: '{}'
+              - column:
+                  name: hotspot_categories
+                  type: jsonb
+                  defaultValue: '{}'
+              - column:
+                  name: camera_points
+                  type: jsonb
+                  defaultValue: '[]'
+              - column:
+                  name: look_at_targets
+                  type: jsonb
+                  defaultValue: '[]'
+              - column:
+                  name: api_hotspot_key_aliases
+                  type: jsonb
+                  defaultValue: '{}'
+              - column:
+                  name: is_default
+                  type: boolean
+                  defaultValue: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: NOW()
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: NOW()
+
+        - sql:
+            sql: |
+              ALTER TABLE public.user_scene_configs 
+              ADD CONSTRAINT user_scene_configs_user_id_fkey 
+              FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+        - createIndex:
+            tableName: user_scene_configs
+            schemaName: public
+            indexName: idx_user_scene_configs_user_id
+            columns:
+              - column:
+                  name: user_id
+
+        - createIndex:
+            tableName: user_scene_configs
+            schemaName: public
+            indexName: idx_user_scene_configs_config_name
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: config_name
+
+        - createIndex:
+            tableName: user_scene_configs
+            schemaName: public
+            indexName: idx_user_scene_configs_is_default
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: is_default
+
+        - sql:
+            sql: ALTER TABLE public.user_scene_configs ENABLE ROW LEVEL SECURITY;
+
+        - sql:
+            sql: |
+              CREATE POLICY "Users can view their own scene configs" ON public.user_scene_configs
+                  FOR SELECT USING (auth.uid() = user_id);
+
+        - sql:
+            sql: |
+              CREATE POLICY "Users can insert their own scene configs" ON public.user_scene_configs
+                  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+        - sql:
+            sql: |
+              CREATE POLICY "Users can update their own scene configs" ON public.user_scene_configs
+                  FOR UPDATE USING (auth.uid() = user_id);
+
+        - sql:
+            sql: |
+              CREATE POLICY "Users can delete their own scene configs" ON public.user_scene_configs
+                  FOR DELETE USING (auth.uid() = user_id);

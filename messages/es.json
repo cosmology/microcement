@@ -277,5 +277,25 @@
       "name": "Pared de Acento",
       "content": "Paredes de declaración que transforman espacios con textura y color."
     }
+  },
+  "NoDesignAvailable": {
+    "title": "Estudio de Diseño",
+    "subtitle": "Soluciones Premium de Interiores",
+    "description": "Acabados finos con tecnología avanzada para espacios sofisticados y cómodos en tiempo mínimo.",
+    "loggedInMessage": "Tu estudio de diseño se está preparando.",
+    "notLoggedInMessage": "Accede a tu experiencia de diseño personalizada.",
+    "features": {
+      "latestTech": "Tecnología Avanzada",
+      "sophisticatedDesign": "Diseño Sofisticado",
+      "minimalTime": "Tiempo Mínimo",
+      "premiumQuality": "Calidad Premium",
+      "customVisualization": "Visualización Personalizada",
+      "brandedExperience": "Experiencia de Marca"
+    },
+    "signInButton": "Entrar al Estudio",
+    "signUpPrompt": "¿Listo para transformar tu espacio?",
+    "loggedInPrompt": "Tu estudio se está preparando.",
+    "contactPrompt": "Contacta a nuestros especialistas para configurar tu experiencia.",
+    "signOutButton": "Cerrar Sesión"
   }
 } 

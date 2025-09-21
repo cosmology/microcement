@@ -2,14 +2,14 @@
 
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ThemeToggle } from "@/components/theme-toggle"
 import Image from "next/image"
 import { paths } from "@/lib/config"
 import { usePathname } from 'next/navigation';
-import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { GeoLocationSection } from "./GeoLocationSection";
 import LocaleSwitcherSelect from "./LocaleSwitcherSelect"
+import UserProfile from "./UserProfile"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -35,7 +35,7 @@ const navLinks = [
   { name: "Luxury", href: "#luxury" },
 ]
 
-export default function NavigationSection() {
+export default function NavigationSection({ user, onUserChange }: { user?: any, onUserChange?: (user: any) => void }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [showNav, setShowNav] = useState(false) // Start hidden
@@ -129,36 +129,120 @@ export default function NavigationSection() {
           animate={navVisible ? "visible" : "hidden"}
           exit="hidden"
           variants={navVariants}
-          className="fixed top-0 left-0 right-0 z-50 w-full bg-light-light dark:bg-gray-900 border-b border-light-dark/30 dark:border-gray-700/30 backdrop-blur-md"
+          className="fixed top-0 left-0 right-0 z-[1003] w-full bg-light-light dark:bg-gray-900 border-b border-light-dark/30 dark:border-gray-700/30 backdrop-blur-md"
         >
           <div className="max-w-7xl mx-auto flex items-center justify-between h-12 sm:h-14 md:h-16 px-8 py-10">
-            {/* Logo or Brand */}
-            <a href="#" className={`font-bold ${navFont} text-light-dark dark:text-white`}>
-              <Image
-                src="/images/logo-procemento.png"
-                alt="Microcement"
-                width={200}
-                height={105}
-                className="hidden sm:block h-8 w-auto transition-all duration-200"
-                style={{
-                  filter: getLogoFilter(), // Dynamic theme-aware filtering
-                  opacity: 0.9,
-                  transition: 'filter 0.3s ease-in-out'
-                }}
-              />
-              <Image
-                src="/images/logo-procemento.png"
-                alt="Microcement"
-                width={200}
-                height={105}
-                className="block sm:hidden h-8 w-auto transition-all duration-200"
-                style={{
-                  filter: getLogoFilter(), // Dynamic theme-aware filtering
-                  opacity: 0.9,
-                  transition: 'filter 0.3s ease-in-out'
-                }}
-              />
-            </a>
+            {/* Left side - Hamburger menu and Logo */}
+            <div className="flex items-center gap-4">
+              {/* Morphing Hamburger/X for mobile */}
+              <button
+                className="md:hidden flex items-center justify-center p-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-light-dark relative"
+                onClick={() => setMobileOpen((v) => !v)}
+                aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              >
+                <motion.svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 32 32"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-8 h-8 text-light-dark dark:text-white"
+                >
+                  {/* Top line - fades out */}
+                  <motion.line
+                    x1="3" y1="9" x2="29" y2="9"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                    initial={false}
+                    animate={mobileOpen ? {
+                      opacity: 0,
+                      transition: { duration: 0.2, ease: "easeOut", delay: 0.1 }
+                    } : {
+                      opacity: 1,
+                      transition: { duration: 0.3, ease: "easeOut", delay: 0.2 }
+                    }}
+                  />
+                  {/* Middle line - fades out */}
+                  <motion.line
+                    x1="3" y1="16" x2="29" y2="16"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                    initial={false}
+                    animate={mobileOpen ? {
+                      opacity: 0,
+                      transition: { duration: 0.2, ease: "easeOut", delay: 0.1 }
+                    } : {
+                      opacity: 1,
+                      transition: { duration: 0.3, ease: "easeOut", delay: 0.2 }
+                    }}
+                  />
+                  {/* Bottom line - fades out */}
+                  <motion.line
+                    x1="3" y1="23" x2="29" y2="23"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                    initial={false}
+                    animate={mobileOpen ? {
+                      opacity: 0,
+                      transition: { duration: 0.2, ease: "easeOut", delay: 0.1 }
+                    } : {
+                      opacity: 1,
+                      transition: { duration: 0.3, ease: "easeOut", delay: 0.2 }
+                    }}
+                  />
+                  {/* X lines - fade in */}
+                  <motion.line
+                    x1="8" y1="8" x2="24" y2="24"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                    initial={false}
+                    animate={mobileOpen ? {
+                      opacity: 1,
+                      transition: { duration: 0.3, ease: "easeOut", delay: 0.2 }
+                    } : {
+                      opacity: 0,
+                      transition: { duration: 0.2, ease: "easeOut", delay: 0.1 }
+                    }}
+                  />
+                  <motion.line
+                    x1="24" y1="8" x2="8" y2="24"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                    initial={false}
+                    animate={mobileOpen ? {
+                      opacity: 1,
+                      transition: { duration: 0.3, ease: "easeOut", delay: 0.2 }
+                    } : {
+                      opacity: 0,
+                      transition: { duration: 0.2, ease: "easeOut", delay: 0.1 }
+                    }}
+                  />
+                </motion.svg>
+              </button>
+
+              {/* Logo or Brand */}
+              <a href="#" className={`font-bold ${navFont} text-light-dark dark:text-white`}>
+                <Image
+                  src="/images/logo-procemento.png"
+                  alt="Microcement"
+                  width={200}
+                  height={105}
+                  className="hidden sm:block h-8 w-auto transition-all duration-200"
+                  style={{
+                    filter: getLogoFilter(), // Dynamic theme-aware filtering
+                    opacity: 0.9,
+                    transition: 'filter 0.3s ease-in-out'
+                  }}
+                />
+                <Image
+                  src="/images/logo-procemento.png"
+                  alt="Microcement"
+                  width={200}
+                  height={105}
+                  className="block sm:hidden h-8 w-auto transition-all duration-200"
+                  style={{
+                    filter: getLogoFilter(), // Dynamic theme-aware filtering
+                    opacity: 0.9,
+                    transition: 'filter 0.3s ease-in-out'
+                  }}
+                />
+              </a>
+            </div>
             {/* <GeoLocationSection /> */}
             {/* Desktop Nav */}
             <ul className={`hidden md:flex items-center gap-2 sm:gap-4 md:gap-6 ${navFont}`}>
@@ -224,115 +308,10 @@ export default function NavigationSection() {
               <div className="flex-shrink-0">
                 <ThemeToggle />
               </div>
-              {/* Morphing Hamburger/X for mobile */}
-              <button
-                className="md:hidden flex items-center justify-center p-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-light-dark relative"
-                onClick={() => setMobileOpen((v) => !v)}
-                aria-label={mobileOpen ? "Close menu" : "Open menu"}
-              >
-                <motion.svg
-                  width="32"
-                  height="32"
-                  viewBox="0 0 32 32"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-8 h-8 text-light-dark dark:text-white"
-                >
-                  {/* Top line - fades out */}
-                  <motion.line
-                    x1="3" y1="9" x2="29" y2="9"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                    initial={false}
-                    animate={mobileOpen ? {
-                      opacity: 0,
-                      transition: { duration: 0.2, ease: "easeOut", delay: 0.1 }
-                    } : {
-                      opacity: 1,
-                      transition: { duration: 0.3, ease: "easeOut", delay: 0.2 }
-                    }}
-                  />
-                  {/* Middle line - fades out */}
-                  <motion.line
-                    x1="3" y1="16" x2="29" y2="16"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                    initial={false}
-                    animate={mobileOpen ? {
-                      opacity: 0,
-                      transition: { duration: 0.2, ease: "easeOut", delay: 0.2 }
-                    } : {
-                      opacity: 1,
-                      transition: { duration: 0.3, ease: "easeOut", delay: 0.1 }
-                    }}
-                  />
-                  {/* Bottom line - fades out */}
-                  <motion.line
-                    x1="3" y1="23" x2="29" y2="23"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                    initial={false}
-                    animate={mobileOpen ? {
-                      opacity: 0,
-                      transition: { duration: 0.2, ease: "easeOut", delay: 0.3 }
-                    } : {
-                      opacity: 1,
-                      transition: { duration: 0.3, ease: "easeOut" }
-                    }}
-                  />
-                </motion.svg>
-                {/* Top diagonal line - starts at middle, rotates counter-clockwise */}
-                <motion.div
-                  className="absolute w-4 h-0.5 bg-light-dark dark:bg-white rounded-full"
-                  style={{ 
-                    top: '50%', 
-                    left: '50%', 
-                    transformOrigin: 'center',
-                    transform: 'translate(-50%, -50%)'
-                  }}
-                  initial={{ opacity: 0, rotate: 0 }}
-                  animate={mobileOpen ? {
-                    opacity: 1,
-                    rotate: -45,
-                    transition: { 
-                      duration: 0.4, 
-                      ease: "easeOut", 
-                      delay: 0.4
-                    }
-                  } : {
-                    opacity: 0,
-                    rotate: 0,
-                    transition: { 
-                      duration: 0.3, 
-                      ease: "easeOut"
-                    }
-                  }}
-                />
-                {/* Bottom diagonal line - starts at middle, rotates clockwise */}
-                <motion.div
-                  className="absolute w-4 h-0.5 bg-light-dark dark:bg-white rounded-full"
-                  style={{ 
-                    top: '50%', 
-                    left: '50%', 
-                    transformOrigin: 'center',
-                    transform: 'translate(-50%, -50%)'
-                  }}
-                  initial={{ opacity: 0, rotate: 0 }}
-                  animate={mobileOpen ? {
-                    opacity: 1,
-                    rotate: 45,
-                    transition: { 
-                      duration: 0.4, 
-                      ease: "easeOut", 
-                      delay: 0.4
-                    }
-                  } : {
-                    opacity: 0,
-                    rotate: 0,
-                    transition: { 
-                      duration: 0.3, 
-                      ease: "easeOut"
-                    }
-                  }}
-                />
-              </button>
+              {/* User Profile */}
+              <div className="flex-shrink-0">
+                <UserProfile onUserChange={onUserChange} />
+              </div>
             </div>
           </div>
           {/* Mobile Menu */}

@@ -549,6 +549,21 @@ services:
     volumes:
       - mailhog-data:/maildir
 
+  # Liquibase Migration Service
+  liquibase:
+    container_name: supabase-liquibase
+    image: liquibase/liquibase:4.20.0
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./liquibase:/liquibase/changelog:ro
+    working_dir: /liquibase/changelog
+    command: --defaults-file=liquibase.properties update
+    networks:
+      - default
+
 volumes:
   db-config:
   mailhog-data:

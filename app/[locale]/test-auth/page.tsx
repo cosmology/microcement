@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { LogOut, User, Settings, Mail, Lock } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import SceneConfigManager from '@/app/components/SceneConfigManager'
 
 export default function TestPage() {
   const [user, setUser] = useState<any>(null)
@@ -243,29 +244,8 @@ export default function TestPage() {
               </CardContent>
             </Card>
 
-            {/* Scene Config Manager Placeholder */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Scene Configuration Manager
-                </CardTitle>
-                <CardDescription>
-                  Scene configuration management is available for authenticated users.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <div className="text-gray-500 mb-4">
-                    <Settings className="h-12 w-12 mx-auto mb-2" />
-                    <p>Scene Configuration Manager</p>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    This component will manage your personal scene configurations.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Scene Config Manager */}
+            <SceneConfigManager userId={user.id} />
 
             {/* Test Instructions */}
             <Card>

@@ -15,10 +15,15 @@ import SpeedSection from "./SpeedSection"
 import BenefitsSection from "./BenefitsSection"
 import CTASection from "./CTASection"
 import NavigationSection from "./NavigationSection"
+import UserProfile from "./UserProfile"
+import NoDesignAvailable from "./NoDesignAvailable"
 import dynamic from "next/dynamic";
 import DebugInfo from "./DebugInfo";
 import ScrollDownCTA from "./ScrollDownCTA";
 import { getThemeColors } from "@/lib/utils";
+import { SceneConfigService } from '@/lib/services/SceneConfigService';
+import { supabase } from '@/lib/supabase';
+import { SCENE_CONFIG } from '@/lib/config/sceneConfig';
 
 const ScrollScene = dynamic(() => import("./ScrollScene"), { ssr: false });
 
@@ -29,6 +34,10 @@ export default function HomeClient() {
   const [currentSection, setCurrentSection] = useState<string>('hero');
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [debugData, setDebugData] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [hasUserConfig, setHasUserConfig] = useState<boolean | null>(null);
+  const [configCheckComplete, setConfigCheckComplete] = useState(false);
   const t = useTranslations('Index');
   const tMarker = useTranslations('MarkerPanels');
 
@@ -45,10 +54,56 @@ export default function HomeClient() {
   const texture = useRef<HTMLDivElement>(null);
   const cta = useRef<HTMLDivElement>(null);
 
+  // Sign out function
+  const handleSignOut = async () => {
+    try {
+      console.log('🔍 HomeClient: Sign out initiated');
+      await supabase.auth.signOut();
+      console.log('🔍 HomeClient: Supabase sign out completed');
+      setUser(null);
+      setHasUserConfig(null);
+      setConfigCheckComplete(false);
+      console.log('🔍 HomeClient: User state reset to null');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
+
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  // Check if user has scene configurations
+  useEffect(() => {
+    console.log('🔍 HomeClient: User state changed:', user);
+    const checkUserConfigs = async () => {
+      if (user?.id) {
+        // Special case: ivanprokic@yahoo.com should NEVER have scene configs
+        if (user.email === 'ivanprokic@yahoo.com') {
+          console.log('🚫 User ivanprokic@yahoo.com is explicitly blocked from having scene configs');
+          setHasUserConfig(false);
+          setConfigCheckComplete(true);
+          return;
+        }
+        
+        try {
+          const sceneConfigService = SceneConfigService.getInstance();
+          sceneConfigService.setUser({ id: user.id });
+          const userConfigs = await sceneConfigService.getUserConfigs();
+          setHasUserConfig(userConfigs.length > 0);
+          console.log('🔍 User configs check:', userConfigs.length > 0 ? 'Has configs' : 'No configs');
+        } catch (error) {
+          console.warn('Failed to check user configs:', error);
+          setHasUserConfig(false);
+        }
+      } else {
+        setHasUserConfig(null);
+      }
+      setConfigCheckComplete(true);
+    };
+
+    checkUserConfigs();
+  }, [user]);
 
   // Mobile scroll fallback - ensure scrolling works on mobile devices
   useEffect(() => {
@@ -242,11 +297,64 @@ export default function HomeClient() {
     return () => observer.disconnect();
   }, [preloadDone]);
 
+  // Function to show marker panel on hover (for 3D marker interaction)
+  const showMarkerPanel = (markerIndex: number) => {
+    const panel = document.querySelector(`[data-marker-index="${markerIndex}"]`) as HTMLElement;
+    if (panel) {
+      // Only show if we're in the scroll range for this panel
+      const start = parseFloat(panel.dataset.progressStart || '0');
+      const end = parseFloat(panel.dataset.progressEnd || '0');
+      
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollPercent = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+      
+      if (scrollPercent >= start && scrollPercent <= end) {
+        // Only enhance visibility if we're in scroll range
+        panel.style.opacity = '1';
+        panel.style.pointerEvents = 'auto';
+        console.log(`🎯 Showing panel for marker ${markerIndex} (in scroll range)`);
+      }
+    }
+  };
+
+  // Function to hide all marker panels (let GSAP handle scroll-based visibility)
+  const hideAllMarkerPanels = () => {
+    const panels = document.querySelectorAll('[data-marker-index]') as NodeListOf<HTMLElement>;
+    
+    panels.forEach(panel => {
+      // Only hide if not in scroll range
+      const start = parseFloat(panel.dataset.progressStart || '0');
+      const end = parseFloat(panel.dataset.progressEnd || '0');
+      
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollPercent = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+      
+      if (!(scrollPercent >= start && scrollPercent <= end)) {
+        panel.style.opacity = '0';
+        panel.style.pointerEvents = 'none';
+      }
+    });
+    console.log('🎯 Hiding marker panels not in scroll range');
+  };
+
+  // Expose functions to window for ScrollScene to use
+  useEffect(() => {
+    (window as any).showMarkerPanel = showMarkerPanel;
+    (window as any).hideAllMarkerPanels = hideAllMarkerPanels;
+    
+    return () => {
+      delete (window as any).showMarkerPanel;
+      delete (window as any).hideAllMarkerPanels;
+    };
+  }, []);
+
   // GSAP ScrollTrigger for marker panels
   useEffect(() => {
     if (!preloadDone) return;
-
-    // Import GSAP ScrollTrigger dynamically
+    if (!user || !configCheckComplete || hasUserConfig !== true) return;
+    
     const initScrollTrigger = async () => {
       // Wait a bit for DOM to be fully rendered
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -259,6 +367,11 @@ export default function HomeClient() {
       // Panel Animation: Static background, text slides in/out
       const panelNodes = Array.from(document.querySelectorAll('[data-marker-index]')) as HTMLElement[];
       console.log('🔍 Found Panels:', panelNodes.length);
+      
+      if (panelNodes.length === 0) {
+        console.error('❌ No marker panels found! Check if panels are rendered.');
+        return;
+      }
       
       // Sort panels by their start percentage
       const sortedPanels = panelNodes.sort((a, b) => {
@@ -278,6 +391,7 @@ export default function HomeClient() {
 
         if (index === 0) {
           // Floor panel: slide up from bottom with fade-in
+          console.log(`🔧 Setting up Floor panel (${name}): range ${start}-${end}%`);
           gsap.set(panel, { 
             y: '100%', // Start off-screen bottom
             opacity: 0
@@ -292,6 +406,11 @@ export default function HomeClient() {
               const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
               const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
               const scrollPercent = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+
+              // Debug all panels
+              if (scrollPercent > 0) {
+                console.log(`🔍 Panel ${index} (${name}): scrollPercent=${scrollPercent.toFixed(1)}%, range=${start}-${end}%`);
+              }
 
               if (scrollPercent < start) {
                 // Before start: hidden off-screen bottom
@@ -311,6 +430,11 @@ export default function HomeClient() {
                   y: `${100 - (slideProgress * 100)}%`, // 100% → 0%
                   opacity: slideProgress // 0 → 1
                 });
+                
+                // Debug when panel is shown
+                if (slideProgress > 0.1) {
+                  console.log(`✅ Floor panel showing: slideProgress=${slideProgress.toFixed(2)}, opacity=${slideProgress}`);
+                }
                 return;
               }
 
@@ -344,6 +468,11 @@ export default function HomeClient() {
               const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
               const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
               const scrollPercent = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+
+              // Debug all panels
+              if (scrollPercent > 0) {
+                console.log(`🔍 Panel ${index} (${name}): scrollPercent=${scrollPercent.toFixed(1)}%, range=${start}-${end}%`);
+              }
 
               if (scrollPercent >= start && scrollPercent <= end) {
                 // During range: show panel and slide text in from right
@@ -426,19 +555,38 @@ export default function HomeClient() {
         (window as any).ScrollTrigger.getAll().forEach((trigger: any) => trigger.kill());
       }
     };
-  }, [preloadDone]);
+  }, [preloadDone, user, configCheckComplete, hasUserConfig]);
 
   if (!mounted) return null
 
-    return (
+  return (
     <div className="relative">
- 
-      {/* {!preloadDone && <Preloader onComplete={() => setPreloadDone(true)} />} */}
-      <NavigationSection />
-      <ScrollScene 
-        sceneStage={sceneStage} 
-        currentSection={currentSection}
-        onIntroComplete={() => {
+      {/* Preloader */}
+      {!preloadDone && (
+        <Preloader onComplete={() => setPreloadDone(true)} />
+      )}
+      
+      {/* Navigation - Always visible with higher z-index */}
+      <NavigationSection user={user} onUserChange={setUser} />
+      
+      {/* Show NoDesignAvailable for non-logged users or logged-in users with no configs */}
+      {(!user || (user && configCheckComplete && hasUserConfig === false)) && (
+        <NoDesignAvailable 
+          onLoginClick={() => setShowLoginModal(true)} 
+          onSignOutClick={handleSignOut}
+          isLoggedIn={!!user}
+        />
+      )}
+      
+      {/* Show main content only for logged-in users with scene configurations */}
+      {user && configCheckComplete && hasUserConfig === true && (
+        <>
+          {console.log('🔍 HomeClient: Passing user to ScrollScene:', user)}
+          <ScrollScene 
+            sceneStage={sceneStage} 
+            currentSection={currentSection}
+            user={user}
+            onIntroComplete={() => {
           console.log('🎯 HomeClient: Intro completed, enabling scroll and triggering ScrollDownCTA');
           setScrollEnabled(true);
           
@@ -479,61 +627,7 @@ export default function HomeClient() {
         </div>
         
         {/* Virtual content sections for marker progression */}
-        {Array.from({ length: 10 }, (_, index) => {
-          const markerData = [
-            { 
-              name: tMarker('floor.name'), 
-              progress: "0-10%", 
-              content: tMarker('floor.content')
-            },
-            { 
-              name: tMarker('kitchenIsland.name'), 
-              progress: "10-20%", 
-              content: tMarker('kitchenIsland.content')
-            },
-            { 
-              name: tMarker('kitchenBacksplash.name'), 
-              progress: "20-30%", 
-              content: tMarker('kitchenBacksplash.content')
-            },
-            { 
-              name: tMarker('kitchenCabinet.name'), 
-              progress: "30-40%", 
-              content: tMarker('kitchenCabinet.content')
-            },
-            { 
-              name: tMarker('kitchenCountertop.name'), 
-              progress: "40-47%", 
-              content: tMarker('kitchenCountertop.content')
-            },
-            { 
-              name: tMarker('bathCountertop.name'), 
-              progress: "47-75%", 
-              content: tMarker('bathCountertop.content')
-            },
-            { 
-              name: tMarker('coffeeTable.name'), 
-              progress: "75-80%", 
-              content: tMarker('coffeeTable.content')
-            },
-            { 
-              name: tMarker('fireplace.name'), 
-              progress: "80-88%", 
-              content: tMarker('fireplace.content')
-            },
-            { 
-              name: tMarker('shelves.name'), 
-              progress: "88-95%", 
-              content: tMarker('shelves.content')
-            },
-            { 
-              name: tMarker('accentWall.name'), 
-              progress: "95-100%", 
-              content: tMarker('accentWall.content')
-            }
-          ];
-          
-          const marker = markerData[index];
+        {SCENE_CONFIG.MARKER_PANELS.map((marker, index) => {
           const themeColors = getThemeColors();
           
           
@@ -554,6 +648,8 @@ export default function HomeClient() {
                   bottom: '0px',
                   height: window.innerWidth < 640 ? '100px' : window.innerWidth < 1024 ? '110px' : '120px',
                   backgroundColor: `hsl(var(--background) / 0.8)`,
+                  opacity: 0, // Start hidden
+                  pointerEvents: 'none', // Start non-interactive
                   // Ensure proper touch interaction
                   touchAction: 'none',
                   WebkitTouchCallout: 'none',
@@ -561,16 +657,16 @@ export default function HomeClient() {
                   userSelect: 'none'
                 }}
                 data-marker-index={index}
-                data-marker-name={marker.name}
+                data-marker-name={tMarker(`${marker.name}.name`)}
                 data-progress-start={marker.progress.split('-')[0].replace('%', '')}
                 data-progress-end={marker.progress.split('-')[1].replace('%', '')}
               >
                 <div className="max-w-4xl mx-auto px-3 sm:px-4 py-1 sm:py-2 h-full flex flex-col justify-center">
                   <h3 className="text-foreground text-lg sm:text-xl md:text-2xl font-bold mb-1 sm:mb-2 leading-tight">
-                    {marker.name}
+                    {tMarker(`${marker.name}.name`)}
                   </h3>
                   <p className="text-muted-foreground text-sm sm:text-base md:text-lg leading-relaxed">
-                    {marker.content}
+                    {tMarker(`${marker.name}.content`)}
                   </p>
                 </div>
               </div>
@@ -609,6 +705,22 @@ export default function HomeClient() {
           <CTASection />
         </div>
       </main>
+        </>
+      )}
+      
+      {/* Login Modal */}
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <UserProfile onUserChange={(user) => {
+              setUser(user);
+              if (user) {
+                setShowLoginModal(false);
+              }
+            }} />
+          </div>
+        </div>
+      )}
     </div>
   )
 } 

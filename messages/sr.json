@@ -277,5 +277,25 @@
       "name": "Akcentni Zid",
       "content": "Zidovi koji transformišu prostore sa teksturom, reljefom, patternom i bojom."
     }
+  },
+  "NoDesignAvailable": {
+    "title": "Dizajn Studio",
+    "subtitle": "Premium Rešenja za Enterijer",
+    "description": "Najfiniji završni radovi sa najnovijom tehnologijom za sofisticirane, udobne prostore u minimalnom vremenu.",
+    "loggedInMessage": "Vaš dizajn studio se priprema.",
+    "notLoggedInMessage": "Pristupite vašoj personalizovanoj dizajn iskustvu.",
+    "features": {
+      "latestTech": "Najnovija Tehnologija",
+      "sophisticatedDesign": "Sofisticirani Dizajn",
+      "minimalTime": "Minimalno Vreme",
+      "premiumQuality": "Premium Kvalitet",
+      "customVisualization": "Prilagođena Vizuelizacija",
+      "brandedExperience": "Brendirano Iskustvo"
+    },
+    "signInButton": "Uđi u Studio",
+    "signUpPrompt": "Spremni da transformišete svoj prostor?",
+    "loggedInPrompt": "Vaš studio se priprema.",
+    "contactPrompt": "Kontaktirajte naše specijaliste da konfigurišete vaše iskustvo.",
+    "signOutButton": "Odjavi Se"
   }
 } 
