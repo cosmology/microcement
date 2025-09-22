@@ -3,7 +3,7 @@
 import clsx from 'clsx';
 import {useParams} from 'next/navigation';
 import {Locale} from 'next-intl';
-import {ChangeEvent, useTransition, useState} from 'react';
+import {ChangeEvent, useTransition, useState, Suspense} from 'react';
 import {usePathname, useRouter} from '@/i18n/navigation';
 import { Earth, ChevronDown } from 'lucide-react';
 
@@ -19,7 +19,7 @@ type Props = {
   label: string;
 };
 
-export default function LocaleSwitcherSelect({
+function LocaleSwitcherContent({
   defaultValue,
   label
 }: Props) {
@@ -76,5 +76,19 @@ export default function LocaleSwitcherSelect({
         ))}
       </select>
     </div>
+  );
+}
+
+export default function LocaleSwitcherSelect(props: Props) {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center gap-2 px-3 py-2 rounded-full text-gray-700 dark:text-gray-200">
+        <Earth size={20} className="text-gray-500 dark:text-gray-400" />
+        <span className="text-sm font-medium">EN</span>
+        <ChevronDown size={16} className="text-gray-400 dark:text-gray-500" />
+      </div>
+    }>
+      <LocaleSwitcherContent {...props} />
+    </Suspense>
   );
 }
