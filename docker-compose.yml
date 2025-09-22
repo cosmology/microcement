@@ -58,7 +58,7 @@ services:
     entrypoint: /bin/sh
     command: -c "npm install -g @supabase/mcp-server-supabase && while true; do sleep 3600; done"
     environment:
-      - SUPABASE_ACCESS_TOKEN=SUPABASE_ACCESS_TOKEN_PLACEHOLDER
+      - SUPABASE_ACCESS_TOKEN=${SUPABASE_ACCESS_TOKEN}
       - SUPABASE_PROJECT_REF=lxsbolsjavowlymvpyxo
     profiles:
       - mcp

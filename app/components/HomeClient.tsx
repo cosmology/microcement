@@ -16,6 +16,7 @@ import BenefitsSection from "./BenefitsSection"
 import CTASection from "./CTASection"
 import NavigationSection from "./NavigationSection"
 import UserProfile from "./UserProfile"
+import AuthHandler from "./AuthHandler"
 import NoDesignAvailable from "./NoDesignAvailable"
 import dynamic from "next/dynamic";
 import DebugInfo from "./DebugInfo";
@@ -561,6 +562,8 @@ export default function HomeClient() {
 
   return (
     <div className="relative">
+      <AuthHandler onUserChange={setUser} />
+      
       {/* Preloader */}
       {!preloadDone && (
         <Preloader onComplete={() => setPreloadDone(true)} />

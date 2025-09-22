@@ -33,6 +33,12 @@ env-local.txt
 supabase-env.txt
 *-env.txt
 
+# Scripts with sensitive keys (security risk)
+scripts/create-users-properly.js
+scripts/test-login.js
+scripts/create-test-users.js
+scripts/verify-users.js
+
 frontend/tsconfig.tsbuildinfo
 frontend/tsconfig.tsbuildinfo
 .qodo

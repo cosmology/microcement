@@ -14,6 +14,11 @@ This prototype features:
 
 ## 🚀 Quick Start
 
+### One-Liner (Complete Setup)
+```bash
+cd supabase && docker compose up -d && docker compose exec liquibase liquibase update && cd .. && docker compose --profile dev up
+```
+
 ### Prerequisites
 - Docker and Docker Compose installed
 - Node.js 18+ (for local development)

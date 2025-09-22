@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = 'http://kong:8000';
-const supabaseServiceKey = 'SUPABASE_SERVICE_ROLE_KEY_PLACEHOLDER';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || 'your-service-key-here';
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {

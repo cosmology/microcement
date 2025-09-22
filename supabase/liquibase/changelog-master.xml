@@ -8,5 +8,6 @@
     <!-- Include all migration files -->
     <include file="init-0001.yaml" relativeToChangelogFile="true"/>
     <include file="data-0001.yaml" relativeToChangelogFile="true"/>
+    <include file="schema-0002.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

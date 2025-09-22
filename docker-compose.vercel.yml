@@ -1,0 +1,22 @@
+# Docker Compose service for Vercel CLI operations
+# Add this to your docker-compose.yml or create a separate file
+
+version: '3.8'
+
+services:
+  vercel-cli:
+    image: node:18-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - ~/.vercel:/root/.vercel  # Persist Vercel login
+    environment:
+      - NODE_ENV=development
+    command: sh -c "npm install -g vercel && vercel --version"
+    profiles:
+      - tools  # Use with: docker compose --profile tools run vercel-cli
+
+  # Usage examples:
+  # docker compose --profile tools run vercel-cli vercel login
+  # docker compose --profile tools run vercel-cli vercel env add NEXT_PUBLIC_SUPABASE_URL
+  # docker compose --profile tools run vercel-cli vercel --prod
