@@ -1,0 +1,10 @@
+{
+  "buildCommand": "pnpm run build && curl -X POST $VERCEL_URL/api/migrate || true",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "functions": {
+    "app/api/migrate/route.ts": {
+      "maxDuration": 30
+    }
+  }
+}
