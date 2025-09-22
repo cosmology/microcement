@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { PasswordInput } from '@/components/ui/password-input'
 import { LogOut, User, Settings, Mail, Lock } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import SceneConfigManager from '@/app/components/SceneConfigManager'
@@ -139,9 +140,8 @@ export default function TestPage() {
                     </label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <input
+                      <PasswordInput
                         id="password"
-                        type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
