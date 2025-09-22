@@ -1,9 +1,4 @@
 {
   "installCommand": "pnpm install",
-  "framework": "nextjs",
-  "functions": {
-    "app/api/migrate/route.ts": {
-      "maxDuration": 30
-    }
-  }
+  "framework": "nextjs"
 }

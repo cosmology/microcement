@@ -4,7 +4,6 @@ import { SCENE_CONFIG } from '@/lib/config/sceneConfig'
 export class SceneConfigService {
   private static instance: SceneConfigService
   private currentUser: any = null
-  private migrationChecked = false
 
   static getInstance(): SceneConfigService {
     if (!SceneConfigService.instance) {
@@ -17,48 +16,10 @@ export class SceneConfigService {
     this.currentUser = user
   }
 
-  // Auto-migration method
-  private async ensureMigration() {
-    if (this.migrationChecked) return
-    
-    try {
-      // Try to query the table to see if it exists
-      await supabase.from('user_scene_configs').select('id').limit(1)
-      this.migrationChecked = true
-      return
-    } catch (error) {
-      console.log('🔄 Table not found, running migration...')
-      
-      // Run migration via API
-      try {
-        const response = await fetch('/api/migrate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        })
-        
-        const result = await response.json()
-        if (result.success) {
-          console.log('✅ Migration completed:', result.message)
-        } else {
-          console.error('❌ Migration failed:', result.error)
-        }
-      } catch (migrationError) {
-        console.error('❌ Failed to run migration:', migrationError)
-      }
-      
-      this.migrationChecked = true
-    }
-  }
-
   async getUserConfigs(): Promise<UserSceneConfig[]> {
     if (!this.currentUser) {
       throw new Error('User not authenticated')
     }
-
-    // Ensure migration is run
-    await this.ensureMigration()
 
     // Special case: ivanprokic@yahoo.com should NEVER have scene configs
     if (this.currentUser.email === 'ivanprokic@yahoo.com') {
