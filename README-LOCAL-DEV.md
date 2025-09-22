@@ -14,6 +14,13 @@ Use the secure versions instead:
 
 ## 🚀 Quick Start Options
 
+### Before You Start
+Create your root env file from the example (used by Docker Compose):
+```bash
+cp env.example .env
+# Then edit .env and set SUPABASE_ACCESS_TOKEN
+```
+
 ### Option 1: Quick Reset (Fastest - If you get errors)
 ```bash
 ./scripts/quick-reset.sh

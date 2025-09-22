@@ -21,6 +21,7 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
   const [password, setPassword] = useState('')
   const [authLoading, setAuthLoading] = useState(false)
   const [authError, setAuthError] = useState('')
+  const [authInfo, setAuthInfo] = useState('')
 
   useEffect(() => {
     // Check if user is already authenticated
@@ -69,25 +70,40 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
     e.preventDefault()
     setAuthLoading(true)
     setAuthError('')
+    setAuthInfo('')
 
     try {
       if (authMode === 'signup') {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        })
+        const { data, error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
-        // Success will be handled by auth state change
+        // Inform user to check inbox for confirmation link
+        if (!error) {
+          setAuthInfo(
+            `We sent a confirmation link to ${email}. Please check your inbox to complete your registration.`
+          )
+        }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
         // Success will be handled by auth state change
       }
     } catch (error: any) {
-      setAuthError(error.message)
+      const rawMsg: string = error?.message || 'Authentication failed'
+      if (error?.name === 'TypeError' && /Failed to fetch/i.test(rawMsg)) {
+        setAuthError('Network error contacting auth service. Please retry in a moment.')
+        console.error('Auth network error (signup/signin):', error)
+        return
+      }
+      // Friendly error mapping
+      if (/Invalid login credentials/i.test(rawMsg) || /invalid credentials/i.test(rawMsg)) {
+        setAuthError('Invalid email or password. Please try again or sign up.')
+      } else if (/FetchError|Failed to fetch|NetworkError/i.test(rawMsg)) {
+        setAuthError('Unable to reach auth service. Please check your connection and retry.')
+      } else if (/rate limit/i.test(rawMsg)) {
+        setAuthError('Too many attempts. Please wait a moment and try again.')
+      } else {
+        setAuthError(rawMsg)
+      }
     } finally {
       setAuthLoading(false)
     }
@@ -223,6 +239,12 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
                 {authError && (
                   <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
                     <p className="text-sm text-red-600 dark:text-red-400">{authError}</p>
+                  </div>
+                )}
+
+                {authInfo && (
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">{authInfo}</p>
                   </div>
                 )}
 

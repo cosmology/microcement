@@ -53,7 +53,7 @@ docker compose exec db psql -U postgres -d postgres -c "
 # Clean up any test users that might exist
 print_status "Cleaning up test users..."
 docker compose exec db psql -U postgres -d postgres -c "
-    DELETE FROM auth.users WHERE email IN ('ivanporkic@gmail.com', 'ivanprokic@yahoo.com');
+    DELETE FROM auth.users WHERE email IN ('ivanprokic@gmail.com', 'ivanprokic@yahoo.com');
 " 2>/dev/null || true
 
 # Run Liquibase migration fresh

@@ -1,0 +1,146 @@
+databaseChangeLog:
+  - changeSet:
+      id: data-0002
+      author: microcement-dev
+      comment: "Insert test users and scene configs for development"
+      changes:
+        - sql:
+            sql: |
+              -- Insert test user 1: ivanprokic@gmail.com (with config)
+              INSERT INTO auth.users (
+                  id,
+                  instance_id,
+                  aud,
+                  role,
+                  email,
+                  encrypted_password,
+                  email_confirmed_at,
+                  recovery_sent_at,
+                  last_sign_in_at,
+                  raw_app_meta_data,
+                  raw_user_meta_data,
+                  created_at,
+                  updated_at,
+                  confirmation_token,
+                  email_change,
+                  email_change_token_new,
+                  recovery_token
+              ) VALUES (
+                  'c26f99a3-e036-45e8-ab35-2afb63c6cb8a',
+                  '00000000-0000-0000-0000-000000000000',
+                  'authenticated',
+                  'authenticated',
+                  'ivanprokic@gmail.com',
+                  crypt('test12345', gen_salt('bf')),
+                  NOW(),
+                  NULL,
+                  NOW(),
+                  '{"provider": "email", "providers": ["email"]}',
+                  '{"email": "ivanprokic@gmail.com", "email_verified": true, "phone_verified": false, "sub": "c26f99a3-e036-45e8-ab35-2afb63c6cb8a"}',
+                  NOW(),
+                  NOW(),
+                  '',
+                  '',
+                  '',
+                  ''
+              ) ON CONFLICT (id) DO NOTHING;
+
+        - sql:
+            sql: |
+              -- Insert test user 2: testuser@example.com (without config)
+              INSERT INTO auth.users (
+                  id,
+                  instance_id,
+                  aud,
+                  role,
+                  email,
+                  encrypted_password,
+                  email_confirmed_at,
+                  recovery_sent_at,
+                  last_sign_in_at,
+                  raw_app_meta_data,
+                  raw_user_meta_data,
+                  created_at,
+                  updated_at,
+                  confirmation_token,
+                  email_change,
+                  email_change_token_new,
+                  recovery_token
+              ) VALUES (
+                  'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                  '00000000-0000-0000-0000-000000000000',
+                  'authenticated',
+                  'authenticated',
+                  'testuser@example.com',
+                  crypt('test12345', gen_salt('bf')),
+                  NOW(),
+                  NULL,
+                  NOW(),
+                  '{"provider": "email", "providers": ["email"]}',
+                  '{"email": "testuser@example.com", "email_verified": true, "phone_verified": false, "sub": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"}',
+                  NOW(),
+                  NOW(),
+                  '',
+                  '',
+                  '',
+                  ''
+              ) ON CONFLICT (id) DO NOTHING;
+
+        - sql:
+            sql: |
+              -- Insert default scene config for ivanprokic@gmail.com
+              INSERT INTO public.user_scene_configs (
+                  id,
+                  user_id,
+                  config_name,
+                  model_path,
+                  camera_fov,
+                  camera_near,
+                  camera_far,
+                  orbital_height,
+                  orbital_radius_multiplier,
+                  orbital_speed,
+                  target_size,
+                  scale_multiplier,
+                  rotation_y,
+                  intro_duration,
+                  intro_start_pos,
+                  intro_end_pos,
+                  hotspot_colors,
+                  pulse_animation,
+                  hotspot_focal_distances,
+                  hotspot_categories,
+                  camera_points,
+                  look_at_targets,
+                  api_hotspot_key_aliases,
+                  is_default,
+                  created_at,
+                  updated_at
+              ) VALUES (
+                  'cb3d6b5e-0f47-4f7e-9333-5ccbdeda2636',
+                  'c26f99a3-e036-45e8-ab35-2afb63c6cb8a',
+                  'default',
+                  '/models/no-material.glb',
+                  75,
+                  0.1,
+                  1000,
+                  40,
+                  6,
+                  0.2,
+                  30,
+                  2,
+                  1.5707963267948966,
+                  3000,
+                  '{"x": 0, "y": 20, "z": 0}',
+                  '{"x": -6.554798188035982, "y": 7.001298362376955, "z": 26.293127720925533}',
+                  '{"normal": 9223167, "hover": 11722918, "pulse": 9223167}',
+                  '{"duration": 800, "scale": 1.5, "opacity": 0.8}',
+                  '{}',
+                  '{}',
+                  '[]',
+                  '[]',
+                  '{}',
+                  true,
+                  NOW(),
+                  NOW()
+              ) ON CONFLICT (id) DO NOTHING;

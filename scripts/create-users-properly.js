@@ -18,14 +18,14 @@ async function createTestUsers() {
     
     const { data: existingUsers } = await supabase.auth.admin.listUsers();
     for (const user of existingUsers.users) {
-      if (user.email === 'ivanporkic@gmail.com' || user.email === 'ivanprokic@yahoo.com') {
+      if (user.email === 'ivanprokic@gmail.com' || user.email === 'ivanprokic@yahoo.com') {
         console.log(`🗑️ Deleting existing user: ${user.email}`);
         await supabase.auth.admin.deleteUser(user.id);
       }
     }
 
     // Create User 1: Ivan Prokic
-    console.log('👤 Creating User 1: Ivan Prokic (ivanporkic@gmail.com)...');
+    console.log('👤 Creating User 1: Ivan Prokic (ivanprokic@gmail.com)...');
     const { data: user1, error: error1 } = await supabase.auth.admin.createUser({
       email: 'ivanprokic@gmail.com',
       password: 'testpassword123',

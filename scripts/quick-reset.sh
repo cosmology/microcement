@@ -23,7 +23,7 @@ docker compose exec db psql -U postgres -d postgres -c "
     DROP TABLE IF EXISTS databasechangeloglock CASCADE;
     DROP TABLE IF EXISTS public.user_scene_configs CASCADE;
     DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
-    DELETE FROM auth.users WHERE email IN ('ivanporkic@gmail.com', 'ivanprokic@yahoo.com');
+    DELETE FROM auth.users WHERE email IN ('ivanprokic@gmail.com', 'ivanprokic@yahoo.com');
 " 2>/dev/null || true
 
 # Run migrations
