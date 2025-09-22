@@ -88,8 +88,8 @@ databaseChangeLog:
 
         - sql:
             sql: |
-              -- Insert default scene config for ivanprokic@gmail.com
-              INSERT INTO public.user_scene_configs (
+              -- Insert default scene design config for ivanprokic@gmail.com
+              INSERT INTO public.scene_design_configs (
                   id,
                   user_id,
                   config_name,
@@ -110,7 +110,6 @@ databaseChangeLog:
                   pulse_animation,
                   hotspot_focal_distances,
                   hotspot_categories,
-                  camera_points,
                   look_at_targets,
                   api_hotspot_key_aliases,
                   is_default,
@@ -138,8 +137,28 @@ databaseChangeLog:
                   '{}',
                   '{}',
                   '[]',
-                  '[]',
                   '{}',
+                  true,
+                  NOW(),
+                  NOW()
+              ) ON CONFLICT (id) DO NOTHING;
+
+        - sql:
+            sql: |
+              -- Insert default camera follow path for the scene design config
+              INSERT INTO public.scene_follow_paths (
+                  id,
+                  scene_design_config_id,
+                  path_name,
+                  camera_points,
+                  is_active,
+                  created_at,
+                  updated_at
+              ) VALUES (
+                  'a1b2c3d4-e5f6-7890-abcd-ef1234567891',
+                  'cb3d6b5e-0f47-4f7e-9333-5ccbdeda2636',
+                  'default',
+                  '[]',
                   true,
                   NOW(),
                   NOW()
