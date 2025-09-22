@@ -17,23 +17,7 @@ const LANGUAGES = [
   { code: 'sr', label: 'Srpski' },
 ];
 
-const galleryDropdown = [
-  { name: "Before & After", href: "#before-after" },
-  { name: "Featured", href: "#featured" },
-  { name: "Textures", href: "#textures" },
-  { name: "Upload", href: paths.uploadPage }, // Use centralized config
-]
-
-const navLinks = [
-  { name: "Eco Friendly", href: "#environmental" },
-  { name: "Speed", href: "#speed" },
-  {
-    name: "Gallery",
-    dropdown: galleryDropdown,
-  },
-  { name: "Benefits", href: "#benefits" },
-  { name: "Luxury", href: "#luxury" },
-]
+// Navigation links will be created dynamically using translations
 
 export default function NavigationSection({ user, onUserChange }: { user?: any, onUserChange?: (user: any) => void }) {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -78,6 +62,25 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
   
   const currentLang = LANGUAGES.find(l => l.code === locale) || LANGUAGES[0];
   const otherLangs = LANGUAGES.filter(l => l.code !== locale);
+
+  // Create navigation links dynamically using translations
+  const galleryDropdown = [
+    { name: t('beforeAfter'), href: "#before-after" },
+    { name: t('featured'), href: "#featured" },
+    { name: t('textures'), href: "#textures" },
+    { name: t('upload'), href: paths.uploadPage },
+  ]
+
+  const navLinks = [
+    { name: t('ecoFriendly'), href: "#environmental" },
+    { name: t('speed'), href: "#speed" },
+    {
+      name: t('gallery'),
+      dropdown: galleryDropdown,
+    },
+    { name: t('benefits'), href: "#benefits" },
+    { name: t('luxury'), href: "#luxury" },
+  ]
 
   // Hide nav on scroll down, show on scroll up, and ensure animation completes
   useEffect(() => {
