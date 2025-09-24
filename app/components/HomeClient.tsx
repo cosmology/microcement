@@ -25,6 +25,7 @@ import { getThemeColors } from "@/lib/utils";
 import { SceneConfigService } from '@/lib/services/SceneConfigService';
 import { supabase } from '@/lib/supabase';
 import { SCENE_CONFIG } from '@/lib/config/sceneConfig';
+import TimelineWaypoints from "./TimelineWaypoints";
 
 const ScrollScene = dynamic(() => import("./ScrollScene"), { ssr: false });
 
@@ -76,12 +77,16 @@ export default function HomeClient() {
 
   // Check if user has scene configurations
   useEffect(() => {
-    console.log('🔍 HomeClient: User state changed:', user);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 HomeClient: User state changed:', user);
+    }
     const checkUserConfigs = async () => {
       if (user?.id) {
         // Special case: ivanprokic@yahoo.com should NEVER have scene configs
         if (user.email === 'ivanprokic@yahoo.com') {
-          console.log('🚫 User ivanprokic@yahoo.com is explicitly blocked from having scene configs');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🚫 User ivanprokic@yahoo.com is explicitly blocked from having scene configs');
+          }
           setHasUserConfig(false);
           setConfigCheckComplete(true);
           return;
@@ -92,9 +97,13 @@ export default function HomeClient() {
           sceneConfigService.setUser({ id: user.id });
           const userConfigs = await sceneConfigService.getUserConfigs();
           setHasUserConfig(userConfigs.length > 0);
-          console.log('🔍 User configs check:', userConfigs.length > 0 ? 'Has configs' : 'No configs');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 User configs check:', userConfigs.length > 0 ? 'Has configs' : 'No configs');
+          }
         } catch (error) {
-          console.warn('Failed to check user configs:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Failed to check user configs:', error);
+          }
           setHasUserConfig(false);
         }
       } else {
@@ -193,6 +202,34 @@ export default function HomeClient() {
       document.removeEventListener('wheel', handleWheel)
     }
   }, [preloadDone])
+
+  // Follow path selection handler
+  useEffect(() => {
+    const handleFollowPathSelect = (e: any) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[HomeClient] Follow path selected:', e.detail);
+      }
+      
+      // Trigger scene reload with new camera path
+      if (e.detail && e.detail.cameraPoints) {
+        // Dispatch a scene reload event with the new camera data
+        window.dispatchEvent(new CustomEvent('scene-reload-camera', {
+          detail: {
+            cameraPoints: e.detail.cameraPoints,
+            lookAtTargets: e.detail.lookAtTargets,
+            pathName: e.detail.id,
+            pathId: e.detail.pathId
+          }
+        }));
+      }
+    };
+
+    window.addEventListener('follow-path-select', handleFollowPathSelect);
+
+    return () => {
+      window.removeEventListener('follow-path-select', handleFollowPathSelect);
+    };
+  }, []);
 
   // Intersection Observer for section detection
   useEffect(() => {
@@ -337,7 +374,6 @@ export default function HomeClient() {
         panel.style.pointerEvents = 'none';
       }
     });
-    console.log('🎯 Hiding marker panels not in scroll range');
   };
 
   // Expose functions to window for ScrollScene to use
@@ -410,7 +446,7 @@ export default function HomeClient() {
 
               // Debug all panels
               if (scrollPercent > 0) {
-                console.log(`🔍 Panel ${index} (${name}): scrollPercent=${scrollPercent.toFixed(1)}%, range=${start}-${end}%`);
+                // console.log(`🔍 Panel ${index} (${name}): scrollPercent=${scrollPercent.toFixed(1)}%, range=${start}-${end}%`);
               }
 
               if (scrollPercent < start) {
@@ -584,7 +620,6 @@ export default function HomeClient() {
       {/* Show main content only for logged-in users with scene configurations */}
       {user && configCheckComplete && hasUserConfig === true && (
         <>
-          {console.log('🔍 HomeClient: Passing user to ScrollScene:', user)}
           <ScrollScene 
             sceneStage={sceneStage} 
             currentSection={currentSection}
@@ -613,6 +648,8 @@ export default function HomeClient() {
         onDebugUpdate={setDebugData}
       />
       {debugData && <DebugInfo {...debugData} />}
+      {/* Timeline waypoints overlay */}
+      <TimelineWaypoints />
       <ScrollDownCTA />
       <main 
         className="relative z-20" 
@@ -677,7 +714,7 @@ export default function HomeClient() {
           );
         })}
         
-        <div ref={env} className="min-h-screen">
+        {/* <div ref={env} className="min-h-screen">
           <EnvironmentalSection />
         </div>
         <div ref={comparison} className="min-h-screen opacity-90">
@@ -706,7 +743,7 @@ export default function HomeClient() {
         </div>
         <div ref={cta} className="min-h-screen">
           <CTASection />
-        </div>
+        </div> */}
       </main>
         </>
       )}

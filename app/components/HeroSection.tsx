@@ -5,14 +5,23 @@ import { useRef, useEffect, useState, useMemo, useCallback } from "react"
 import { globalNavigation } from "@/lib/navigation"
 import { useTranslations } from 'next-intl';
 import { AnimatePresence } from "framer-motion"
-import { getThemeColors } from "@/lib/utils"
+import { getThemeColors, orientation } from "@/lib/utils"
 
 export default function HeroSection() {
   const sectionRef = useRef<HTMLDivElement>(null)
   const t = useTranslations('Hero');
   
   // The lines
-  const mainLine = t('line1') // "Transform Spaces."
+  const mainLine = t('line1') // e.g. "Transform Spaces."
+  // Split main line into two emphasized parts (Line 1/Line 2)
+  const [leftPart, rightPart] = (() => {
+    const cleaned = (mainLine || '').replace(/[.!?]$/,'').trim()
+    const parts = cleaned.split(/\s+/)
+    if (parts.length <= 1) return [cleaned.toUpperCase(), '']
+    const first = parts[0]
+    const rest = parts.slice(1).join(' ')
+    return [first.toUpperCase(), rest.toUpperCase()]
+  })()
   const animatedLines = [t('line2'), t('line3'), t('line4')]
 
   // Animation state
@@ -21,10 +30,19 @@ export default function HeroSection() {
   const [showAnimated, setShowAnimated] = useState(true)
   const [rainfall, setRainfall] = useState(false)
   const [scrollOpacity, setScrollOpacity] = useState(1)
+  const [isPortrait, setIsPortrait] = useState(false)
 
   // Animate main line in on mount
   useEffect(() => {
     setMainIn(true)
+    setIsPortrait(orientation.isPortrait())
+    const onResize = () => setIsPortrait(orientation.isPortrait())
+    window.addEventListener('resize', onResize)
+    window.addEventListener('orientationchange', onResize)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      window.removeEventListener('orientationchange', onResize)
+    }
   }, [])
 
   // Scroll-based fade out effect
@@ -89,18 +107,57 @@ export default function HeroSection() {
         background: themeColors.gradient
       }}
     >
-      <div className="w-full max-w-4xl flex flex-col items-center justify-center text-center relative z-10">
-        {/* Main line slides in from top and stays */}
-        <motion.div
-          className="font-light text-gray-900 dark:text-white mb-8"
-          style={{ fontSize: 'clamp(2rem, 7vw, 4rem)', lineHeight: 1.05 }}
-          initial={{ opacity: 0, y: -80 }}
-          animate={mainIn ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-        >
-          {mainLine.toUpperCase()}
-        </motion.div>
+      <div className="w-full max-w-5xl flex flex-col items-center justify-center text-center relative z-10">
+        {/* Emphasized Line 1 + Line 2 */}
+        {isPortrait ? (
+          <div className="w-full flex flex-col items-center justify-center mb-4">
+            <motion.div
+              className="font-bold text-gray-900 dark:text-white"
+              style={{ fontSize: 'clamp(2.4rem, 8vw, 4.5rem)', lineHeight: 1.03 }}
+              initial={{ opacity: 0, x: -60 }}
+              animate={mainIn ? { opacity: 1, x: 0 } : {}}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+            >
+              {leftPart}
+            </motion.div>
+            {rightPart && (
+              <motion.div
+                className="font-bold text-gray-900 dark:text-white"
+                style={{ fontSize: 'clamp(2.4rem, 8vw, 4.5rem)', lineHeight: 1.03 }}
+                initial={{ opacity: 0, x: 60 }}
+                animate={mainIn ? { opacity: 1, x: 0 } : {}}
+                transition={{ duration: 0.8, ease: 'easeOut', delay: 0.05 }}
+              >
+                {rightPart}
+              </motion.div>
+            )}
+          </div>
+        ) : (
+          <div className="w-full flex items-center justify-center mb-6">
+            <motion.div
+              className="font-bold text-gray-900 dark:text-white pr-2"
+              style={{ fontSize: 'clamp(2.6rem, 7.5vw, 3.5rem)', lineHeight: 1.02 }}
+              initial={{ opacity: 0, x: -80 }}
+              animate={mainIn ? { opacity: 1, x: 0 } : {}}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+            >
+              {leftPart}
+            </motion.div>
+            {rightPart && (
+              <motion.div
+                className="font-bold text-gray-900 dark:text-white pl-2"
+                style={{ fontSize: 'clamp(2.6rem, 7.5vw, 3.5rem)', lineHeight: 1.02 }}
+                initial={{ opacity: 0, x: 80 }}
+                animate={mainIn ? { opacity: 1, x: 0 } : {}}
+                transition={{ duration: 0.8, ease: 'easeOut', delay: 0.05 }}
+              >
+                {rightPart}
+              </motion.div>
+            )}
+          </div>
+        )}
         {/* Animated lines, one at a time, rotating */}
+        {/* Lighter animated lines beneath */}
         <div className="flex flex-col w-full items-center justify-center"
              style={{ minHeight: 'clamp(2.2rem, 4vw, 4.5rem)' }}>
           <AnimatePresence mode="wait">
@@ -133,14 +190,14 @@ export default function HeroSection() {
             </motion.div>
           </AnimatePresence>
         </div>
-        <motion.p
+        {/* <motion.p
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: "easeOut" }}
           className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 leading-relaxed max-w-3xl mx-auto pt-24"
         >
           {t('description')}
-        </motion.p>
+        </motion.p> */}
       </div>
     </section>
   )

@@ -142,6 +142,10 @@ databaseChangeLog:
                   type: jsonb
                   defaultValue: '[]'
               - column:
+                  name: look_at_targets
+                  type: jsonb
+                  defaultValue: '[]'
+              - column:
                   name: is_active
                   type: boolean
                   defaultValue: true

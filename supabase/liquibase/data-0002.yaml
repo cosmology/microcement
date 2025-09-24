@@ -145,21 +145,127 @@ databaseChangeLog:
 
         - sql:
             sql: |
-              -- Insert default camera follow path for the scene design config
+              -- Insert all three follow paths for the scene design config
+              
+              -- 1. Current path (active) - uses original DEFAULT_CAMERA_POINTS
               INSERT INTO public.scene_follow_paths (
                   id,
                   scene_design_config_id,
                   path_name,
                   camera_points,
+                  look_at_targets,
                   is_active,
                   created_at,
                   updated_at
               ) VALUES (
                   'a1b2c3d4-e5f6-7890-abcd-ef1234567891',
                   'cb3d6b5e-0f47-4f7e-9333-5ccbdeda2636',
-                  'default',
-                  '[]',
+                  'current',
+                  '[
+                      {"x": 20, "y": 5, "z": 0},
+                      {"x": -8, "y": 6.5, "z": 2},
+                      {"x": -14, "y": 6.75, "z": 7},
+                      {"x": -8, "y": 7, "z": 24},
+                      {"x": -4, "y": 7, "z": 30},
+                      {"x": -2, "y": 7.25, "z": 32},
+                      {"x": 12, "y": 7.5, "z": 32},
+                      {"x": 20, "y": 8, "z": 25},
+                      {"x": 16, "y": 8, "z": 0}
+                  ]',
+                  '[
+                      {"x": 0, "y": 0, "z": 0},
+                      {"x": 4, "y": 3, "z": 0},
+                      {"x": 6, "y": 4, "z": 0},
+                      {"x": 7, "y": 5, "z": 30},
+                      {"x": 10, "y": 6, "z": 50},
+                      {"x": 20, "y": 7, "z": 60},
+                      {"x": 30, "y": 8, "z": 40},
+                      {"x": 30, "y": 8, "z": 20},
+                      {"x": 0, "y": 8, "z": -40}
+                  ]',
                   true,
+                  NOW(),
+                  NOW()
+              ) ON CONFLICT (id) DO NOTHING;
+
+              -- 2. Bathroom walkthrough path (inactive)
+              INSERT INTO public.scene_follow_paths (
+                  id,
+                  scene_design_config_id,
+                  path_name,
+                  camera_points,
+                  look_at_targets,
+                  is_active,
+                  created_at,
+                  updated_at
+              ) VALUES (
+                  'b2c3d4e5-f6a7-8901-bcde-f12345678912',
+                  'cb3d6b5e-0f47-4f7e-9333-5ccbdeda2636',
+                  'bathroom_walkthrough',
+                  '[
+                      {"x": 20, "y": 5, "z": 0},
+                      {"x": 10, "y": 5, "z": -5},
+                      {"x": 0, "y": 5, "z": -10},
+                      {"x": -10, "y": 5, "z": -5},
+                      {"x": -20, "y": 5, "z": 0},
+                      {"x": -8, "y": 6.5, "z": 2},
+                      {"x": -14, "y": 6.75, "z": 7},
+                      {"x": -8, "y": 7, "z": 24},
+                      {"x": -4, "y": 7, "z": 30}
+                  ]',
+                  '[
+                      {"x": 0, "y": 0, "z": 0},
+                      {"x": 5, "y": 2, "z": -8},
+                      {"x": 0, "y": 3, "z": -15},
+                      {"x": -5, "y": 2, "z": -8},
+                      {"x": -10, "y": 1, "z": 0},
+                      {"x": -8, "y": 6.5, "z": 2},
+                      {"x": -14, "y": 6.75, "z": 7},
+                      {"x": -8, "y": 7, "z": 24},
+                      {"x": -4, "y": 7, "z": 30}
+                  ]',
+                  false,
+                  NOW(),
+                  NOW()
+              ) ON CONFLICT (id) DO NOTHING;
+
+              -- 3. Kitchen tour path (inactive)
+              INSERT INTO public.scene_follow_paths (
+                  id,
+                  scene_design_config_id,
+                  path_name,
+                  camera_points,
+                  look_at_targets,
+                  is_active,
+                  created_at,
+                  updated_at
+              ) VALUES (
+                  'c3d4e5f6-a7b8-9012-cdef-123456789123',
+                  'cb3d6b5e-0f47-4f7e-9333-5ccbdeda2636',
+                  'kitchen_tour',
+                  '[
+                      {"x": 20, "y": 5, "z": 0},
+                      {"x": 15, "y": 5, "z": 5},
+                      {"x": 10, "y": 5, "z": 10},
+                      {"x": 5, "y": 5, "z": 15},
+                      {"x": 0, "y": 5, "z": 20},
+                      {"x": -5, "y": 5, "z": 15},
+                      {"x": -8, "y": 6.5, "z": 2},
+                      {"x": -14, "y": 6.75, "z": 7},
+                      {"x": -8, "y": 7, "z": 24}
+                  ]',
+                  '[
+                      {"x": 0, "y": 0, "z": 0},
+                      {"x": 8, "y": 2, "z": 8},
+                      {"x": 5, "y": 3, "z": 15},
+                      {"x": 0, "y": 4, "z": 25},
+                      {"x": -2, "y": 3, "z": 20},
+                      {"x": -5, "y": 2, "z": 10},
+                      {"x": -8, "y": 6.5, "z": 2},
+                      {"x": -14, "y": 6.75, "z": 7},
+                      {"x": -8, "y": 7, "z": 24}
+                  ]',
+                  false,
                   NOW(),
                   NOW()
               ) ON CONFLICT (id) DO NOTHING;

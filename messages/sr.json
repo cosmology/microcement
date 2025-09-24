@@ -13,7 +13,11 @@
     "beforeAfter": "Pre i Posle",
     "featured": "Istaknuti",
     "textures": "Teksture",
-    "upload": "Otpremi"
+    "upload": "Otpremi",
+    "currentPath": "Trenutna Ruta",
+    "bathroomWalkthrough": "Obilazak Kupatila",
+    "kitchenTour": "Obilazak Kujne",
+    "livingRoomTour": "Obilazak Dnevne Sobe"
   },
   "Hero": {
     "line1": "Transformišite Prostore",

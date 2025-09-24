@@ -9,17 +9,15 @@ export default getRequestConfig(async ({requestLocale}) => {
   
   const requested = await requestLocale;
 
-  console.log("Requested locale: ", requested);
-
   const locale = hasLocale(locales, requested)
     ? requested
     : 'en';
 
-  console.log("Ivan check if locale is valid: ", locale);
+  
   // Validate that the incoming `locale` parameter is valid
   if (!locales.includes(locale as any)) notFound();
 
-  console.log("Loading locale: ", locale);
+  
 
   return {
     locale,

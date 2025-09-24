@@ -114,6 +114,101 @@ export default function ScrollScene({
     loadSettings();
   }, [user]);
 
+  // Handle follow path selection and reload camera data
+  useEffect(() => {
+    const handleSceneReloadCamera = (e: any) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🎬 [ScrollScene] Scene reload camera event received:', e.detail);
+      }
+      
+      if (e.detail && e.detail.cameraPoints) {
+        // Convert camera points to THREE.Vector3 objects
+        const newCameraPoints = e.detail.cameraPoints.map((point: any) => 
+          new THREE.Vector3(point.x, point.y, point.z)
+        );
+        
+        // Convert look at targets to THREE.Vector3 objects if provided
+        const newLookAtTargets = e.detail.lookAtTargets ? 
+          e.detail.lookAtTargets.map((target: any) => 
+            new THREE.Vector3(target.x, target.y, target.z)
+          ) : undefined;
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🎬 [ScrollScene] Updating camera path with', newCameraPoints.length, 'points');
+        }
+        
+        // Update camera path data
+        setCameraPathData(prev => ({
+          ...prev,
+          cameraPoints: newCameraPoints,
+          ...(newLookAtTargets && { lookAtTargets: newLookAtTargets })
+        }));
+        
+        // Reset scroll progress to restart the path
+        setScrollProgress(0);
+        
+        // Reset GSAP path initialization to force recreation
+        gsapPathInitializedRef.current = false;
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ [ScrollScene] Camera path updated successfully');
+        }
+      }
+    };
+
+    window.addEventListener('scene-reload-camera', handleSceneReloadCamera);
+
+    return () => {
+      window.removeEventListener('scene-reload-camera', handleSceneReloadCamera);
+    };
+  }, []);
+
+  // Handle external waypoint navigation requests
+  useEffect(() => {
+    const handleGotoWaypoint = (e: any) => {
+      console.log('[ScrollScene] camera-goto-waypoint received:', e?.detail);
+      if (!gsapCurveRef.current || !cameraRef.current) {
+        console.warn('[ScrollScene] Waypoint handler: missing gsapCurveRef or cameraRef');
+        return;
+      }
+      // Map 1-based waypoint index to curve parameter t based on current cameraPathData length
+      const totalPoints = (cameraPathData.cameraPoints?.length ?? gsapCurveRef.current.points.length);
+      const total = Math.max(1, totalPoints - 1);
+      const clampedIndex1Based = Math.max(1, Math.min(totalPoints, (e?.detail?.index ?? 1)));
+      const zeroBased = clampedIndex1Based - 1;
+      const t = zeroBased / total;
+      console.log('[ScrollScene] Calculated waypoint mapping:', { totalPoints, clampedIndex1Based, zeroBased, t });
+
+      // Use the scene's own path progress system so the render loop updates camera
+      // Kill any existing tweens on pathProgressRef
+      try { gsap.killTweensOf(pathProgressRef.current); } catch {}
+      isAnimatingRef.current = true;
+      const currentT = pathProgressRef.current.t ?? 0;
+      console.log('[ScrollScene] Animating path progress:', { from: currentT, to: t });
+      gsap.to(pathProgressRef.current, {
+        duration: 1.2,
+        t,
+        ease: 'power3.out',
+        onUpdate: () => {
+          if (cameraRef.current) {
+            updateCameraAlongCurve(cameraRef.current, pathProgressRef.current.t);
+            // Force render while animating, since main loop may skip when isAnimatingRef is true
+            if (rendererRef.current && sceneRef.current) {
+              rendererRef.current.render(sceneRef.current, cameraRef.current);
+            }
+          }
+        },
+        onComplete: () => {
+          isAnimatingRef.current = false;
+          console.log('[ScrollScene] Waypoint animation complete at t=', pathProgressRef.current.t);
+        }
+      });
+    };
+
+    window.addEventListener('camera-goto-waypoint', handleGotoWaypoint);
+    return () => window.removeEventListener('camera-goto-waypoint', handleGotoWaypoint);
+  }, []);
+
   // Toggle flags
   const WITH_INTRO = true; // Toggle to control intro vs orbital
   const WITH_HELPERS = false; // Toggle to show coordinate helpers (floor grid, axes)
@@ -361,6 +456,10 @@ export default function ScrollScene({
     if (!gsapCurveRef.current) return; // Safety check
     
     const clampedT = Math.max(0, Math.min(1, t));
+    // Broadcast path progress for external UI (e.g., TimelineWaypoints)
+    try {
+      window.dispatchEvent(new CustomEvent('camera-path-progress', { detail: { t: clampedT } }));
+    } catch {}
     const point = gsapCurveRef.current.getPointAt(clampedT);
     camera.position.copy(point);
 
@@ -3614,6 +3713,16 @@ export default function ScrollScene({
     // Start animation loop
     animate(camera, renderer, scene);
     
+    // Fallback: if intro didn't start within 3s after mount/model init, trigger it
+    if (WITH_INTRO) {
+      window.setTimeout(() => {
+        if (!introStartedRef.current && !introCompletedRef.current && cameraRef.current && rendererRef.current && sceneRef.current) {
+          console.log('[ScrollScene] Intro fallback trigger after timeout');
+          startIntroAnimation(cameraRef.current, rendererRef.current, sceneRef.current);
+        }
+      }, 3000);
+    }
+
     // Add resize listener
     const resizeHandler = () => handleResize(camera, renderer);
     window.addEventListener("resize", resizeHandler);
@@ -3888,24 +3997,6 @@ export default function ScrollScene({
             const udResolved = tryUserDataChain(intersectedObject);
             if (udResolved) hotspotName = udResolved;
           }
-          console.log('🔍 Hotspot Debug:', {
-            intersectedObjectName: intersectedObject.name,
-            hotspotName: hotspotName,
-            userDataHotspotName: intersectedObject.userData?.hotspotName,
-            category: HOTSPOT_CATEGORIES[hotspotName],
-            objectType: intersectedObject.type,
-            objectUuid: intersectedObject.uuid,
-            objectParent: intersectedObject.parent?.name,
-            objectChildren: intersectedObject.children?.map(c => c.name),
-            objectUserData: intersectedObject.userData,
-            objectMaterial: (intersectedObject as THREE.Mesh).material ? 'has material' : 'no material',
-            objectVisible: intersectedObject.visible,
-            objectPosition: intersectedObject.position ? {
-              x: intersectedObject.position.x.toFixed(3),
-              y: intersectedObject.position.y.toFixed(3),
-              z: intersectedObject.position.z.toFixed(3)
-            } : 'no position'
-          });
           // Use fallback categories if hotspotSettings is not loaded
           const fallbackCategories = {
             "Hotspot_geo_shelves": "Furniture",

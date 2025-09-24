@@ -13,7 +13,11 @@
     "beforeAfter": "Antes y Después",
     "featured": "Destacados",
     "textures": "Texturas",
-    "upload": "Subir"
+    "upload": "Subir",
+    "currentPath": "Ruta Actual",
+    "bathroomWalkthrough": "Recorrido por Baño",
+    "kitchenTour": "Recorrido por la Cocina",
+    "livingRoomTour": "Recorrido por la Sala"
   },
   "Hero": {
     "line1": "Transforma Espacios",

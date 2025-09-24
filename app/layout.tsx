@@ -3,7 +3,7 @@ import "./globals.css"
 // import { ThemeProvider } from "@/components/theme-provider"
 import { ThemeProvider } from "next-themes"
 import { Roboto } from 'next/font/google'
-import ContentProgress from './components/ContentProgress'
+// import ContentProgress from './components/ContentProgress'
 
 const roboto = Roboto({
   subsets: ['latin'],
@@ -30,7 +30,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ContentProgress />
+          {/* <ContentProgress /> */}
           {children}
         </ThemeProvider>
       </body>

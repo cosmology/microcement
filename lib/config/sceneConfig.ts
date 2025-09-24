@@ -187,13 +187,27 @@ export async function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT
       }
       
       if (userConfig) {
-        console.log('🎯 Using Supabase camera data:');
+        // Prefer an active follow path when present; fallback to embedded camera_points
+        try {
+          const activePath = await sceneConfigService.getActiveFollowPathForConfig(userConfig.id as unknown as string)
+          if (activePath && Array.isArray(activePath.camera_points) && activePath.camera_points.length > 0) {
+            console.log('🎯 Using active follow path camera data:', activePath.camera_points.length)
+            return {
+              cameraPoints: activePath.camera_points.map((p: any) => new THREE.Vector3(p.x, p.y, p.z)),
+              lookAtTargets: (activePath.look_at_targets || []).map((t: any) => new THREE.Vector3(t.x, t.y, t.z))
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ Could not load active follow path, falling back to config camera_points:', e)
+        }
+
+        console.log('🎯 Using config-embedded camera data:');
         console.log('  - Camera points:', userConfig.camera_points?.length || 0);
         console.log('  - Look at targets:', userConfig.look_at_targets?.length || 0);
         
         return {
-          cameraPoints: userConfig.camera_points.map(point => new THREE.Vector3(point.x, point.y, point.z)),
-          lookAtTargets: userConfig.look_at_targets.map(target => new THREE.Vector3(target.x, target.y, target.z))
+          cameraPoints: (userConfig.camera_points || []).map((point: any) => new THREE.Vector3(point.x, point.y, point.z)),
+          lookAtTargets: (userConfig.look_at_targets || []).map((target: any) => new THREE.Vector3(target.x, target.y, target.z))
         };
       }
     } catch (error) {
@@ -201,7 +215,9 @@ export async function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT
     }
   }
   
-  console.log('🔄 Using default camera path data (no userId or Supabase error)');
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔄 Using default camera path data (no userId or Supabase error)');
+  }
   // Fallback to default data
   return {
     cameraPoints: SCENE_CONFIG.DEFAULT_CAMERA_POINTS.map(point => point.clone()),
@@ -214,7 +230,9 @@ export async function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT
  * Now supports user-specific configurations from the database
  */
 export async function getHotspotSettings(modelPath: string = SCENE_CONFIG.DEFAULT_MODEL_PATH, userId?: string) {
-  console.log('🎨 getHotspotSettings called with userId:', userId ? 'present' : 'none');
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🎨 getHotspotSettings called with userId:', userId ? 'present' : 'none');
+  }
   
   if (userId) {
     try {

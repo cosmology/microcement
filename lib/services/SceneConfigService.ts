@@ -1,5 +1,6 @@
 import { supabase, UserSceneConfig } from '@/lib/supabase'
 import { SCENE_CONFIG } from '@/lib/config/sceneConfig'
+import { getFollowPaths } from '@/lib/config/localFollowPaths'
 
 export class SceneConfigService {
   private static instance: SceneConfigService
@@ -28,7 +29,7 @@ export class SceneConfigService {
     }
 
     const { data, error } = await supabase
-      .from('user_scene_configs')
+      .from('scene_design_configs')
       .select('*')
       .eq('user_id', this.currentUser.id)
       .order('created_at', { ascending: false })
@@ -46,7 +47,7 @@ export class SceneConfigService {
     }
 
     const { data, error } = await supabase
-      .from('user_scene_configs')
+      .from('scene_design_configs')
       .select('*')
       .eq('id', id)
       .eq('user_id', this.currentUser.id)
@@ -74,7 +75,7 @@ export class SceneConfigService {
     }
 
     const { data, error } = await supabase
-      .from('user_scene_configs')
+      .from('scene_design_configs')
       .select('*')
       .eq('user_id', this.currentUser.id)
       .eq('is_default', true)
@@ -90,6 +91,110 @@ export class SceneConfigService {
     return data
   }
 
+  // Fetch all follow paths for a given scene design config
+  async getAllFollowPathsForConfig(sceneDesignConfigId: string): Promise<Array<{ id: string; scene_design_config_id: string; path_name: string; camera_points: Array<{ x: number; y: number; z: number }>; look_at_targets: Array<{ x: number; y: number; z: number }>; is_active: boolean }>> {
+    if (!this.currentUser) {
+      throw new Error('User not authenticated')
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 [SceneConfigService] getAllFollowPathsForConfig called with sceneDesignConfigId:', sceneDesignConfigId);
+    }
+
+    // Check if we should use local follow paths
+    const useLocalPaths = process.env.NEXT_PUBLIC_LOCAL_FOLLOW_PATHS === 'true';
+    
+    if (useLocalPaths) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🏠 [SceneConfigService] Using local follow paths data');
+      }
+      const localPaths = getFollowPaths(sceneDesignConfigId);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📊 [SceneConfigService] Local follow paths result:', localPaths.length, 'paths found');
+        localPaths.forEach(path => {
+          console.log(`  - "${path.path_name}" (active: ${path.is_active}) with ${path.camera_points?.length || 0} points`);
+        });
+      }
+      
+      return localPaths;
+    }
+
+    // Use database data
+    const { data, error } = await supabase
+      .from('scene_follow_paths')
+      .select('id, scene_design_config_id, path_name, camera_points, look_at_targets, is_active')
+      .eq('scene_design_config_id', sceneDesignConfigId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ [SceneConfigService] Error fetching all follow paths:', error);
+      }
+      throw new Error(error.message)
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📊 [SceneConfigService] Database follow paths result:', data?.length || 0, 'paths found');
+      data?.forEach(path => {
+        console.log(`  - "${path.path_name}" (active: ${path.is_active}) with ${path.camera_points?.length || 0} points`);
+      });
+    }
+
+    return data || []
+  }
+
+  // Fetch the active follow path for a given scene design config
+  async getActiveFollowPathForConfig(sceneDesignConfigId: string): Promise<{ id: string; scene_design_config_id: string; path_name: string; camera_points: Array<{ x: number; y: number; z: number }>; look_at_targets: Array<{ x: number; y: number; z: number }>; is_active: boolean } | null> {
+    if (!this.currentUser) {
+      throw new Error('User not authenticated')
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 [SceneConfigService] getActiveFollowPathForConfig called with sceneDesignConfigId:', sceneDesignConfigId);
+    }
+
+    // Check if we should use local follow paths
+    const useLocalPaths = process.env.NEXT_PUBLIC_LOCAL_FOLLOW_PATHS === 'true';
+    
+    if (useLocalPaths) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🏠 [SceneConfigService] Using local follow paths data for active path');
+      }
+      const localPaths = getFollowPaths(sceneDesignConfigId);
+      const activePath = localPaths.find(path => path.is_active) || null;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📊 [SceneConfigService] Local active follow path result:', activePath ? `Found path "${activePath.path_name}" with ${activePath.camera_points?.length || 0} points` : 'No active path found');
+      }
+      
+      return activePath;
+    }
+
+    // Use database data
+    const { data, error } = await supabase
+      .from('scene_follow_paths')
+      .select('id, scene_design_config_id, path_name, camera_points, look_at_targets, is_active')
+      .eq('scene_design_config_id', sceneDesignConfigId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ [SceneConfigService] Error fetching active follow path:', error);
+      }
+      throw new Error(error.message)
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📊 [SceneConfigService] Database active follow path result:', data ? `Found path "${data.path_name}" with ${data.camera_points?.length || 0} points` : 'No active path found');
+    }
+
+    return data || null
+  }
+
   async createConfig(configData: Partial<UserSceneConfig>, configName: string = 'default'): Promise<UserSceneConfig> {
     if (!this.currentUser) {
       throw new Error('User not authenticated')
@@ -101,11 +206,31 @@ export class SceneConfigService {
     }
 
     const { data, error } = await supabase
-      .from('user_scene_configs')
+      .from('scene_design_configs')
       .insert({
         user_id: this.currentUser.id,
         config_name: configName,
-        ...configData
+        // Only fields that exist on scene_design_configs
+        model_path: (configData as any).model_path,
+        camera_fov: (configData as any).camera_fov,
+        camera_near: (configData as any).camera_near,
+        camera_far: (configData as any).camera_far,
+        orbital_height: (configData as any).orbital_height,
+        orbital_radius_multiplier: (configData as any).orbital_radius_multiplier,
+        orbital_speed: (configData as any).orbital_speed,
+        target_size: (configData as any).target_size,
+        scale_multiplier: (configData as any).scale_multiplier,
+        rotation_y: (configData as any).rotation_y,
+        intro_duration: (configData as any).intro_duration,
+        intro_start_pos: (configData as any).intro_start_pos,
+        intro_end_pos: (configData as any).intro_end_pos,
+        hotspot_colors: (configData as any).hotspot_colors,
+        pulse_animation: (configData as any).pulse_animation,
+        hotspot_focal_distances: (configData as any).hotspot_focal_distances,
+        hotspot_categories: (configData as any).hotspot_categories,
+        look_at_targets: (configData as any).look_at_targets,
+        api_hotspot_key_aliases: (configData as any).api_hotspot_key_aliases,
+        is_default: (configData as any).is_default ?? false
       })
       .select()
       .single()
@@ -123,7 +248,7 @@ export class SceneConfigService {
     }
 
     const { data, error } = await supabase
-      .from('user_scene_configs')
+      .from('scene_design_configs')
       .update(configData)
       .eq('id', id)
       .eq('user_id', this.currentUser.id)
@@ -143,7 +268,7 @@ export class SceneConfigService {
     }
 
     const { error } = await supabase
-      .from('user_scene_configs')
+      .from('scene_design_configs')
       .delete()
       .eq('id', id)
       .eq('user_id', this.currentUser.id)
@@ -160,13 +285,13 @@ export class SceneConfigService {
 
     // First, unset all other default configs for this user
     await supabase
-      .from('user_scene_configs')
+      .from('scene_design_configs')
       .update({ is_default: false })
       .eq('user_id', this.currentUser.id)
 
     // Then set the specified config as default
     const { error } = await supabase
-      .from('user_scene_configs')
+      .from('scene_design_configs')
       .update({ is_default: true })
       .eq('id', id)
       .eq('user_id', this.currentUser.id)

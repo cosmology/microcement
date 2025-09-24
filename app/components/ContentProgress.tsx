@@ -24,12 +24,14 @@ export default function ContentProgress() {
   // Update progress value only after intro completion
   useEffect(() => {
     if (introComplete) {
-      console.log('🎬 ContentProgress: Intro completed, resetting scroll and starting tracking')
+      if (process.env.NODE_ENV === 'development') {
+        // console.log('ContentProgress: Intro completed, resetting scroll and starting tracking')
+      }
       
       // Reset scroll position to 0 when intro completes
       setTimeout(() => {
         window.scrollTo(0, 0)
-        console.log('🎬 ContentProgress: Scroll position reset to 0')
+        
         
         // Reset progress to 0 and start tracking
         progressValue.set(0)
@@ -41,7 +43,7 @@ export default function ContentProgress() {
           const scrollHeight = document.documentElement.scrollHeight - window.innerHeight
           const progress = scrollHeight > 0 ? scrollTop / scrollHeight : 0
           
-          //console.log('🎬 ContentProgress: Custom scroll progress:', progress)
+          
           progressValue.set(progress)
         }
         
@@ -72,12 +74,12 @@ export default function ContentProgress() {
 
     // Listen for intro completion
     const handleIntroComplete = () => {
-      console.log('🎬 ContentProgress: Intro completed, mounting progress bar')
+      
       setIntroComplete(true)
       // Reset scroll position to 0 when intro completes
       setTimeout(() => {
         window.scrollTo(0, 0)
-        console.log('🎬 ContentProgress: Scroll position reset to 0')
+        
       }, 100) // Small delay to ensure intro animation is fully complete
     }
 
@@ -94,7 +96,7 @@ export default function ContentProgress() {
         const progress = scrollHeight > 0 ? scrollTop / scrollHeight : 0
         
         if (progress < 0.1) {
-          console.log('🎬 ContentProgress: Fallback - intro appears complete, mounting progress bar')
+          
           setIntroComplete(true)
         }
       }
@@ -113,16 +115,7 @@ export default function ContentProgress() {
     return null
   }
 
-  console.log('ContentProgress rendering:', { 
-    isPortrait, 
-    progressValue: progressValue.get(),
-    verticalClipPath: verticalClipPath.get(),
-    horizontalClipPath: horizontalClipPath.get(),
-    windowWidth: window.innerWidth,
-    windowHeight: window.innerHeight,
-    introComplete,
-    startTracking
-  })
+  
 
   return (
     <div

@@ -134,26 +134,26 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
           variants={navVariants}
           className="fixed top-0 left-0 right-0 z-[1003] w-full bg-light-light dark:bg-gray-900 border-b border-light-dark/30 dark:border-gray-700/30 backdrop-blur-md"
         >
-          <div className="max-w-7xl mx-auto flex items-center justify-between h-12 sm:h-14 md:h-16 px-8 py-10">
+          <div className="max-w-7xl mx-auto flex items-center justify-between h-12 sm:h-14 md:h-16 px-8 py-10 relative">
             {/* Left side - Hamburger menu and Logo */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               {/* Morphing Hamburger/X for mobile */}
               <button
-                className="md:hidden flex items-center justify-center p-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-light-dark relative"
+                className="md:hidden flex items-center justify-center p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-light-dark relative"
                 onClick={() => setMobileOpen((v) => !v)}
                 aria-label={mobileOpen ? "Close menu" : "Open menu"}
               >
                 <motion.svg
-                  width="32"
-                  height="32"
-                  viewBox="0 0 32 32"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
-                  className="w-8 h-8 text-light-dark dark:text-white"
+                  className="w-6 h-6 sm:w-7 sm:h-7 text-light-dark dark:text-white"
                 >
                   {/* Top line - fades out */}
                   <motion.line
-                    x1="3" y1="9" x2="29" y2="9"
+                    x1="3" y1="7" x2="21" y2="7"
                     stroke="currentColor" strokeWidth="2" strokeLinecap="round"
                     initial={false}
                     animate={mobileOpen ? {
@@ -166,7 +166,7 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
                   />
                   {/* Middle line - fades out */}
                   <motion.line
-                    x1="3" y1="16" x2="29" y2="16"
+                    x1="3" y1="12" x2="21" y2="12"
                     stroke="currentColor" strokeWidth="2" strokeLinecap="round"
                     initial={false}
                     animate={mobileOpen ? {
@@ -179,7 +179,7 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
                   />
                   {/* Bottom line - fades out */}
                   <motion.line
-                    x1="3" y1="23" x2="29" y2="23"
+                    x1="3" y1="17" x2="21" y2="17"
                     stroke="currentColor" strokeWidth="2" strokeLinecap="round"
                     initial={false}
                     animate={mobileOpen ? {
@@ -192,7 +192,7 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
                   />
                   {/* X lines - fade in */}
                   <motion.line
-                    x1="8" y1="8" x2="24" y2="24"
+                    x1="6" y1="6" x2="18" y2="18"
                     stroke="currentColor" strokeWidth="2" strokeLinecap="round"
                     initial={false}
                     animate={mobileOpen ? {
@@ -204,7 +204,7 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
                     }}
                   />
                   <motion.line
-                    x1="24" y1="8" x2="8" y2="24"
+                    x1="18" y1="6" x2="6" y2="18"
                     stroke="currentColor" strokeWidth="2" strokeLinecap="round"
                     initial={false}
                     animate={mobileOpen ? {
@@ -246,7 +246,9 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
                 />
               </a>
             </div>
+            
             {/* <GeoLocationSection /> */}
+
             {/* Desktop Nav */}
             <ul className={`hidden md:flex items-center gap-2 sm:gap-4 md:gap-6 ${navFont}`}>
               {navLinks.map((link) =>
@@ -317,6 +319,7 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
               </div>
             </div>
           </div>
+
           {/* Mobile Menu */}
           <AnimatePresence>
             {mobileOpen && (

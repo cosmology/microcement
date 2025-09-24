@@ -13,7 +13,11 @@
     "beforeAfter": "Before & After",
     "featured": "Featured",
     "textures": "Textures",
-    "upload": "Upload"
+    "upload": "Upload",
+    "currentPath": "Current Path",
+    "bathroomWalkthrough": "Bathroom Walkthrough",
+    "kitchenTour": "Kitchen Tour",
+    "livingRoomTour": "Living Room Tour"
   },
   "Hero": {
     "line1": "Transform Spaces",
