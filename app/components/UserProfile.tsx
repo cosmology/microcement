@@ -256,20 +256,20 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
             variant="ghost"
             size="sm"
             onClick={() => openAuthModal('signin')}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors duration-200"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors duration-200 text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400"
             title="Sign in to your account"
           >
-            <UserRound className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+            <UserRound className="h-5 w-5 text-current" />
           </Button>
         ) : (
           <div className="relative group">
             <Button
               variant="ghost"
               size="sm"
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors duration-200"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors duration-200 text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400"
               title={`Signed in as ${user.email}`}
             >
-              <UserRound className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              <UserRound className="h-5 w-5 text-current" />
             </Button>
             
             {/* Dropdown Menu */}

@@ -58,9 +58,9 @@ function LocaleSwitcherContent({
           select?.click();
         }}
       >
-        <Earth size={20} className="text-gray-500 dark:text-gray-400 transition-colors duration-200" />
+        <Earth size={20} className="text-current transition-colors duration-200 group-hover:text-purple-600 dark:group-hover:text-purple-400" />
         <span className="text-sm font-medium">{currentLocale.toUpperCase()}</span>
-        <ChevronDown size={16} className="text-gray-400 dark:text-gray-500 transition-colors duration-200" />
+        <ChevronDown size={16} className="text-current/70 transition-colors duration-200 group-hover:text-purple-600 dark:group-hover:text-purple-400" />
       </button>
       
       <select

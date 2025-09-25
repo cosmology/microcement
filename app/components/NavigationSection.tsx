@@ -134,12 +134,12 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
           variants={navVariants}
           className="fixed top-0 left-0 right-0 z-[1003] w-full bg-light-light dark:bg-gray-900 border-b border-light-dark/30 dark:border-gray-700/30 backdrop-blur-md"
         >
-          <div className="max-w-7xl mx-auto flex items-center justify-between h-12 sm:h-14 md:h-16 px-8 py-10 relative">
+          <div className="max-w-7xl mx-auto flex items-center justify-between h-12 sm:h-14 md:h-16 px-2 py-10 relative">
             {/* Left side - Hamburger menu and Logo */}
             <div className="flex items-center gap-2">
               {/* Morphing Hamburger/X for mobile */}
               <button
-                className="md:hidden flex items-center justify-center p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-light-dark relative"
+                className="md:hidden flex items-center justify-center p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-light-dark relative text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400"
                 onClick={() => setMobileOpen((v) => !v)}
                 aria-label={mobileOpen ? "Close menu" : "Open menu"}
               >
@@ -149,7 +149,7 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
                   viewBox="0 0 24 24"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
-                  className="w-6 h-6 sm:w-7 sm:h-7 text-light-dark dark:text-white"
+                  className="w-6 h-6 sm:w-7 sm:h-7"
                 >
                   {/* Top line - fades out */}
                   <motion.line
@@ -219,7 +219,7 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
               </button>
 
               {/* Logo or Brand */}
-              <a href="#" className={`font-bold ${navFont} text-light-dark dark:text-white`}>
+              <a href="#" className={`font-bold ${navFont} text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors`}>
                 <Image
                   src="/images/logo-procemento.png"
                   alt="Microcement"
@@ -235,9 +235,9 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
                 <Image
                   src="/images/logo-procemento.png"
                   alt="Microcement"
-                  width={200}
-                  height={105}
-                  className="block sm:hidden h-8 w-auto transition-all duration-200"
+                  width={100}
+                  height={52}
+                  className="block sm:hidden h-6 w-auto transition-all duration-200"
                   style={{
                     filter: getLogoFilter(), // Dynamic theme-aware filtering
                     opacity: 0.9,
@@ -304,7 +304,7 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
               )}
             </ul>
             {/* Right side controls - Theme Toggle, Hamburger, and Language Toggle */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 text-gray-700 dark:text-gray-200">
               {/* Language Dropdown */}
               <LocaleSwitcherSelect
                 defaultValue={locale}

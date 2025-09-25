@@ -2,12 +2,14 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import { WAYPOINTS, dispatchGoToWaypoint } from "@/lib/scene/waypoints"
+import { useTranslations } from 'next-intl'
 
 type TimelineWaypointsProps = {
   className?: string
 }
 
 export default function TimelineWaypoints({ className }: TimelineWaypointsProps) {
+  const t = useTranslations('Navigation')
   const [isPortrait, setIsPortrait] = useState(false)
   const [topOffsetPx, setTopOffsetPx] = useState<number>(16) // default 1rem
   const [bottomReservePx, setBottomReservePx] = useState<number>(100) // reserve for bottom panel in portrait
@@ -86,8 +88,8 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
 
   const containerClasses = useMemo(() => (
     isPortrait 
-      ? "fixed z-[1004] select-none w-auto h-auto flex items-center justify-center"
-      : "fixed z-[1004] select-none w-full"
+      ? "fixed z-[49] select-none w-auto h-auto flex items-center justify-center"
+      : "fixed z-[49] select-none w-full"
   ), [isPortrait])
 
   const lineClasses = useMemo(() => {
@@ -120,15 +122,15 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
       <div className={`flex ${isPortrait ? 'flex-col items-center justify-center h-full py-4' : 'flex-row items-center justify-center w-full'} px-4`}>
         {/* First dot: Kitchen -> waypoint 2 */}
         <button
-          aria-label="Go to Kitchen"
+          aria-label={t('kitchenTour')}
           className={`${dotCommon} ${isPortrait ? '' : 'mr-3'}`}
           onClick={(e) => handleClick(e, WAYPOINTS.kitchen)}
           onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
         />
         {isPortrait
-          ? <span className="mt-2 mb-2 text-xs text-foreground/80">Kitchen</span>
-          : <span className="ml-2 mr-3 text-xs text-foreground/80">Kitchen</span>}
+          ? <span className="mt-2 mb-2 text-xs text-foreground/80">{t('kitchenTour')}</span>
+          : <span className="ml-2 mr-3 text-xs text-foreground/80">{t('kitchenTour')}</span>}
 
         {/* Line between dots */}
         <div className={lineClasses}>
@@ -148,15 +150,15 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
 
         {/* Second dot: Bath -> waypoint 6 */}
         <button
-          aria-label="Go to Bath"
+          aria-label={t('bathroomWalkthrough')}
           className={`${dotCommon} ${isPortrait ? '' : 'mx-3'}`}
           onClick={(e) => handleClick(e, WAYPOINTS.bath)}
           onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
         />
         {isPortrait
-          ? <span className="mt-2 mb-2 text-xs text-foreground/80">Bath</span>
-          : <span className="ml-2 mr-3 text-xs text-foreground/80">Bath</span>}
+          ? <span className="mt-2 mb-2 text-xs text-foreground/80">{t('bathroomWalkthrough')}</span>
+          : <span className="ml-2 mr-3 text-xs text-foreground/80">{t('bathroomWalkthrough')}</span>}
 
         {/* Line between dots */}
         <div className={lineClasses}>
@@ -176,15 +178,15 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
 
         {/* Third dot: Living area -> waypoint 9 */}
         <button
-          aria-label="Go to Living Area"
+          aria-label={t('livingRoomTour')}
           className={`${dotCommon} ${isPortrait ? '' : 'ml-3'}`}
           onClick={(e) => handleClick(e, WAYPOINTS.living)}
           onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
         />
         {isPortrait
-          ? <span className="mt-2 text-xs text-foreground/80">Living</span>
-          : <span className="ml-2 text-xs text-foreground/80">Living</span>}
+          ? <span className="mt-2 text-xs text-foreground/80">{t('livingRoomTour')}</span>
+          : <span className="ml-2 text-xs text-foreground/80">{t('livingRoomTour')}</span>}
 
         {/* No trailing line after last dot; progress ends at Living */}
       </div>

@@ -1216,12 +1216,12 @@ export default function ScrollScene({
       const hotspotPosition = new THREE.Vector3();
       hotspot.getWorldPosition(hotspotPosition);
       
-      // Create the main pulse sphere - small inner dot always visible
+      // Create the main pulse sphere - inner dot fully visible on mobile
       const pulseGeometry = new THREE.SphereGeometry(0.5, 16, 16); // Small inner dot
       const pulseMaterial = new THREE.MeshBasicMaterial({
         color: PULSE_MARKER_COLOR, // Use constant for inner dot color
         transparent: true,
-        opacity: 0.9 // Semi-transparent inner dot
+        opacity: 1 // Full opacity for better mobile visibility
       });
       
       const pulseSphere = new THREE.Mesh(pulseGeometry, pulseMaterial);
