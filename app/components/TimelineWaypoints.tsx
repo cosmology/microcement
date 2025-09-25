@@ -98,7 +98,10 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
       : "relative h-[2px] flex-1 bg-light-dark/10 dark:bg-white/10 my-2 min-w-8"
   }, [isPortrait])
 
-  const dotCommon = "w-5 h-5 rounded-full bg-light-dark dark:bg-white/90 hover:bg-light-main dark:hover:bg-gray-300 transition-colors cursor-pointer shadow ring-2 ring-white/60 dark:ring-black/30"
+  const dotBase = "w-5 h-5 rounded-full transition-colors cursor-pointer shadow ring-2 ring-white/60 dark:ring-black/30"
+  const inactiveDot = "bg-gray-300 dark:bg-gray-600"
+  const activeDot = "bg-purple-600 dark:bg-purple-400"
+  const hoverDot = "hover:bg-purple-600 dark:hover:bg-purple-400"
 
   const handleClick = (e: React.MouseEvent, index: number) => {
     e.preventDefault();
@@ -112,9 +115,15 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
   const kitchenT = 1 / 8; // waypoint 2
   const bathT = 5 / 8;    // waypoint 6
   const livingT = 1;      // waypoint 9
+  const EPS = 0.02;       // tolerance so last dot turns active near the end
   const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
   const seg1Fill = clamp01((progressT - kitchenT) / Math.max(1e-6, (bathT - kitchenT)))
   const seg2Fill = progressT < bathT ? 0 : clamp01((progressT - bathT) / Math.max(1e-6, (livingT - bathT)))
+
+  // Determine active states based on progress
+  const isKitchenPassed = progressT >= kitchenT + 1e-6
+  const isBathPassed = progressT >= bathT + 1e-6
+  const isLivingPassed = progressT >= (livingT - EPS)
 
   return (
     <div className={`${containerClasses} ${className ?? ''}`} style={containerStyle} aria-label="Timeline waypoints">
@@ -122,15 +131,15 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
       <div className={`flex ${isPortrait ? 'flex-col items-center justify-center h-full py-4' : 'flex-row items-center justify-center w-full'} px-4`}>
         {/* First dot: Kitchen -> waypoint 2 */}
         <button
-          aria-label={t('kitchenTour')}
-          className={`${dotCommon} ${isPortrait ? '' : 'mr-3'}`}
+          aria-label={t('kitchen')}
+          className={`${dotBase} ${isKitchenPassed ? activeDot : inactiveDot} ${hoverDot} ${isPortrait ? '' : 'mr-3'}`}
           onClick={(e) => handleClick(e, WAYPOINTS.kitchen)}
           onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
         />
         {isPortrait
-          ? <span className="mt-2 mb-2 text-xs text-foreground/80">{t('kitchenTour')}</span>
-          : <span className="ml-2 mr-3 text-xs text-foreground/80">{t('kitchenTour')}</span>}
+          ? <span className="mt-2 mb-2 text-xs text-foreground/80">{t('kitchen')}</span>
+          : <span className="ml-2 mr-3 text-xs text-foreground/80">{t('kitchen')}</span>}
 
         {/* Line between dots */}
         <div className={lineClasses}>
@@ -150,15 +159,15 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
 
         {/* Second dot: Bath -> waypoint 6 */}
         <button
-          aria-label={t('bathroomWalkthrough')}
-          className={`${dotCommon} ${isPortrait ? '' : 'mx-3'}`}
+          aria-label={t('bathroom')}
+          className={`${dotBase} ${isBathPassed ? activeDot : inactiveDot} ${hoverDot} ${isPortrait ? '' : 'mx-3'}`}
           onClick={(e) => handleClick(e, WAYPOINTS.bath)}
           onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
         />
         {isPortrait
-          ? <span className="mt-2 mb-2 text-xs text-foreground/80">{t('bathroomWalkthrough')}</span>
-          : <span className="ml-2 mr-3 text-xs text-foreground/80">{t('bathroomWalkthrough')}</span>}
+          ? <span className="mt-2 mb-2 text-xs text-foreground/80">{t('bathroom')}</span>
+          : <span className="ml-2 mr-3 text-xs text-foreground/80">{t('bathroom')}</span>}
 
         {/* Line between dots */}
         <div className={lineClasses}>
@@ -178,15 +187,15 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
 
         {/* Third dot: Living area -> waypoint 9 */}
         <button
-          aria-label={t('livingRoomTour')}
-          className={`${dotCommon} ${isPortrait ? '' : 'ml-3'}`}
+          aria-label={t('livingRoom')}
+          className={`${dotBase} ${isLivingPassed ? activeDot : inactiveDot} ${hoverDot} ${isPortrait ? '' : 'ml-3'}`}
           onClick={(e) => handleClick(e, WAYPOINTS.living)}
           onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
         />
         {isPortrait
-          ? <span className="mt-2 text-xs text-foreground/80">{t('livingRoomTour')}</span>
-          : <span className="ml-2 text-xs text-foreground/80">{t('livingRoomTour')}</span>}
+          ? <span className="mt-2 text-xs text-foreground/80">{t('livingRoom')}</span>
+          : <span className="ml-2 text-xs text-foreground/80">{t('livingRoom')}</span>}
 
         {/* No trailing line after last dot; progress ends at Living */}
       </div>

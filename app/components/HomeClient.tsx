@@ -686,7 +686,7 @@ export default function HomeClient() {
                 className="fixed z-50 w-full backdrop-blur-sm border-b border-light-dark dark:border-gray-700"
                 style={{
                   bottom: '0px',
-                  height: window.innerWidth < 640 ? '100px' : window.innerWidth < 1024 ? '110px' : '120px',
+                  height: window.innerWidth < 640 ? '70px' : window.innerWidth < 1024 ? '80px' : '85px',
                   backgroundColor: `hsl(var(--background) / 0.8)`,
                   opacity: 0, // Start hidden
                   pointerEvents: 'none', // Start non-interactive
@@ -701,11 +701,11 @@ export default function HomeClient() {
                 data-progress-start={marker.progress.split('-')[0].replace('%', '')}
                 data-progress-end={marker.progress.split('-')[1].replace('%', '')}
               >
-                <div className="max-w-4xl mx-auto px-3 sm:px-4 py-1 sm:py-2 h-full flex flex-col justify-center">
-                  <h3 className="text-foreground text-lg sm:text-xl md:text-2xl font-bold mb-1 sm:mb-2 leading-tight">
+                <div className="max-w-4xl mx-auto px-3 sm:px-3 py-1 sm:py-1 h-full flex flex-col justify-center">
+                  <h3 className="text-foreground text-sm sm:text-base md:text-lg font-bold mb-0.5 sm:mb-1 leading-tight">
                     {tMarker(`${marker.name}.name`)}
                   </h3>
-                  <p className="text-muted-foreground text-sm sm:text-base md:text-lg leading-relaxed">
+                  <p className="text-muted-foreground text-xs sm:text-sm md:text-base leading-relaxed">
                     {tMarker(`${marker.name}.content`)}
                   </p>
                 </div>

@@ -5,6 +5,11 @@ import { getFollowPaths } from '@/lib/config/localFollowPaths'
 export class SceneConfigService {
   private static instance: SceneConfigService
   private currentUser: any = null
+  // Simple in-memory caches per user to avoid repeated network calls
+  private userConfigsCache: Map<string, UserSceneConfig[]> = new Map()
+  private defaultConfigCache: Map<string, UserSceneConfig | null> = new Map()
+  private pendingUserConfigs: Map<string, Promise<UserSceneConfig[]>> = new Map()
+  private pendingDefaultConfig: Map<string, Promise<UserSceneConfig | null>> = new Map()
 
   static getInstance(): SceneConfigService {
     if (!SceneConfigService.instance) {
@@ -15,6 +20,15 @@ export class SceneConfigService {
 
   setUser(user: any) {
     this.currentUser = user
+    // Optional: clear caches when switching user to avoid leakage
+    // Keep only the active user's entries to minimize memory
+    if (user?.id) {
+      const keepId = user.id as string
+      ;[...this.userConfigsCache.keys()].forEach(k => { if (k !== keepId) this.userConfigsCache.delete(k) })
+      ;[...this.defaultConfigCache.keys()].forEach(k => { if (k !== keepId) this.defaultConfigCache.delete(k) })
+      this.pendingUserConfigs.clear()
+      this.pendingDefaultConfig.clear()
+    }
   }
 
   async getUserConfigs(): Promise<UserSceneConfig[]> {
@@ -28,17 +42,35 @@ export class SceneConfigService {
       return [];
     }
 
-    const { data, error } = await supabase
-      .from('scene_design_configs')
-      .select('*')
-      .eq('user_id', this.currentUser.id)
-      .order('created_at', { ascending: false })
+    const userId: string = this.currentUser.id
 
-    if (error) {
-      throw new Error(error.message)
-    }
+    // Serve from cache if available
+    const cached = this.userConfigsCache.get(userId)
+    if (cached) return cached
 
-    return data || []
+    // Deduplicate concurrent requests
+    const pending = this.pendingUserConfigs.get(userId)
+    if (pending) return pending
+
+    const promise = (async () => {
+      const { data, error } = await supabase
+        .from('scene_design_configs')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      const result = data || []
+      this.userConfigsCache.set(userId, result)
+      this.pendingUserConfigs.delete(userId)
+      return result
+    })()
+
+    this.pendingUserConfigs.set(userId, promise)
+    return promise
   }
 
   async getConfigById(id: string): Promise<UserSceneConfig | null> {
@@ -74,21 +106,41 @@ export class SceneConfigService {
       return null;
     }
 
-    const { data, error } = await supabase
-      .from('scene_design_configs')
-      .select('*')
-      .eq('user_id', this.currentUser.id)
-      .eq('is_default', true)
-      .single()
+    const userId: string = this.currentUser.id
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return null // No default config found
-      }
-      throw new Error(error.message)
+    // Serve from cache if available
+    if (this.defaultConfigCache.has(userId)) {
+      return this.defaultConfigCache.get(userId) ?? null
     }
 
-    return data
+    // Deduplicate concurrent requests
+    const pending = this.pendingDefaultConfig.get(userId)
+    if (pending) return pending
+
+    const promise = (async () => {
+      const { data, error } = await supabase
+        .from('scene_design_configs')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_default', true)
+        .single()
+
+      if (error) {
+        if ((error as any).code === 'PGRST116') {
+          this.defaultConfigCache.set(userId, null)
+          this.pendingDefaultConfig.delete(userId)
+          return null // No default config found
+        }
+        throw new Error(error.message)
+      }
+
+      this.defaultConfigCache.set(userId, data)
+      this.pendingDefaultConfig.delete(userId)
+      return data
+    })()
+
+    this.pendingDefaultConfig.set(userId, promise)
+    return promise
   }
 
   // Fetch all follow paths for a given scene design config

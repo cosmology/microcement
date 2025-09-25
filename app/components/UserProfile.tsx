@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { UserRound, LogOut, Settings, Camera, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -32,8 +32,43 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
   const [selectedFollowPath, setSelectedFollowPath] = useState<string>("current")
   const [loadingPaths, setLoadingPaths] = useState(false)
   const [showFollowPathDropdown, setShowFollowPathDropdown] = useState(false)
+  // Align dropdown panel with header bottom
+  const [headerBottom, setHeaderBottom] = useState<number>(64)
+  const rafRef = useRef<number | null>(null)
   
   const t = useTranslations('Navigation')
+
+  // Compute header bottom offset so dropdown aligns with header bottom border
+  useEffect(() => {
+    const computeOffset = () => {
+      try {
+        const nav = document.querySelector('nav') as HTMLElement | null
+        if (!nav) { setHeaderBottom(64); return }
+        const rect = nav.getBoundingClientRect()
+        const offset = rect.bottom > 0 ? Math.round(rect.bottom) : 64
+        setHeaderBottom(offset)
+      } catch {
+        setHeaderBottom(64)
+      }
+    }
+    computeOffset()
+    const onScroll = () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      rafRef.current = requestAnimationFrame(computeOffset)
+    }
+    const onResize = () => computeOffset()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onResize)
+    const nav = document.querySelector('nav')
+    const obs = new MutationObserver(() => computeOffset())
+    if (nav) obs.observe(nav, { attributes: true, attributeFilter: ['style', 'class'] })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onResize)
+      obs.disconnect()
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
+  }, [])
 
   // Load follow paths when user changes
   useEffect(() => {
@@ -88,10 +123,10 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
   // Follow path options for display
   const followPathOptions = followPaths.map(path => ({
     id: path.path_name,
-    name: t(path.path_name === 'current' ? 'currentPath' : 
-           path.path_name === 'bathroom_walkthrough' ? 'bathroomWalkthrough' :
-           path.path_name === 'kitchen_tour' ? 'kitchenTour' :
-           path.path_name === 'living_room_tour' ? 'livingRoomTour' : path.path_name)
+    name: t(path.path_name === 'current' ? 'showcaseArea' : 
+           path.path_name === 'bathroom_walkthrough' ? 'bathroom' :
+           path.path_name === 'kitchen_tour' ? 'kitchen' :
+           path.path_name === 'living_room_tour' ? 'livingRoom' : path.path_name)
   }));
 
   // Dispatch follow path selection
@@ -272,8 +307,9 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
               <UserRound className="h-5 w-5 text-current" />
             </Button>
             
-            {/* Dropdown Menu */}
-            <div className="absolute right-0 top-full w-64 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-lg shadow-lg border border-gray-200/50 dark:border-gray-700/50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[1105]">
+            {/* Dropdown Menu aligned to header bottom */}
+            <div className="fixed right-0 w-64 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[1105]"
+                 style={{ top: headerBottom }}>
               <div className="p-4">
                 <div className="flex items-center space-x-3 mb-4">
                   <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
@@ -321,19 +357,19 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 first:rounded-t-md"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowFollowPathDropdown(false); dispatchGoToWaypoint(WAYPOINTS.kitchen); }}
                           >
-                            {t('kitchenTour')}
+                            {t('kitchen')}
                           </button>
                           <button
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowFollowPathDropdown(false); dispatchGoToWaypoint(WAYPOINTS.bath); }}
                           >
-                            {t('bathroomWalkthrough')}
+                            {t('bathroom')}
                           </button>
                           <button
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 last:rounded-b-md"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowFollowPathDropdown(false); dispatchGoToWaypoint(WAYPOINTS.living); }}
                           >
-                            {t('livingRoomTour')}
+                            {t('livingRoom')}
                           </button>
                         </div>
                       )}

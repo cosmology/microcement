@@ -14,13 +14,14 @@
     "featured": "Featured",
     "textures": "Textures",
     "upload": "Upload",
-    "currentPath": "Current Path",
-    "bathroomWalkthrough": "Bathroom Walkthrough",
-    "kitchenTour": "Kitchen Tour",
-    "livingRoomTour": "Living Room Tour"
+    "showcaseArea": "Showcase Area",
+    "bathroom": "Bathroom",
+    "kitchen": "Kitchen",
+    "livingRoom": "Living Room"
   },
   "Hero": {
-    "line1": "Transform Spaces",
+    "header1": "Transform",
+    "header2": "Spaces",
     "line2": "Sustainably",
     "line3": "Stylishly",
     "line4": "Fast",

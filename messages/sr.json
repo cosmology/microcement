@@ -14,13 +14,14 @@
     "featured": "Istaknuti",
     "textures": "Teksture",
     "upload": "Otpremi",
-    "currentPath": "Trenutna Ruta",
-    "bathroomWalkthrough": "Obilazak Kupatila",
-    "kitchenTour": "Obilazak Kujne",
-    "livingRoomTour": "Obilazak Dnevne Sobe"
+    "showcaseArea": "Zona Prikaza",
+    "bathroom": "Kupatilo",
+    "kitchen": "Kuhinja",
+    "livingRoom": "Dnevna Soba"
   },
   "Hero": {
-    "line1": "Transformišite Prostore",
+    "header1": "Transformišite",
+    "header2": "Prostore",
     "line2": "Održivo",
     "line3": "Elegantno",
     "line4": "Brzo",

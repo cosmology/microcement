@@ -14,13 +14,14 @@
     "featured": "Destacados",
     "textures": "Texturas",
     "upload": "Subir",
-    "currentPath": "Ruta Actual",
-    "bathroomWalkthrough": "Recorrido por Baño",
-    "kitchenTour": "Recorrido por la Cocina",
-    "livingRoomTour": "Recorrido por la Sala"
+    "showcaseArea": "Área de Exhibición",
+    "bathroom": "Baño",
+    "kitchen": "Cocina",
+    "livingRoom": "Sala"
   },
   "Hero": {
-    "line1": "Transforma Espacios",
+    "header1": "Transforma",
+    "header2": "Espacios",
     "line2": "Sosteniblemente",
     "line3": "Elegantemente",
     "line4": "Rápidamente",

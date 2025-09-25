@@ -11,17 +11,9 @@ export default function HeroSection() {
   const sectionRef = useRef<HTMLDivElement>(null)
   const t = useTranslations('Hero');
   
-  // The lines
-  const mainLine = t('line1') // e.g. "Transform Spaces."
-  // Split main line into two emphasized parts (Line 1/Line 2)
-  const [leftPart, rightPart] = (() => {
-    const cleaned = (mainLine || '').replace(/[.!?]$/,'').trim()
-    const parts = cleaned.split(/\s+/)
-    if (parts.length <= 1) return [cleaned.toUpperCase(), '']
-    const first = parts[0]
-    const rest = parts.slice(1).join(' ')
-    return [first.toUpperCase(), rest.toUpperCase()]
-  })()
+  // Headline: use explicit headers instead of splitting
+  const header1 = t('header1') // e.g., "Transform"
+  const header2 = t('header2') // e.g., "Spaces"
   const animatedLines = [t('line2'), t('line3'), t('line4')]
 
   // Animation state
@@ -118,9 +110,9 @@ export default function HeroSection() {
               animate={mainIn ? { opacity: 1, x: 0 } : {}}
               transition={{ duration: 0.8, ease: 'easeOut' }}
             >
-              {leftPart}
+              {header1}
             </motion.div>
-            {rightPart && (
+            {header2 && (
               <motion.div
                 className="font-bold text-gray-900 dark:text-white"
                 style={{ fontSize: 'clamp(2.4rem, 8vw, 4.5rem)', lineHeight: 1.03 }}
@@ -128,7 +120,7 @@ export default function HeroSection() {
                 animate={mainIn ? { opacity: 1, x: 0 } : {}}
                 transition={{ duration: 0.8, ease: 'easeOut', delay: 0.05 }}
               >
-                {rightPart}
+                {header2}
               </motion.div>
             )}
           </div>
@@ -141,9 +133,9 @@ export default function HeroSection() {
               animate={mainIn ? { opacity: 1, x: 0 } : {}}
               transition={{ duration: 0.8, ease: 'easeOut' }}
             >
-              {leftPart}
+              {header1}
             </motion.div>
-            {rightPart && (
+            {header2 && (
               <motion.div
                 className="font-bold text-gray-900 dark:text-white pl-2"
                 style={{ fontSize: 'clamp(2.6rem, 7.5vw, 3.5rem)', lineHeight: 1.02 }}
@@ -151,7 +143,7 @@ export default function HeroSection() {
                 animate={mainIn ? { opacity: 1, x: 0 } : {}}
                 transition={{ duration: 0.8, ease: 'easeOut', delay: 0.05 }}
               >
-                {rightPart}
+                {header2}
               </motion.div>
             )}
           </div>
