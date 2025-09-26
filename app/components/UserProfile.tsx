@@ -126,7 +126,9 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
     name: t(path.path_name === 'current' ? 'showcaseArea' : 
            path.path_name === 'bathroom_walkthrough' ? 'bathroom' :
            path.path_name === 'kitchen_tour' ? 'kitchen' :
-           path.path_name === 'living_room_tour' ? 'livingRoom' : path.path_name)
+           path.path_name === 'living_room_tour' ? 'livingRoom' :
+           path.path_name === 'bedroom_area' ? 'bedroomArea' :
+           path.path_name === 'office_space' ? 'officeSpace' : path.path_name)
   }));
 
   // Dispatch follow path selection

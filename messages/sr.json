@@ -17,7 +17,9 @@
     "showcaseArea": "Zona Prikaza",
     "bathroom": "Kupatilo",
     "kitchen": "Kuhinja",
-    "livingRoom": "Dnevna Soba"
+    "livingRoom": "Dnevna Soba",
+    "bedroomArea": "Zona Spavaće Sobe",
+    "officeSpace": "Prostor za Kancelariju"
   },
   "Hero": {
     "header1": "Transformišite",

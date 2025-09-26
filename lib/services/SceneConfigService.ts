@@ -36,11 +36,7 @@ export class SceneConfigService {
       throw new Error('User not authenticated')
     }
 
-    // Special case: ivanprokic@yahoo.com should NEVER have scene configs
-    if (this.currentUser.email === 'ivanprokic@yahoo.com') {
-      console.log('🚫 User ivanprokic@yahoo.com is blocked from accessing scene configs');
-      return [];
-    }
+    // All authenticated users can access their scene configs
 
     const userId: string = this.currentUser.id
 
@@ -100,11 +96,7 @@ export class SceneConfigService {
       throw new Error('User not authenticated')
     }
 
-    // Special case: ivanprokic@yahoo.com should NEVER have scene configs
-    if (this.currentUser.email === 'ivanprokic@yahoo.com') {
-      console.log('🚫 User ivanprokic@yahoo.com is blocked from accessing default config');
-      return null;
-    }
+    // All authenticated users can access their default config
 
     const userId: string = this.currentUser.id
 
@@ -252,10 +244,7 @@ export class SceneConfigService {
       throw new Error('User not authenticated')
     }
 
-    // Special case: ivanprokic@yahoo.com should NEVER have scene configs
-    if (this.currentUser.email === 'ivanprokic@yahoo.com') {
-      throw new Error('Scene configurations are not allowed for this user')
-    }
+    // All authenticated users can create scene configs
 
     const { data, error } = await supabase
       .from('scene_design_configs')
@@ -358,10 +347,7 @@ export class SceneConfigService {
       throw new Error('User not authenticated')
     }
 
-    // Special case: ivanprokic@yahoo.com should NEVER have scene configs
-    if (this.currentUser.email === 'ivanprokic@yahoo.com') {
-      throw new Error('Scene configurations are not allowed for this user')
-    }
+    // All authenticated users can create default configs
 
     // Check if default config already exists
     const existingDefault = await this.getDefaultConfig()

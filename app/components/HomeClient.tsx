@@ -82,16 +82,6 @@ export default function HomeClient() {
     }
     const checkUserConfigs = async () => {
       if (user?.id) {
-        // Special case: ivanprokic@yahoo.com should NEVER have scene configs
-        if (user.email === 'ivanprokic@yahoo.com') {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('🚫 User ivanprokic@yahoo.com is explicitly blocked from having scene configs');
-          }
-          setHasUserConfig(false);
-          setConfigCheckComplete(true);
-          return;
-        }
-        
         try {
           const sceneConfigService = SceneConfigService.getInstance();
           sceneConfigService.setUser({ id: user.id });
@@ -99,6 +89,8 @@ export default function HomeClient() {
           setHasUserConfig(userConfigs.length > 0);
           if (process.env.NODE_ENV === 'development') {
             console.log('🔍 User configs check:', userConfigs.length > 0 ? 'Has configs' : 'No configs');
+            console.log('🔍 User email:', user.email);
+            console.log('🔍 Configs found:', userConfigs.length);
           }
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {

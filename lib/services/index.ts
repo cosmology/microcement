@@ -14,4 +14,4 @@ export type {
 } from './UserLoader';
 
 // Configuration
-export { SCENE_CONFIG, getCameraPathData, getHotspotSettings } from '../config/sceneConfig';
+export { SCENE_CONFIG, getCameraPathData, getHotspotSettings, getUserSceneConfig } from '../config/sceneConfig';

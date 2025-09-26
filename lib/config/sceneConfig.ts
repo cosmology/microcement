@@ -193,8 +193,18 @@ export async function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT
           if (activePath && Array.isArray(activePath.camera_points) && activePath.camera_points.length > 0) {
             console.log('🎯 Using active follow path camera data:', activePath.camera_points.length)
             return {
-              cameraPoints: activePath.camera_points.map((p: any) => new THREE.Vector3(p.x, p.y, p.z)),
-              lookAtTargets: (activePath.look_at_targets || []).map((t: any) => new THREE.Vector3(t.x, t.y, t.z))
+              cameraPoints: activePath.camera_points.map((p: any) => {
+                const x = typeof p.x === 'number' ? p.x : 0;
+                const y = typeof p.y === 'number' ? p.y : 0;
+                const z = typeof p.z === 'number' ? p.z : 0;
+                return new THREE.Vector3(x, y, z);
+              }),
+              lookAtTargets: (activePath.look_at_targets || []).map((t: any) => {
+                const x = typeof t.x === 'number' ? t.x : 0;
+                const y = typeof t.y === 'number' ? t.y : 0;
+                const z = typeof t.z === 'number' ? t.z : 0;
+                return new THREE.Vector3(x, y, z);
+              })
             }
           }
         } catch (e) {
@@ -206,8 +216,18 @@ export async function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT
         console.log('  - Look at targets:', userConfig.look_at_targets?.length || 0);
         
         return {
-          cameraPoints: (userConfig.camera_points || []).map((point: any) => new THREE.Vector3(point.x, point.y, point.z)),
-          lookAtTargets: (userConfig.look_at_targets || []).map((target: any) => new THREE.Vector3(target.x, target.y, target.z))
+          cameraPoints: (userConfig.camera_points || []).map((point: any) => {
+            const x = typeof point.x === 'number' ? point.x : 0;
+            const y = typeof point.y === 'number' ? point.y : 0;
+            const z = typeof point.z === 'number' ? point.z : 0;
+            return new THREE.Vector3(x, y, z);
+          }),
+          lookAtTargets: (userConfig.look_at_targets || []).map((target: any) => {
+            const x = typeof target.x === 'number' ? target.x : 0;
+            const y = typeof target.y === 'number' ? target.y : 0;
+            const z = typeof target.z === 'number' ? target.z : 0;
+            return new THREE.Vector3(x, y, z);
+          })
         };
       }
     } catch (error) {

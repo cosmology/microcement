@@ -17,7 +17,9 @@
     "showcaseArea": "Área de Exhibición",
     "bathroom": "Baño",
     "kitchen": "Cocina",
-    "livingRoom": "Sala"
+    "livingRoom": "Sala",
+    "bedroomArea": "Área del Dormitorio",
+    "officeSpace": "Espacio de Oficina"
   },
   "Hero": {
     "header1": "Transforma",

@@ -6,7 +6,7 @@ import { gsap } from "gsap";
 import { Settings } from "lucide-react";
 import SwiperGallery, { GalleryImage } from './SwiperGallery';
 import { isMobile, getThemeColors, cssColorToHex } from '../../lib/utils';
-import { ModelLoader, SCENE_CONFIG, getCameraPathData, getHotspotSettings } from '@/lib/services';
+import { ModelLoader, SCENE_CONFIG, getCameraPathData, getHotspotSettings, getUserSceneConfig } from '@/lib/services';
 import { SceneConfigService } from '@/lib/services/SceneConfigService';
 
 
@@ -29,6 +29,7 @@ export default function ScrollScene({
 }: ScrollSceneProps) {
   const [hasUserConfig, setHasUserConfig] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(false);
+  const [userSceneConfig, setUserSceneConfig] = useState<any>(null);
   const [hotspotSettings, setHotspotSettings] = useState<any>({
     focalDistances: {},
     categories: {},
@@ -70,20 +71,17 @@ export default function ScrollScene({
         console.log('🔍 ScrollScene: User ID:', userId);
         console.log('🔍 ScrollScene: User email:', user?.email);
         
-        const [hotspot, camera] = await Promise.all([
+        const [hotspot, camera, sceneConfig] = await Promise.all([
           getHotspotSettings(undefined, userId),
-          getCameraPathData(undefined, userId)
+          getCameraPathData(undefined, userId),
+          getUserSceneConfig(userId)
         ]);
 
-        console.log('✅ Scene settings loaded successfully:');
-        console.log('📍 Camera Points:', camera.cameraPoints?.length || 0, 'points');
-        console.log('🎯 Look At Targets:', camera.lookAtTargets?.length || 0, 'targets');
-        console.log('🎨 Hotspot Colors:', hotspot.colors);
-        console.log('📏 Hotspot Focal Distances:', Object.keys(hotspot.focalDistances || {}).length, 'distances');
-        console.log('🏷️ Hotspot Categories:', Object.keys(hotspot.categories || {}).length, 'categories');
+        // Scene settings loaded successfully
 
         setHotspotSettings(hotspot);
         setCameraPathData(camera);
+        setUserSceneConfig(sceneConfig);
         
         // Check if user has a custom configuration
         if (userId) {
@@ -113,6 +111,168 @@ export default function ScrollScene({
 
     loadSettings();
   }, [user]);
+
+  // Load model when scene configuration is available
+  useEffect(() => {
+    if (userSceneConfig && sceneRef.current && !loadingConfig) {
+      console.log('🔄 Scene config loaded, reloading model...');
+      // Clear existing model
+      if (sceneRef.current) {
+        const existingModel = sceneRef.current.getObjectByName('floorPlan');
+        if (existingModel) {
+          sceneRef.current.remove(existingModel);
+        }
+      }
+      
+      // Reset path initialization state when loading new model
+      gsapPathInitializedRef.current = false;
+      pathProgressRef.current.t = 0;
+      
+      // Load new model with user's configuration
+      loadModelWithService();
+    }
+  }, [userSceneConfig, loadingConfig]);
+
+  // Load model function - moved outside createScene to be callable from useEffect
+  const loadModelWithService = async () => {
+    if (!sceneRef.current) {
+      console.warn('Scene not ready for model loading');
+      return;
+    }
+
+    try {
+      // Show loader immediately
+      createLoaderOverlay();
+      updateLoaderOverlay(0, 0, null);
+
+      const modelLoader = ModelLoader.getInstance();
+      const currentConfig = userSceneConfig || SCENE_CONFIG;
+      const modelPath = currentConfig.DEFAULT_MODEL_PATH;
+      
+        // Loading model with user-specific or default configuration
+      
+      const result = await modelLoader.loadModel({
+        modelPath,
+        targetSize: currentConfig.TARGET_SIZE,
+        rotationY: currentConfig.ROTATION_Y,
+        scaleMultiplier: currentConfig.SCALE_MULTIPLIER,
+        enableContourEdges: true,
+        enableShadows: true,
+        onProgress: (progress, loaded, total) => {
+          updateLoaderOverlay(progress, loaded, total);
+        },
+        onComplete: () => {
+          hideLoaderOverlay();
+        },
+        onError: (error) => {
+          console.error('ModelLoader error:', error);
+          hideLoaderOverlay();
+          createFloorPlanPlaceholder();
+        }
+      });
+
+      const { model, clickableObjects, boundingSphere } = result;
+      
+      // Store hotspots for interaction
+      clickableObjectsRef.current = clickableObjects;
+      
+      // Log total hotspots found
+      console.log('Total transformed hotspots collected:', clickableObjects.length);
+      console.log('All transformed hotspots:', clickableObjects);
+      console.log('Hotspot names:', clickableObjects.map(obj => obj.name));
+      
+      // Create pulse markers for hotspots after they're loaded
+      if (clickableObjects.length > 0) {
+        setTimeout(() => {
+          createHotspotPulseMarkers();
+        }, 100); // Small delay to ensure scene is ready
+      }
+
+      // Apply shadows to the transformed model
+      model.traverse((child: any) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      sceneRef.current.add(model);
+
+      // Fit camera so the model is visible
+      if (cameraRef.current) {
+        const camera = cameraRef.current;
+        const fitOffset = 1.6;
+        const radius = Math.max(1e-3, boundingSphere.radius);
+        const distance = fitOffset * radius / Math.tan((camera.fov * Math.PI / 180) / 2);
+        const direction = new THREE.Vector3(1, 0.6, 1).normalize();
+        const target = boundingSphere.center.clone();
+        camera.position.copy(target.clone().add(direction.multiplyScalar(distance)));
+        camera.near = Math.max(0.01, radius / 100);
+        camera.far = Math.max(camera.near + 10, radius * 100);
+        camera.updateProjectionMatrix();
+        camera.lookAt(target);
+      }
+
+      if (rendererRef.current && sceneRef.current && cameraRef.current) {
+        // Avoid rendering a pre-intro still frame
+        if (!WITH_INTRO || introCompletedRef.current) {
+          rendererRef.current.render(sceneRef.current, cameraRef.current);
+        }
+      }
+
+      // Start intro now that model is loaded (second intro only)
+      if (WITH_INTRO && cameraRef.current && rendererRef.current && sceneRef.current) {
+        // Set exact intro start frame (top view over cube)
+        cameraRef.current.up.set(0, 1, 0);
+        cameraRef.current.position.copy(INTRO_START_POS);
+        cameraRef.current.lookAt(cubePos.current);
+        cameraRef.current.updateProjectionMatrix();
+        cameraRef.current.updateMatrixWorld();
+        
+        // CRITICAL: Update camera state with the actual starting position
+        cameraStateRef.current.mainPathPosition.copy(INTRO_START_POS);
+        cameraStateRef.current.journeyStartPosition.copy(INTRO_START_POS);
+        cameraStateRef.current.isOnMainPath = true;
+        
+        console.log('🎯 UPDATED camera state with INTRO_START_POS:', {
+          mainPathPosition: cameraStateRef.current.mainPathPosition,
+          journeyStartPosition: cameraStateRef.current.journeyStartPosition,
+          isOnMainPath: cameraStateRef.current.isOnMainPath
+        });
+        
+        startIntroAnimation(cameraRef.current, rendererRef.current, sceneRef.current);
+      }
+
+    } catch (error) {
+      console.error('Error loading model:', error);
+      hideLoaderOverlay();
+      createFloorPlanPlaceholder();
+    }
+  };
+
+  // Create fallback placeholder function - moved outside createScene
+  const createFloorPlanPlaceholder = () => {
+    if (!sceneRef.current) {
+      console.warn('Scene not ready for placeholder creation');
+      return;
+    }
+
+    console.log('Creating fallback placeholder');
+    const placeholderGeometry = new THREE.BoxGeometry(10, 2, 10);
+    const placeholderMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xFF0000, // Red color to make it very visible
+      transparent: true,
+      opacity: 0.5
+    });
+    const placeholder = new THREE.Mesh(placeholderGeometry, placeholderMaterial);
+    placeholder.name = 'floorPlan';
+    placeholder.position.set(0, 1, 0);
+    placeholder.castShadow = true;
+    placeholder.receiveShadow = true;
+    sceneRef.current.add(placeholder);
+    console.log('Floor plan placeholder created at position:', placeholder.position);
+    console.log('Placeholder added to scene');
+  };
 
   // Handle follow path selection and reload camera data
   useEffect(() => {
@@ -444,23 +604,51 @@ export default function ScrollScene({
   // Create curves when we have valid data
   useEffect(() => {
     if (gsapCameraPoints && gsapCameraPoints.length > 0) {
-      gsapCurveRef.current = new THREE.CatmullRomCurve3(gsapCameraPoints, false, 'catmullrom', 0.1);
+      try {
+        gsapCurveRef.current = new THREE.CatmullRomCurve3(gsapCameraPoints, false, 'catmullrom', 0.1);
+      } catch (error) {
+        console.error('❌ Failed to create GSAP curve:', error);
+        gsapCurveRef.current = null;
+      }
+    } else {
+      gsapCurveRef.current = null;
     }
+    
     if (gsapLookAtTargets && gsapLookAtTargets.length > 0) {
-      gsapLookAtTargetsRef.current = gsapLookAtTargets;
-      gsapLookCurveRef.current = new THREE.CatmullRomCurve3(gsapLookAtTargets, false, 'catmullrom', 0.1);
+      try {
+        gsapLookAtTargetsRef.current = gsapLookAtTargets;
+        gsapLookCurveRef.current = new THREE.CatmullRomCurve3(gsapLookAtTargets, false, 'catmullrom', 0.1);
+      } catch (error) {
+        console.error('❌ Failed to create look-at curve:', error);
+        gsapLookCurveRef.current = null;
+      }
+    } else {
+      gsapLookCurveRef.current = null;
     }
   }, [gsapCameraPoints, gsapLookAtTargets]);
 
   const updateCameraAlongCurve = (camera: THREE.PerspectiveCamera, t: number) => {
-    if (!gsapCurveRef.current) return; // Safety check
+    if (!gsapCurveRef.current) {
+      return; // Safety check
+    }
+    
+    // Check if curve has enough points
+    if (!gsapCurveRef.current.points || gsapCurveRef.current.points.length < 2) {
+      return; // Safety check
+    }
     
     const clampedT = Math.max(0, Math.min(1, t));
     // Broadcast path progress for external UI (e.g., TimelineWaypoints)
     try {
       window.dispatchEvent(new CustomEvent('camera-path-progress', { detail: { t: clampedT } }));
     } catch {}
-    const point = gsapCurveRef.current.getPointAt(clampedT);
+    
+    try {
+      const point = gsapCurveRef.current.getPointAt(clampedT);
+      
+      if (!point || typeof point.x !== 'number') {
+        return;
+      }
     camera.position.copy(point);
 
     // Smooth look-at using either a look-targets curve or the path tangent as fallback
@@ -487,6 +675,9 @@ export default function ScrollScene({
         progress: prev?.progress || 0,
         progressPercent: prev?.progressPercent || 0
       }));
+    }
+    } catch (error) {
+      // Silent error handling - curve operations failed
     }
   };
 
@@ -2863,117 +3054,7 @@ export default function ScrollScene({
       console.log('Placeholder added to scene');
     };
     
-    // Load the floor plan model using ModelLoader service
-    const loadModelWithService = async () => {
-      try {
-        // Show loader immediately
-        createLoaderOverlay();
-        updateLoaderOverlay(0, 0, null);
-
-        const modelLoader = ModelLoader.getInstance();
-        const modelPath = SCENE_CONFIG.DEFAULT_MODEL_PATH;
-        
-        const result = await modelLoader.loadModel({
-          modelPath,
-          targetSize: SCENE_CONFIG.TARGET_SIZE,
-          rotationY: SCENE_CONFIG.ROTATION_Y,
-          scaleMultiplier: SCENE_CONFIG.SCALE_MULTIPLIER,
-          enableContourEdges: true,
-          enableShadows: true,
-          onProgress: (progress, loaded, total) => {
-            updateLoaderOverlay(progress, loaded, total);
-          },
-          onComplete: () => {
-            hideLoaderOverlay();
-          },
-          onError: (error) => {
-            console.error('ModelLoader error:', error);
-            hideLoaderOverlay();
-            createFloorPlanPlaceholder();
-          }
-        });
-
-        const { model, clickableObjects, boundingSphere } = result;
-        
-        // Store hotspots for interaction
-        clickableObjectsRef.current = clickableObjects;
-        
-        // Log total hotspots found
-        console.log('Total transformed hotspots collected:', clickableObjects.length);
-        console.log('All transformed hotspots:', clickableObjects);
-        console.log('Hotspot names:', clickableObjects.map(obj => obj.name));
-        
-        // Create pulse markers for hotspots after they're loaded
-        if (clickableObjects.length > 0) {
-          setTimeout(() => {
-            createHotspotPulseMarkers();
-          }, 100); // Small delay to ensure scene is ready
-        }
-
-        // Apply shadows to the transformed model
-        model.traverse((child: any) => {
-          if (child instanceof THREE.Mesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-          }
-        });
-
-        scene.add(model);
-
-        // Fit camera so the model is visible
-        if (cameraRef.current) {
-          const camera = cameraRef.current;
-          const fitOffset = 1.6;
-          const radius = Math.max(1e-3, boundingSphere.radius);
-          const distance = fitOffset * radius / Math.tan((camera.fov * Math.PI / 180) / 2);
-          const direction = new THREE.Vector3(1, 0.6, 1).normalize();
-          const target = boundingSphere.center.clone();
-          camera.position.copy(target.clone().add(direction.multiplyScalar(distance)));
-          camera.near = Math.max(0.01, radius / 100);
-          camera.far = Math.max(camera.near + 10, radius * 100);
-          camera.updateProjectionMatrix();
-          camera.lookAt(target);
-        }
-
-        if (rendererRef.current && sceneRef.current && cameraRef.current) {
-          // Avoid rendering a pre-intro still frame
-          if (!WITH_INTRO || introCompletedRef.current) {
-            rendererRef.current.render(sceneRef.current, cameraRef.current);
-          }
-        }
-
-        // Start intro now that model is loaded (second intro only)
-        if (WITH_INTRO && cameraRef.current && rendererRef.current && sceneRef.current) {
-          // Set exact intro start frame (top view over cube)
-          cameraRef.current.up.set(0, 1, 0);
-          cameraRef.current.position.copy(INTRO_START_POS);
-          cameraRef.current.lookAt(cubePos.current);
-          cameraRef.current.updateProjectionMatrix();
-          cameraRef.current.updateMatrixWorld();
-          
-          // CRITICAL: Update camera state with the actual starting position
-          cameraStateRef.current.mainPathPosition.copy(INTRO_START_POS);
-          cameraStateRef.current.journeyStartPosition.copy(INTRO_START_POS);
-          cameraStateRef.current.isOnMainPath = true;
-          
-          console.log('🎯 UPDATED camera state with INTRO_START_POS:', {
-            mainPathPosition: cameraStateRef.current.mainPathPosition,
-            journeyStartPosition: cameraStateRef.current.journeyStartPosition,
-            isOnMainPath: cameraStateRef.current.isOnMainPath
-          });
-          
-          startIntroAnimation(cameraRef.current, rendererRef.current, sceneRef.current);
-        }
-
-      } catch (error) {
-        console.error('Error loading model:', error);
-        hideLoaderOverlay();
-        createFloorPlanPlaceholder();
-      }
-    };
-
-    // Load the floor plan model
-    loadModelWithService();
+    // Model loading is now handled by useEffect when scene config is available
     
     // Cube
     if (SHOW_CUBE) {
@@ -3212,7 +3293,13 @@ export default function ScrollScene({
         if (!WITH_ORBITAL && cameraRef.current && rendererRef.current && sceneRef.current) {
           const startP = cameraRef.current.position.clone();
           const pts = [startP, ...gsapCameraPoints];
-          gsapCurveRef.current = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.1);
+          
+          // Only create curve if we have valid camera points
+          if (gsapCameraPoints && gsapCameraPoints.length > 0) {
+            gsapCurveRef.current = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.1);
+          } else {
+            return; // Skip intro if no valid path
+          }
           // Build a smooth look-at curve, seeding the first point with intro look target (cube center)
           const lookPts = [cubePos.current.clone(), ...gsapLookAtTargets];
           gsapLookAtTargetsRef.current = lookPts;
@@ -3588,7 +3675,13 @@ export default function ScrollScene({
     if (introCompletedRef.current && !gsapPathInitializedRef.current && cameraRef.current && !isFocusedOnHotspot) {
       const startP = cameraRef.current.position.clone();
       const pts = [startP, ...gsapCameraPoints];
-      gsapCurveRef.current = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.1);
+      
+      // Only create curve if we have valid camera points
+      if (gsapCameraPoints && gsapCameraPoints.length > 0) {
+        gsapCurveRef.current = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.1);
+      } else {
+        return; // Skip path initialization if no valid path
+      }
       const lookPts = [cubePos.current.clone(), ...gsapLookAtTargets];
       gsapLookAtTargetsRef.current = lookPts;
       gsapLookCurveRef.current = new THREE.CatmullRomCurve3(lookPts, false, 'catmullrom', 0.1);
