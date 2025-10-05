@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { supabase } from '@/lib/supabase'
-import { Box } from 'lucide-react'
+import { Boxes } from 'lucide-react'
+
 
 interface ArchitectClient {
   id: string
@@ -170,7 +171,7 @@ export default function ModelsList({ userId, onModelSelected }: ModelsListProps)
     return (
       <div className="p-4">
         <div className="flex flex-col items-center justify-center py-12">
-          <Box size={200} className="text-gray-300 dark:text-gray-600 mb-4" />
+          <Boxes size={200} className="text-gray-300 dark:text-gray-600 mb-4" />
           <div className="text-sm text-gray-600 dark:text-gray-400 text-center">
             {t('noModelsAvailable')}
           </div>

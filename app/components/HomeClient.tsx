@@ -622,37 +622,37 @@ export default function HomeClient() {
           visibility: preloadDone ? 'visible' : 'hidden'
         }}
       >
-        <div ref={hero} className="min-h-screen">
+        <div id="hero" ref={hero} className="min-h-screen">
           <HeroSection />
         </div>
-        <div ref={env} className="min-h-screen">
+        <div id="environmental" ref={env} className="min-h-screen">
           <EnvironmentalSection />
         </div>
-        <div ref={comparison} className="min-h-screen opacity-90">
+        <div id="comparison" ref={comparison} className="min-h-screen opacity-90">
           <ComparisonSection />
         </div>
-        <div ref={speed} className="min-h-screen opacity-90">
+        <div id="speed" ref={speed} className="min-h-screen opacity-90">
           <SpeedSection />
         </div>
-        <div ref={gallery} className="min-h-screen opacity-90">
+        <div id="gallery" ref={gallery} className="min-h-screen opacity-90">
           <GallerySection />
         </div>
-        <div ref={beforeAfter} className="min-h-screen opacity-90">
+        <div id="before-after" ref={beforeAfter} className="min-h-screen opacity-90">
           <BeforeAndAfterSection />
         </div>
-        <div ref={featured} className="min-h-screen opacity-90">
+        <div id="featured" ref={featured} className="min-h-screen opacity-90">
           <FeaturedShowcase />
         </div>
-        <div ref={texture} className="min-h-screen opacity-90">
+        <div id="textures" ref={texture} className="min-h-screen opacity-90">
           <TextureSamples />
         </div>
-        <div ref={luxury} className="min-h-screen opacity-90">
+        <div id="luxury" ref={luxury} className="min-h-screen opacity-90">
           <LuxurySection />
         </div>
-        <div ref={benefits} className="min-h-screen opacity-90">
+        <div id="benefits" ref={benefits} className="min-h-screen opacity-90">
           <BenefitsSection />
         </div>
-        <div ref={cta} className="min-h-screen">
+        <div id="cta" ref={cta} className="min-h-screen">
           <CTASection />
         </div>
       </main>

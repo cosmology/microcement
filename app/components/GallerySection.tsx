@@ -67,7 +67,7 @@ export default function GallerySection() {
       id: "header",
       type: "h2",
       content: t('title'),
-      className: "text-4xl md:text-5xl font-light text-center text-gray-900 dark:text-white mb-4"
+      className: "text-4xl md:text-5xl font-light text-center text-gray-900 mb-4"
     },
     {
       id: "subheader",
@@ -206,7 +206,7 @@ export default function GallerySection() {
                   <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
                     whileHover={{ opacity: 1, scale: 1 }}
-                    className="text-white font-semibold opacity-0 group-hover:opacity-100 transition-opacity    duration-100"
+                    className="text-white opacity-0 group-hover:opacity-100 transition-opacity    duration-100"
                   >
                     {t('viewDetails')}
                   </motion.div>
@@ -216,7 +216,7 @@ export default function GallerySection() {
                 <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-sm rounded-full mb-3">
                   {item.category}
                 </span>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{item.title}</h3>
+                <h3 className="text-lg text-gray-900 mb-2">{item.title}</h3>
                 <p className="text-gray-600 dark:text-gray-300 text-sm">{item.description}</p>
               </div>
             </motion.div>

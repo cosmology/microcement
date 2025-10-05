@@ -482,8 +482,8 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
 
       {/* Authentication Modal */}
       {showAuthModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-lg z-[9999] flex items-start justify-center pt-[160px] px-4">
-          <div className="w-full max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl max-h-[calc(100vh-180px)] overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-lg w-screen h-screen">
+          <div className="w-full max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
             <Card className="border-0 bg-transparent">
             <CardHeader>
               <CardTitle className="text-center">

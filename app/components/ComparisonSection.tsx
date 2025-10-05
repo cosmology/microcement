@@ -15,7 +15,7 @@ export default function ComparisonSection() {
       id: "header",
       type: "h2",
       content: t('title'),
-      className: "text-4xl md:text-5xl font-light text-gray-900 dark:text-white mb-8"
+      className: "text-4xl md:text-5xl font-light text-gray-900 mb-8"
     },
     {
       id: "subheader", 

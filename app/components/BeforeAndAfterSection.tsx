@@ -185,7 +185,7 @@ export default function BeforeAndAfterSection() {
       <div className="w-full max-w-6xl mx-auto px-4">
         <motion.h2 
           ref={headerRef}
-          className="text-4xl md:text-5xl font-light text-center text-gray-900 dark:text-white"
+          className="text-4xl md:text-5xl font-light text-center text-gray-900"
           initial={{ opacity: 0 }}
           animate={{
             opacity: (headerState.visible && !headerState.out) || forceIntro ? 1 : 0,

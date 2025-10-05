@@ -2714,9 +2714,9 @@ export default function ScrollScene({
       };
       
       // Add X, Y, Z labels
-      createText('X', new THREE.Vector3(20, 0, 0), 0xff0000); // Red X-axis
-      createText('Y', new THREE.Vector3(0, 20, 0), 0x00ff00); // Green Y-axis
-      createText('Z', new THREE.Vector3(0, 0, 20), 0x0000ff); // Blue Z-axis
+      // createText('X', new THREE.Vector3(20, 0, 0), 0xff0000); // Red X-axis
+      // createText('Y', new THREE.Vector3(0, 20, 0), 0x00ff00); // Green Y-axis
+      // createText('Z', new THREE.Vector3(0, 0, 20), 0x0000ff); // Blue Z-axis
     }
     
     // Floor

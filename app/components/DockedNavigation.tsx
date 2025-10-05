@@ -217,9 +217,9 @@ export default function DockedNavigation({ role }: DockedNavigationProps) {
         }`}
       >
         <div className={`px-3 py-2 rounded-lg text-xs font-medium text-center ${
-          role === 'admin' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
-          role === 'architect' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-          'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+          role === 'admin' ? 'bg-purple-100 text-red-800 dark:bg-purple-900 dark:text-red-200' :
+          role === 'architect' ? 'bg-purple-100 text-blue-800 dark:bg-purple-800 dark:text-blue-200' :
+          'bg-purple-100 text-gray-800 dark:bg-purple-800 dark:text-gray-200'
         }`}>
           {role.replace('_', ' ').toUpperCase()}
         </div>

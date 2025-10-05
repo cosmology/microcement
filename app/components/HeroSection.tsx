@@ -104,7 +104,7 @@ export default function HeroSection() {
         {isPortrait ? (
           <div className="w-full flex flex-col items-center justify-center mb-4">
             <motion.div
-              className="font-bold text-gray-900 dark:text-white"
+              className="font-bold text-gray-900 dark:text-purple-400"
               style={{ fontSize: 'clamp(3.6rem, 12vw, 6.75rem)', lineHeight: 1.03 }}
               initial={{ opacity: 0, x: -60 }}
               animate={mainIn ? { opacity: 1, x: 0 } : {}}
@@ -114,7 +114,7 @@ export default function HeroSection() {
             </motion.div>
             {header2 && (
               <motion.div
-                className="font-bold text-gray-900 dark:text-white"
+                className="font-bold text-gray-900 dark:text-purple-400"
                 style={{ fontSize: 'clamp(3.6rem, 12vw, 6.75rem)', lineHeight: 1.03 }}
                 initial={{ opacity: 0, x: 60 }}
                 animate={mainIn ? { opacity: 1, x: 0 } : {}}
@@ -127,7 +127,7 @@ export default function HeroSection() {
         ) : (
           <div className="w-full flex items-center justify-center mb-6">
             <motion.div
-              className="font-bold text-gray-900 dark:text-white pr-2"
+              className="font-bold text-gray-900 dark:text-purple-400 pr-2"
               style={{ fontSize: 'clamp(3.9rem, 11.25vw, 5.25rem)', lineHeight: 1.02 }}
               initial={{ opacity: 0, x: -80 }}
               animate={mainIn ? { opacity: 1, x: 0 } : {}}
@@ -137,7 +137,7 @@ export default function HeroSection() {
             </motion.div>
             {header2 && (
               <motion.div
-                className="font-bold text-gray-900 dark:text-white pl-2"
+                className="font-bold text-gray-900 dark:text-purple-400 pl-2"
                 style={{ fontSize: 'clamp(3.9rem, 11.25vw, 5.25rem)', lineHeight: 1.02 }}
                 initial={{ opacity: 0, x: 80 }}
                 animate={mainIn ? { opacity: 1, x: 0 } : {}}

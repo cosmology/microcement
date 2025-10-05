@@ -16,8 +16,6 @@ services:
       - NEXT_TELEMETRY_DISABLED=1
       - NEXT_PUBLIC_SUPABASE_URL=http://localhost:8000
       - SUPABASE_SERVER_URL=http://supabase-kong:8000
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvY2FsaG9zdCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzU5MDgyOTQ3LCJleHAiOjE3OTA2MTg5NDd9.A-qzwjE9dDSrUqZvJ0I-dcoyVmVxC96TjGbI0EdCBdo
-      - SERVICE_ROLE_KEY=SERVICE_ROLE_KEY_PLACEHOLDER
     command: npm run dev
     profiles:
       - dev
