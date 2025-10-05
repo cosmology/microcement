@@ -82,7 +82,7 @@ export default function NoDesignAvailable({ onLoginClick, onSignOutClick, isLogg
             <>
               <Button 
                 onClick={onLoginClick}
-                className="w-full bg-gray-200/80 hover:bg-gray-300/80 dark:bg-white/10 dark:hover:bg-white/20 text-gray-800 dark:text-white font-light py-3 px-8 rounded-md border border-gray-300/50 hover:border-gray-400/50 dark:border-white/20 dark:hover:border-white/30 transition-all duration-300 backdrop-blur-sm relative"
+                className="w-full bg-gray-200/80 hover:bg-gray-300/80 dark:bg-white/10 dark:hover:bg-white/20 text-gray-800 dark:text-white font-light py-3 px-8 rounded-md border border-gray-300/50 hover:border-gray-400/50 dark:border-white/20 dark:hover:border-white/30 transition-all    duration-100 backdrop-blur-sm relative"
                 size="lg"
               >
                 <div className="absolute inset-0 bg-purple-500/5 dark:bg-purple-500/5 rounded-md blur-sm"></div>
@@ -105,7 +105,7 @@ export default function NoDesignAvailable({ onLoginClick, onSignOutClick, isLogg
               {onSignOutClick && (
                 <Button 
                   onClick={onSignOutClick}
-                  className="w-full bg-gray-200/50 hover:bg-gray-300/50 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-white/80 font-light py-3 px-8 rounded-md border border-gray-300/30 hover:border-gray-400/30 dark:border-white/10 dark:hover:border-white/20 transition-all duration-300 backdrop-blur-sm relative"
+                  className="w-full bg-gray-200/50 hover:bg-gray-300/50 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-white/80 font-light py-3 px-8 rounded-md border border-gray-300/30 hover:border-gray-400/30 dark:border-white/10 dark:hover:border-white/20 transition-all    duration-100 backdrop-blur-sm relative"
                   size="lg"
                 >
                   <div className="absolute inset-0 bg-purple-500/5 dark:bg-purple-500/5 rounded-md blur-sm"></div>

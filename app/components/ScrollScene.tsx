@@ -7,7 +7,10 @@ import { Settings } from "lucide-react";
 import SwiperGallery, { GalleryImage } from './SwiperGallery';
 import { isMobile, getThemeColors, cssColorToHex } from '../../lib/utils';
 import { ModelLoader, SCENE_CONFIG, getCameraPathData, getHotspotSettings, getUserSceneConfig } from '@/lib/services';
+import { useUserRole } from '@/hooks/useUserRole';
 import { SceneConfigService } from '@/lib/services/SceneConfigService';
+import { supabase } from '@/lib/supabase';
+import CameraPathEditor3D from './CameraPathEditor3D';
 
 
 interface ScrollSceneProps {
@@ -27,38 +30,26 @@ export default function ScrollScene({
   onDebugUpdate,
   user
 }: ScrollSceneProps) {
+  const { role: authRole, user: authUser, loading: roleLoading } = useUserRole();
   const [hasUserConfig, setHasUserConfig] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [userSceneConfig, setUserSceneConfig] = useState<any>(null);
+  const [isBirdView, setIsBirdView] = useState(false);
+  
+  // Debug state changes
+  useEffect(() => {
+    console.log('🎯 [ScrollScene] isBirdView state changed to:', isBirdView);
+  }, [isBirdView]);
+  const isBirdViewRef = useRef(false);
+  const [isEditorEnabled, setIsEditorEnabled] = useState(false);
+  const [wasBirdViewActiveBeforeScroll, setWasBirdViewActiveBeforeScroll] = useState(false);
+  const [isManualEditMode, setIsManualEditMode] = useState(false); // Track manual editing
   const [hotspotSettings, setHotspotSettings] = useState<any>({
     focalDistances: {},
     categories: {},
     colors: { HOVER: 0xb2d926 }
   });
-  const [cameraPathData, setCameraPathData] = useState<any>({
-    cameraPoints: [
-      new THREE.Vector3(20, 5, 0),
-      new THREE.Vector3(-8, 6.5, 2),
-      new THREE.Vector3(-14, 6.75, 7),
-      new THREE.Vector3(-8, 7, 24),
-      new THREE.Vector3(-4, 7, 30),
-      new THREE.Vector3(-2, 7.25, 32),
-      new THREE.Vector3(12, 7.5, 32),
-      new THREE.Vector3(20, 8, 25),
-      new THREE.Vector3(16, 8, 0),
-    ],
-    lookAtTargets: [
-      new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(4, 3, 0),
-      new THREE.Vector3(6, 4, 0),
-      new THREE.Vector3(7, 5, 30),
-      new THREE.Vector3(10, 6, 50),
-      new THREE.Vector3(20, 7, 60),
-      new THREE.Vector3(30, 8, 40),
-      new THREE.Vector3(30, 8, 20),
-      new THREE.Vector3(0, 8, -40),
-    ]
-  });
+  const [cameraPathData, setCameraPathData] = useState<any>(null);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -72,22 +63,30 @@ export default function ScrollScene({
         console.log('🔍 ScrollScene: User email:', user?.email);
         
         const [hotspot, camera, sceneConfig] = await Promise.all([
-          getHotspotSettings(undefined, userId),
-          getCameraPathData(undefined, userId),
-          getUserSceneConfig(userId)
+          getHotspotSettings(undefined, userId, user),
+          getCameraPathData(undefined, userId, user),
+          getUserSceneConfig(userId, user)
         ]);
 
         // Scene settings loaded successfully
 
         setHotspotSettings(hotspot);
-        setCameraPathData(camera);
+        
+        // Always load camera path data from database first, with fallback to defaults
+        if (!isManualEditMode) {
+          console.log('🔄 Loading camera path data from database');
+          setCameraPathData(camera);
+        } else {
+          console.log('⚠️ Skipping camera path load - user is in manual edit mode');
+        }
+        
         setUserSceneConfig(sceneConfig);
         
         // Check if user has a custom configuration
         if (userId) {
           try {
             const sceneConfigService = SceneConfigService.getInstance();
-            sceneConfigService.setUser({ id: userId });
+            sceneConfigService.setUser(user);
             const userConfigs = await sceneConfigService.getUserConfigs();
             setHasUserConfig(userConfigs.length > 0);
           } catch (error) {
@@ -110,7 +109,7 @@ export default function ScrollScene({
     };
 
     loadSettings();
-  }, [user]);
+  }, [user, isManualEditMode]);
 
   // Load model when scene configuration is available
   useEffect(() => {
@@ -149,7 +148,12 @@ export default function ScrollScene({
       const currentConfig = userSceneConfig || SCENE_CONFIG;
       const modelPath = currentConfig.DEFAULT_MODEL_PATH;
       
-        // Loading model with user-specific or default configuration
+      console.log('🎯 [ScrollScene] Model loading details:');
+      console.log('  - User:', user?.email);
+      console.log('  - UserSceneConfig:', userSceneConfig ? 'loaded' : 'null');
+      console.log('  - CurrentConfig:', currentConfig === SCENE_CONFIG ? 'SCENE_CONFIG (default)' : 'userSceneConfig');
+      console.log('  - Model Path:', modelPath);
+      console.log('  - Config Name:', currentConfig.config_name || 'default');
       
       const result = await modelLoader.loadModel({
         modelPath,
@@ -332,7 +336,7 @@ export default function ScrollScene({
         return;
       }
       // Map 1-based waypoint index to curve parameter t based on current cameraPathData length
-      const totalPoints = (cameraPathData.cameraPoints?.length ?? gsapCurveRef.current.points.length);
+      const totalPoints = (cameraPathData?.cameraPoints?.length ?? gsapCurveRef.current.points.length);
       const total = Math.max(1, totalPoints - 1);
       const clampedIndex1Based = Math.max(1, Math.min(totalPoints, (e?.detail?.index ?? 1)));
       const zeroBased = clampedIndex1Based - 1;
@@ -371,11 +375,20 @@ export default function ScrollScene({
 
   // Toggle flags
   const WITH_INTRO = true; // Toggle to control intro vs orbital
-  const WITH_HELPERS = false; // Toggle to show coordinate helpers (floor grid, axes)
+  const WITH_HELPERS = true; // Toggle to show coordinate helpers (floor grid, axes)
   const WITH_ORBITAL = false; // Toggle to enable orbital animation
   const SHOW_CUBE = false; // Toggle to show/hide the green debug cube
   const [showDebug, setShowDebug] = useState(false); // Toggle to show/hide debug panel
   const [showPosition, setShowPosition] = useState(false); // Toggle to show/hide position panel
+
+  // Camera path editor state
+  const [activePathId, setActivePathId] = useState('main-camera-path');
+  const isTestingCameraRef = useRef(false);
+  const isAnimatingToBirdView = useRef(false);
+  const isAnimatingFromBirdView = useRef(false);
+  const originalCameraPosition = useRef(new THREE.Vector3());
+  const originalCameraLookAt = useRef(new THREE.Vector3());
+  const INTRO_START_POS = new THREE.Vector3(0, 70, 3);
   
   // Get SHOW_DEBUG from URL parameter
   const getShowDebugFromURL = () => {
@@ -387,8 +400,9 @@ export default function ScrollScene({
   };
   const SHOW_DEBUG = getShowDebugFromURL(); // Master flag to show/hide debug controls
   // Optional debug visuals for the camera path
-  const SHOW_CAMERA_PATH = false;
-  const SHOW_WAYPOINTS = false;
+  const SHOW_CAMERA_PATH = true;
+  const SHOW_WAYPOINTS = true;
+  const SHOW_LOOKUP_TARGETS = true;
   
   // Hotspot highlight colors
   const HOTSPOT_HIGHLIGHT_COLOR = 0x00ff00; // Bright green for model hotspots
@@ -453,7 +467,7 @@ export default function ScrollScene({
   const ORBITAL_SPEED = SCENE_CONFIG.ORBITAL_SPEED;
   
   // Animation configuration
-  const INTRO_START_POS = new THREE.Vector3(0, 50, 3); // Start perfectly above the cube center
+  // const INTRO_START_POS = new THREE.Vector3(0, 50, 3); // Start perfectly above the cube center - using the one defined above
   const INTRO_END_POS = new THREE.Vector3(50, ORBITAL_HEIGHT, 0); // End at proper radius for centered scene
   const ORBITAL_START_POS = new THREE.Vector3(50, ORBITAL_HEIGHT, 0); // Explicit orbital start position
   const ANIMATION_STEPS = 100;
@@ -593,8 +607,8 @@ export default function ScrollScene({
   
   // GSAP-driven scroll path (preview path points and targets)
   // Get camera path data from configuration
-  const gsapCameraPoints = cameraPathData.cameraPoints;
-  const gsapLookAtTargets = cameraPathData.lookAtTargets;
+  const gsapCameraPoints = cameraPathData?.cameraPoints || [];
+  const gsapLookAtTargets = cameraPathData?.lookAtTargets || [];
   const gsapCurveRef = useRef<THREE.CatmullRomCurve3 | null>(null);
   const gsapLookAtTargetsRef = useRef<THREE.Vector3[]>(gsapLookAtTargets);
   const gsapLookCurveRef = useRef<THREE.CatmullRomCurve3 | null>(null);
@@ -603,6 +617,12 @@ export default function ScrollScene({
 
   // Create curves when we have valid data
   useEffect(() => {
+    // Don't recreate curves during manual editing to prevent camera jumps
+    if (isManualEditMode) {
+      console.log('🎯 [ScrollScene] Skipping curve recreation during manual edit mode');
+      return;
+    }
+    
     if (gsapCameraPoints && gsapCameraPoints.length > 0) {
       try {
         gsapCurveRef.current = new THREE.CatmullRomCurve3(gsapCameraPoints, false, 'catmullrom', 0.1);
@@ -625,7 +645,37 @@ export default function ScrollScene({
     } else {
       gsapLookCurveRef.current = null;
     }
-  }, [gsapCameraPoints, gsapLookAtTargets]);
+  }, [gsapCameraPoints, gsapLookAtTargets, isManualEditMode]);
+
+  // Update path visuals when camera points change
+  useEffect(() => {
+    if (isManualEditMode && gsapCameraPoints && gsapCameraPoints.length > 0) {
+      console.log('🎨 [ScrollScene] Updating path visuals due to camera points change in manual edit mode');
+      
+      // Create a new curve for visuals only (without affecting camera position)
+      try {
+        const visualCurve = new THREE.CatmullRomCurve3(gsapCameraPoints, false, 'catmullrom', 0.1);
+        
+        // Force complete path visual update
+        removePathVisuals();
+        addPathVisuals(visualCurve);
+        
+        // Force multiple renders to ensure visual update
+        if (rendererRef.current && cameraRef.current && sceneRef.current) {
+          rendererRef.current.render(sceneRef.current, cameraRef.current);
+          
+          // Additional render after a short delay to ensure update
+          setTimeout(() => {
+            if (rendererRef.current && cameraRef.current && sceneRef.current) {
+              rendererRef.current.render(sceneRef.current, cameraRef.current);
+            }
+          }, 10);
+        }
+      } catch (error) {
+        console.error('❌ Failed to create visual curve:', error);
+      }
+    }
+  }, [gsapCameraPoints, isManualEditMode]); // Only when in manual edit mode
 
   const updateCameraAlongCurve = (camera: THREE.PerspectiveCamera, t: number) => {
     if (!gsapCurveRef.current) {
@@ -3173,9 +3223,6 @@ export default function ScrollScene({
       endMarker.name = 'debug_intro_end_marker';
       scene.add(endMarker);
       
-      console.log('🎯 INTRO DEBUG SPHERES CREATED:');
-      console.log('  Purple sphere (intro start):', startMarker.position);
-      console.log('  Cyan sphere (intro end):', endMarker.position);
     } else if (!showDebug) {
       console.log('🎯 INTRO DEBUG SPHERES SKIPPED (showDebug disabled)');
     }
@@ -3261,7 +3308,7 @@ export default function ScrollScene({
           introTimeoutRef.current = null;
         }
 
-            // Clean up intro debug spheres when showDebug is true
+    // Clean up intro debug spheres when showDebug is true
     if (showDebug && scene) {
           scene.children.forEach((child: THREE.Object3D) => {
             if (child.name === 'debug_intro_start_marker' || child.name === 'debug_intro_end_marker') {
@@ -3289,19 +3336,21 @@ export default function ScrollScene({
           });
         }
 
-        // Initialize GSAP curve to start at current camera position and render first frame
+        // Initialize GSAP curve to start at first camera path point
         if (!WITH_ORBITAL && cameraRef.current && rendererRef.current && sceneRef.current) {
-          const startP = cameraRef.current.position.clone();
-          const pts = [startP, ...gsapCameraPoints];
-          
           // Only create curve if we have valid camera points
           if (gsapCameraPoints && gsapCameraPoints.length > 0) {
-            gsapCurveRef.current = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.1);
+            // Use the camera points directly without prepending current position
+            gsapCurveRef.current = new THREE.CatmullRomCurve3(gsapCameraPoints, false, 'catmullrom', 0.1);
+            
+            // Set camera to the first point of the path
+            const firstPoint = gsapCameraPoints[0];
+            camera.position.copy(firstPoint);
           } else {
             return; // Skip intro if no valid path
           }
-          // Build a smooth look-at curve, seeding the first point with intro look target (cube center)
-          const lookPts = [cubePos.current.clone(), ...gsapLookAtTargets];
+          // Build a smooth look-at curve
+          const lookPts = gsapLookAtTargets;
           gsapLookAtTargetsRef.current = lookPts;
           gsapLookCurveRef.current = new THREE.CatmullRomCurve3(lookPts, false, 'catmullrom', 0.1);
           gsapPathInitializedRef.current = true;
@@ -3661,6 +3710,24 @@ export default function ScrollScene({
     return () => observer.disconnect();
   }, []);
 
+  // Expose camera, renderer, and scene to window for CameraPathEditor3D
+  useEffect(() => {
+    if (cameraRef.current) {
+      (window as any).scrollSceneCamera = cameraRef.current;
+    }
+    if (rendererRef.current) {
+      (window as any).scrollSceneRenderer = rendererRef.current;
+    }
+    if (sceneRef.current) {
+      (window as any).scrollSceneScene = sceneRef.current;
+    }
+  }, []);
+
+  // Expose bird view state globally for DockedNavigation
+  useEffect(() => {
+    (window as any).__isBirdView = isBirdView;
+  }, [isBirdView]);
+
   // Main animation loop
   const animate = (camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer, scene: THREE.Scene) => {
     // Append renderer to DOM on first frame to prevent static render
@@ -3671,18 +3738,28 @@ export default function ScrollScene({
     // Camera position is now controlled by GSAP bezier animation
     // No need for global position monitoring that interferes with smooth movement
     
+    // Declare bird view state once for the entire function
+    const isInBirdView = isBirdViewRef.current || (window as any).__isBirdView === true;
+    
+    // If bird view is locked, ensure we remain in bird view state
+    const birdViewLocked = (typeof window !== 'undefined' && (window as any).__birdViewLocked === true);
+    if (birdViewLocked && !isInBirdView) {
+      setIsBirdView(true);
+    }
     // Don't initialize GSAP curve if we're focused on a hotspot
     if (introCompletedRef.current && !gsapPathInitializedRef.current && cameraRef.current && !isFocusedOnHotspot) {
-      const startP = cameraRef.current.position.clone();
-      const pts = [startP, ...gsapCameraPoints];
-      
       // Only create curve if we have valid camera points
       if (gsapCameraPoints && gsapCameraPoints.length > 0) {
-        gsapCurveRef.current = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.1);
+        // Use the camera points directly without prepending current position
+        gsapCurveRef.current = new THREE.CatmullRomCurve3(gsapCameraPoints, false, 'catmullrom', 0.1);
+        
+        // Set camera to the first point of the path to avoid jump
+        const firstPoint = gsapCameraPoints[0];
+        camera.position.copy(firstPoint);
       } else {
         return; // Skip path initialization if no valid path
       }
-      const lookPts = [cubePos.current.clone(), ...gsapLookAtTargets];
+      const lookPts = gsapLookAtTargets;
       gsapLookAtTargetsRef.current = lookPts;
       gsapLookCurveRef.current = new THREE.CatmullRomCurve3(lookPts, false, 'catmullrom', 0.1);
       gsapPathInitializedRef.current = true;
@@ -3708,6 +3785,20 @@ export default function ScrollScene({
           // No need for aggressive position enforcement
         }
         
+        // Handle bird view rendering
+        if (isInBirdView || isTestingCameraRef.current) {
+          if (isInBirdView && !isTestingCameraRef.current && cameraRef.current) {
+            const currentPos = cameraRef.current.position;
+            const distanceToIntro = currentPos.distanceTo(INTRO_START_POS);
+            if (distanceToIntro > 0.1) {
+              cameraRef.current.position.copy(INTRO_START_POS);
+              cameraRef.current.lookAt(0, 0, 0);
+            }
+          }
+          renderer.render(scene, camera);
+          return;
+        }
+
         // Single render call when not animating
         renderer.render(scene, camera);
       } else {
@@ -3721,19 +3812,39 @@ export default function ScrollScene({
       return;
     }
     
-    // Only run orbital/GSAP animations when NOT focused on hotspots AND not animating
-    if (!isAnimatingRef.current && !isFocusedOnHotspotRef.current) {
+    // Only run orbital/GSAP animations when NOT focused on hotspots AND not animating AND not in bird view
+    if (!isAnimatingRef.current && !isFocusedOnHotspotRef.current && !isInBirdView && !isTestingCameraRef.current && !isAnimatingToBirdView.current && !isAnimatingFromBirdView.current) {
       if (WITH_ORBITAL && (introCompletedRef.current || !WITH_INTRO)) {
         animateOrbital(camera, renderer, scene);
         // Update main path position when following orbital path
         cameraStateRef.current.mainPathPosition.copy(camera.position);
         cameraStateRef.current.isOnMainPath = true;
       } else if (introCompletedRef.current) {
-        // Render GSAP scroll path when orbital is disabled
-        updateCameraAlongCurve(camera, pathProgressRef.current.t);
+        // Handle bird view rendering first (before scroll path)
+        const birdViewLocked = (window as any)?.__birdViewLocked === true;
+        if (isInBirdView || isTestingCameraRef.current) {
+          if (isInBirdView && !isTestingCameraRef.current && cameraRef.current) {
+            const currentPos = cameraRef.current.position;
+            const distanceToIntro = currentPos.distanceTo(INTRO_START_POS);
+            if (distanceToIntro > 0.1) {
+              cameraRef.current.position.copy(INTRO_START_POS);
+              cameraRef.current.lookAt(0, 0, 0);
+            }
+          }
+          renderer.render(scene, camera);
+          return;
+        }
+        
+        // Render GSAP scroll path when orbital is disabled and not in bird view
+        // If bird view is locked or we are dragging editor points, skip updating the camera
+        const suppressResume = (window as any)?.__suppressCameraResume === true;
+        if (!birdViewLocked && !suppressResume) {
+          updateCameraAlongCurve(camera, pathProgressRef.current.t);
+        }
         // Update main path position when following GSAP path
         cameraStateRef.current.mainPathPosition.copy(camera.position);
         cameraStateRef.current.isOnMainPath = true;
+        
         renderer.render(scene, camera);
       }
     }
@@ -3851,8 +3962,27 @@ export default function ScrollScene({
     };
   }, []);
 
+  // Throttle for scroll logging
+  const lastPathLogTsRef = useRef<number>(0);
+
   useEffect(() => {
     const onScroll = () => {
+      // Scroll guard: Temporarily disable Bird View during scroll, remember previous state
+      // Only disable if bird view is active, not locked, and we're not animating TO or FROM bird view
+      const birdViewLocked = (window as any)?.__birdViewLocked === true;
+      if (birdViewLocked) {
+        // When locked, never toggle Bird View off due to scroll
+        setWasBirdViewActiveBeforeScroll(false);
+        return;
+      }
+      // Use ref first, then fallback to global window variable for immediate access
+      const isInBirdView = isBirdViewRef.current || (window as any).__isBirdView === true;
+      if (isInBirdView && !isAnimatingRef.current && !isAnimatingToBirdView.current && !isAnimatingFromBirdView.current) {
+        // Preserve Bird View state; mark that it was active prior to scroll
+        setWasBirdViewActiveBeforeScroll(true);
+        // Do NOT toggle Bird View off here to ensure persistence
+      }
+
       const doc = document.documentElement;
       const st = window.pageYOffset || doc.scrollTop;
       const sh = (doc.scrollHeight - window.innerHeight) || 0;
@@ -3865,7 +3995,9 @@ export default function ScrollScene({
         ease: 'power2.out',
         onUpdate: () => {
           // CRITICAL: Don't update camera position during hotspot animations
-          if (introCompletedRef.current && cameraRef.current && sceneRef.current && rendererRef.current && !isFocusedOnHotspotRef.current) {
+          // Use ref first, then fallback to global window variable for immediate access
+          const isInBirdView = isBirdViewRef.current || (window as any).__isBirdView === true;
+          if (introCompletedRef.current && cameraRef.current && sceneRef.current && rendererRef.current && !isFocusedOnHotspotRef.current && !isInBirdView) {
             updateCameraAlongCurve(cameraRef.current, pathProgressRef.current.t);
             rendererRef.current.render(sceneRef.current, cameraRef.current);
             
@@ -3875,6 +4007,26 @@ export default function ScrollScene({
             // GLOBAL: Update journey start position when on main path
             if (cameraStateRef.current.isOnMainPath) {
               cameraStateRef.current.journeyStartPosition.copy(cameraRef.current.position);
+            }
+
+            // Throttled debug log of camera path and lookAt targets
+            const now = Date.now();
+            if (now - (lastPathLogTsRef.current || 0) > 200) {
+              lastPathLogTsRef.current = now;
+              try {
+                const pts = (cameraPathData?.cameraPoints || []).map((v: THREE.Vector3) => ({
+                  x: Number(v.x.toFixed(3)),
+                  y: Number(v.y.toFixed(3)),
+                  z: Number(v.z.toFixed(3)),
+                }));
+                const looks = (cameraPathData?.lookAtTargets || []).map((v: THREE.Vector3) => ({
+                  x: Number(v.x.toFixed(3)),
+                  y: Number(v.y.toFixed(3)),
+                  z: Number(v.z.toFixed(3)),
+                }));
+              } catch (e) {
+                // no-op
+              }
             }
           }
         },
@@ -3895,7 +4047,369 @@ export default function ScrollScene({
     window.addEventListener('scroll', onScroll, { passive: true } as any);
     onScroll();
     return () => window.removeEventListener('scroll', onScroll as any);
-  }, []);
+  }, [isBirdView]);
+
+  // Restore Bird View after scroll ends
+  useEffect(() => {
+    let scrollTimeout: NodeJS.Timeout;
+    
+    const handleScrollEnd = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        if (wasBirdViewActiveBeforeScroll) {
+          console.log('🎯 [ScrollScene] Scroll ended - restoring Bird View');
+          setIsBirdView(true);
+          setWasBirdViewActiveBeforeScroll(false);
+        }
+      }, 150); // Wait 150ms after scroll stops
+    };
+
+    window.addEventListener('scroll', handleScrollEnd, { passive: true });
+    
+    return () => {
+      clearTimeout(scrollTimeout);
+      window.removeEventListener('scroll', handleScrollEnd);
+    };
+  }, [wasBirdViewActiveBeforeScroll]);
+
+  // Bird view animation handler
+  useEffect(() => {
+    const handleBirdViewAnimation = (event: CustomEvent) => {
+      console.log('🎯 [ScrollScene] Bird view animation event received, current isBirdView:', isBirdView);
+      console.log('🎯 [ScrollScene] Event detail:', event.detail);
+      
+      const newBirdViewState = event.detail.isBirdView;
+      console.log('🎯 [ScrollScene] Setting new bird view state to:', newBirdViewState);
+      const birdViewLocked = (typeof window !== 'undefined' && (window as any).__birdViewLocked === true);
+
+      // If locked, ignore requests to switch back to camera view
+      if (!newBirdViewState && birdViewLocked) {
+        console.log('🔒 [ScrollScene] Bird view is locked - ignoring switch to camera view');
+        return;
+      }
+      
+      if (newBirdViewState) {
+        // Going TO bird view - set state immediately
+        console.log('🎯 [ScrollScene] Setting isBirdView to true in handler');
+        setIsBirdView(newBirdViewState);
+        isBirdViewRef.current = newBirdViewState;
+        // Also set global window variable for immediate access
+        (window as any).__isBirdView = newBirdViewState;
+        // Set persistent flag to prevent automatic return to camera view
+        (window as any).__birdViewPersistent = true;
+        // Store spline follow-path position and lookAt to return precisely later
+        if (cameraRef.current) {
+          // Save current spline progress with high precision
+          if (introCompletedRef.current) {
+            cameraStateRef.current.savedSplineProgress = parseFloat(pathProgressRef.current.t.toFixed(6));
+            if (gsapCurveRef.current) {
+              const exactSplinePosition = gsapCurveRef.current.getPointAt(cameraStateRef.current.savedSplineProgress);
+              cameraStateRef.current.exactSplinePosition = exactSplinePosition.clone();
+            } else {
+              cameraStateRef.current.exactSplinePosition = cameraRef.current.position.clone();
+            }
+
+            // Save a robust lookAt target
+            let savedLookAt: THREE.Vector3 | null = null;
+            const currentLookDir = new THREE.Vector3();
+            cameraRef.current.getWorldDirection(currentLookDir);
+            const currentLookAtTarget = cameraRef.current.position.clone().add(currentLookDir.multiplyScalar(10));
+            savedLookAt = currentLookAtTarget;
+            if (!savedLookAt && gsapLookAtTargetsRef.current && gsapLookAtTargetsRef.current.length > 0) {
+              const idx = Math.floor(cameraStateRef.current.savedSplineProgress * (gsapLookAtTargetsRef.current.length - 1));
+              savedLookAt = gsapLookAtTargetsRef.current[Math.max(0, Math.min(idx, gsapLookAtTargetsRef.current.length - 1))];
+            }
+            cameraStateRef.current.savedLookAtTarget = (savedLookAt || cubePos.current || new THREE.Vector3(0, 0, 0)).clone();
+          }
+        }
+        
+        // Animate to bird view position
+        console.log('🎯 [ScrollScene] Starting animation to bird view position:', INTRO_START_POS);
+        console.log('🎯 [ScrollScene] Current camera position:', cameraRef.current?.position);
+        console.log('🎯 [ScrollScene] GSAP available:', typeof gsap);
+        isAnimatingToBirdView.current = true;
+        isAnimatingRef.current = true; // Set animation flag to prevent scroll guard interference
+        if (cameraRef.current) {
+          try {
+            const tween = gsap.to(cameraRef.current.position, {
+              x: INTRO_START_POS.x,
+              y: INTRO_START_POS.y,
+              z: INTRO_START_POS.z,
+              duration: 1.5,
+              ease: "power2.inOut",
+              onUpdate: () => {
+                if (cameraRef.current) {
+                  cameraRef.current.lookAt(0, 0, 0);
+                  // Force render during animation to show movement
+                  if (rendererRef.current && sceneRef.current) {
+                    rendererRef.current.render(sceneRef.current, cameraRef.current);
+                  }
+                }
+              },
+              onComplete: () => {
+                console.log('🎯 [ScrollScene] Bird view animation completed');
+                isAnimatingToBirdView.current = false;
+                isAnimatingRef.current = false; // Clear animation flag
+                isTestingCameraRef.current = false;
+                // Ensure bird view state persists
+                console.log('🎯 [ScrollScene] Setting isBirdView to true for persistence');
+                setIsBirdView(true);
+                isBirdViewRef.current = true;
+                // Also set global window variable for immediate access
+                (window as any).__isBirdView = true;
+                console.log('🎯 [ScrollScene] Bird view state set to true for persistence');
+                
+                // Verify the state was set correctly
+                setTimeout(() => {
+                  console.log('🎯 [ScrollScene] Verification - isBirdView state after 100ms:', isBirdView);
+                  console.log('🎯 [ScrollScene] Verification - isBirdViewRef.current after 100ms:', isBirdViewRef.current);
+                  console.log('🎯 [ScrollScene] Verification - window.__isBirdView after 100ms:', (window as any).__isBirdView);
+                }, 100);
+              }
+            });
+            console.log('🎯 [ScrollScene] GSAP tween created:', tween);
+          } catch (error) {
+            console.error('❌ [ScrollScene] GSAP animation error:', error);
+          }
+        } else {
+          console.log('❌ [ScrollScene] cameraRef.current is null, cannot animate to bird view');
+        }
+      } else {
+        // For bird view persistence, don't animate back unless explicitly requested
+        console.log('🎯 [ScrollScene] Request to return to follow-path - checking persistence');
+        
+        // If bird view is locked, prevent switching back to camera view
+        const birdViewLocked = (window as any)?.__birdViewLocked === true;
+        if (birdViewLocked) {
+          console.log('🔒 [ScrollScene] Bird view locked - skipping return to follow-path');
+          return;
+        }
+        
+        // Animate back to the saved follow-path position
+        console.log('🎯 [ScrollScene] Starting animation back to follow-path position');
+        isAnimatingFromBirdView.current = true;
+        if (cameraRef.current) {
+          // Resolve target follow-path position and lookAt
+          const targetPos = (cameraStateRef.current.exactSplinePosition?.clone())
+            || (gsapCurveRef.current ? gsapCurveRef.current.getPointAt(cameraStateRef.current.savedSplineProgress) : null)
+            || cameraStateRef.current.mainPathPosition.clone();
+          const targetLookAt = (cameraStateRef.current.savedLookAtTarget?.clone()) || (cubePos.current ? cubePos.current.clone() : new THREE.Vector3(0, 0, 0));
+          
+          console.log('🎯 [ScrollScene] Target position:', targetPos);
+          console.log('🎯 [ScrollScene] Target lookAt:', targetLookAt);
+
+          try {
+            const tween = gsap.to(cameraRef.current.position, {
+              x: targetPos.x,
+              y: targetPos.y,
+              z: targetPos.z,
+              duration: 1.5,
+              ease: "power2.inOut",
+              onUpdate: () => {
+                if (cameraRef.current) {
+                  cameraRef.current.lookAt(targetLookAt);
+                  // Force render during animation to show movement
+                  if (rendererRef.current && sceneRef.current) {
+                    rendererRef.current.render(sceneRef.current, cameraRef.current);
+                  }
+                }
+              },
+              onComplete: () => {
+                console.log('🎯 [ScrollScene] Return to follow-path animation completed');
+                isAnimatingFromBirdView.current = false;
+                isTestingCameraRef.current = false;
+                // IMPORTANT: Set bird view state to false after return animation completes
+                console.log('🎯 [ScrollScene] Setting isBirdView to false after return animation');
+                setIsBirdView(false);
+                isBirdViewRef.current = false;
+                // Also clear global window variable
+                (window as any).__isBirdView = false;
+                // Clear persistent flag when returning to camera view
+                (window as any).__birdViewPersistent = false;
+                // Ensure camera resumes along the spline at saved t
+                if (introCompletedRef.current && cameraRef.current && sceneRef.current && rendererRef.current) {
+                  if (!isFocusedOnHotspotRef.current) {
+                    updateCameraAlongCurve(cameraRef.current, cameraStateRef.current.savedSplineProgress || pathProgressRef.current.t);
+                  }
+                  rendererRef.current.render(sceneRef.current, cameraRef.current);
+                }
+                cameraStateRef.current.isOnMainPath = true;
+              }
+            });
+            console.log('🎯 [ScrollScene] Return animation GSAP tween created:', tween);
+          } catch (error) {
+            console.error('❌ [ScrollScene] Return animation GSAP error:', error);
+          }
+        }
+      }
+    };
+
+    const handleTestCameraAnimation = () => {
+      if (!cameraRef.current) return;
+      
+      isTestingCameraRef.current = true;
+      
+      // Store current position
+      const currentPos = cameraRef.current.position.clone();
+      const currentLookAt = new THREE.Vector3();
+      cameraRef.current.getWorldDirection(currentLookAt);
+      currentLookAt.add(currentPos);
+      
+      // Animate to test position
+      gsap.to(cameraRef.current.position, {
+        x: 10,
+        y: 60,
+        z: 5,
+        duration: 2,
+        ease: "power2.inOut",
+        onUpdate: () => {
+          if (cameraRef.current) {
+            // Interpolate lookAt target
+            const progress = gsap.getProperty(cameraRef.current.position, "x") as number;
+            const normalizedProgress = (progress - currentPos.x) / (10 - currentPos.x);
+            const lookAtX = currentLookAt.x + (0 - currentLookAt.x) * normalizedProgress;
+            const lookAtY = currentLookAt.y + (0 - currentLookAt.y) * normalizedProgress;
+            const lookAtZ = currentLookAt.z + (0 - currentLookAt.z) * normalizedProgress;
+            cameraRef.current.lookAt(lookAtX, lookAtY, lookAtZ);
+          }
+        },
+        onComplete: () => {
+          // Return to original position after 2 seconds
+          setTimeout(() => {
+            if (cameraRef.current) {
+              gsap.to(cameraRef.current.position, {
+              x: currentPos.x,
+              y: currentPos.y,
+              z: currentPos.z,
+              duration: 2,
+              ease: "power2.inOut",
+              onUpdate: () => {
+                if (cameraRef.current) {
+                  cameraRef.current.lookAt(currentLookAt);
+                }
+              },
+              onComplete: () => {
+                isTestingCameraRef.current = false;
+                // Reset to current scroll position
+                setTimeout(() => {
+                  if (cameraRef.current && sceneRef.current && rendererRef.current) {
+                    updateCameraAlongCurve(cameraRef.current, pathProgressRef.current.t);
+                    rendererRef.current.render(sceneRef.current, cameraRef.current);
+                  }
+                }, 100);
+              }
+            });
+            }
+          }, 2000);
+        }
+      });
+    };
+
+    const loadCollaborativeSceneConfig = async (architectId: string, projectName: string) => {
+      try {
+        console.log('🤝 [ScrollScene] Loading collaborative scene config for architect:', architectId);
+        console.log('🤝 [ScrollScene] Project name:', projectName);
+        
+        // Ensure we have a valid session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        console.log('🤝 [ScrollScene] Current session:', session);
+        console.log('🤝 [ScrollScene] Session error:', sessionError);
+        
+        if (sessionError || !session) {
+          console.error('🤝 [ScrollScene] No valid session found:', sessionError);
+          return;
+        }
+        
+        console.log('🤝 [ScrollScene] Session available, user ID:', session.user.id);
+        
+        // Get the architect's default config directly from the database
+        const { data: architectConfig, error: architectError } = await supabase
+          .from('scene_design_configs')
+          .select('*')
+          .eq('user_id', architectId)
+          .eq('is_default', true)
+          .single()
+
+        console.log('🤝 [ScrollScene] Query result - config:', architectConfig);
+        console.log('🤝 [ScrollScene] Query result - error:', architectError);
+
+        if (architectError) {
+          console.error('🤝 [ScrollScene] Error fetching architect config:', architectError);
+          console.error('🤝 [ScrollScene] Error details:', JSON.stringify(architectError, null, 2));
+          return;
+        }
+
+        if (architectConfig) {
+          console.log('🤝 [ScrollScene] Loaded architect config:', architectConfig);
+          
+          // Set the active path ID
+          setActivePathId(architectConfig.id);
+          
+          // Load the camera path data from scene_follow_paths table
+          const { data: followPaths, error: followPathsError } = await supabase
+            .from('scene_follow_paths')
+            .select('*')
+            .eq('scene_design_config_id', architectConfig.id)
+            .eq('is_active', true)
+            .single()
+
+          console.log('🤝 [ScrollScene] Follow paths query result:', followPaths);
+          console.log('🤝 [ScrollScene] Follow paths error:', followPathsError);
+
+          if (followPathsError) {
+            console.error('🤝 [ScrollScene] Error fetching follow paths:', followPathsError);
+            return;
+          }
+
+          if (followPaths) {
+            setCameraPathData({
+              cameraPoints: followPaths.camera_points || [],
+              lookAtTargets: followPaths.look_at_targets || []
+            });
+            
+            console.log('🤝 [ScrollScene] Collaborative model loaded successfully');
+            console.log('🤝 [ScrollScene] Project:', projectName);
+            console.log('🤝 [ScrollScene] Camera points:', followPaths.camera_points?.length || 0);
+            console.log('🤝 [ScrollScene] LookAt targets:', followPaths.look_at_targets?.length || 0);
+            console.log('🤝 [ScrollScene] Camera points data:', followPaths.camera_points);
+            console.log('🤝 [ScrollScene] LookAt targets data:', followPaths.look_at_targets);
+          } else {
+            console.log('🤝 [ScrollScene] No active follow paths found for architect config');
+          }
+        } else {
+          console.log('🤝 [ScrollScene] No architect config found');
+        }
+      } catch (error) {
+        console.error('🤝 [ScrollScene] Error loading collaborative scene config:', error);
+      }
+    };
+
+    const handleLoadCollaborativeModel = (event: CustomEvent) => {
+      console.log('🤝 [ScrollScene] Load collaborative model event received:', event.detail);
+      const { architectId, projectName, clientId } = event.detail;
+      
+      // Load the architect's scene configuration
+      loadCollaborativeSceneConfig(architectId, projectName);
+    };
+
+    console.log('🎯 [ScrollScene] Adding bird-view-animation event listener');
+    console.log('🎯 [ScrollScene] Current isBirdView state:', isBirdView);
+    console.log('🎯 [ScrollScene] Window object available:', typeof window);
+    console.log('🎯 [ScrollScene] addEventListener available:', typeof window.addEventListener);
+    
+    window.addEventListener('bird-view-animation', handleBirdViewAnimation as EventListener);
+    window.addEventListener('test-camera-animation', handleTestCameraAnimation);
+    window.addEventListener('load-collaborative-model', handleLoadCollaborativeModel);
+    
+    console.log('🎯 [ScrollScene] Event listeners added successfully');
+    
+    return () => {
+      console.log('🎯 [ScrollScene] Removing bird-view-animation event listener');
+      window.removeEventListener('bird-view-animation', handleBirdViewAnimation as EventListener);
+      window.removeEventListener('test-camera-animation', handleTestCameraAnimation);
+      window.removeEventListener('load-collaborative-model', handleLoadCollaborativeModel);
+    };
+  }, []); // Empty dependency array to run only once
 
   // Mouse event handlers for hotspot interaction
   useEffect(() => {
@@ -4172,6 +4686,22 @@ export default function ScrollScene({
           setHoveredHotspot(null);
           setHoverTooltip((prev: any) => ({ ...prev, visible: false }));
         }
+        return;
+      }
+      
+      // 🛡️ PREVENT EVENT BUBBLING FOR EDITOR INTERACTIONS
+      const isEditorEnabled = (window as any).__isEditorEnabled === true;
+      const birdViewLocked = (window as any).__birdViewLocked === true;
+      const suppressCameraResume = (window as any).__suppressCameraResume === true;
+      
+      if (isEditorEnabled || birdViewLocked || suppressCameraResume) {
+        console.log('🚫 BLOCKING CLICK - Editor interactions active:', {
+          isEditorEnabled,
+          birdViewLocked,
+          suppressCameraResume
+        });
+        event.preventDefault();
+        event.stopPropagation();
         return;
       }
       
@@ -4515,6 +5045,38 @@ export default function ScrollScene({
             </div>
             <div className="mb-2">
               <span className="text-orange-400">Animation Status:</span> {isAnimatingRef.current ? '🎬 Animating' : '⏸️ Idle'}
+            </div>
+            <div className="mb-2">
+              <span className="text-cyan-400">Camera Path Points:</span> {cameraPathData?.cameraPoints?.length || 0}
+            </div>
+            <div className="mb-2">
+              <span className="text-green-400">Current Path Progress:</span> {(() => {
+                const progress = pathProgressRef.current.t;
+                return `${(progress * 100).toFixed(1)}%`;
+              })()}
+            </div>
+            <div className="mb-2">
+              <span className="text-purple-400">Current Point Index:</span> {(() => {
+                const progress = pathProgressRef.current.t;
+                const pointIndex = Math.floor(progress * ((cameraPathData?.cameraPoints?.length || 1) - 1));
+                return pointIndex;
+              })()}
+            </div>
+            <div className="mb-2">
+              <span className="text-yellow-400">Current Point Coords:</span> {(() => {
+                const progress = pathProgressRef.current.t;
+                const pointIndex = Math.floor(progress * ((cameraPathData?.cameraPoints?.length || 1) - 1));
+                const point = cameraPathData?.cameraPoints?.[pointIndex];
+                return point ? `${point.x.toFixed(2)}, ${point.y.toFixed(2)}, ${point.z.toFixed(2)}` : 'N/A';
+              })()}
+            </div>
+            <div className="mb-2">
+              <span className="text-teal-400">Current LookAt Target:</span> {(() => {
+                const progress = pathProgressRef.current.t;
+                const pointIndex = Math.floor(progress * ((cameraPathData?.lookAtTargets?.length || 1) - 1));
+                const target = cameraPathData?.lookAtTargets?.[pointIndex];
+                return target ? `${target.x.toFixed(2)}, ${target.y.toFixed(2)}, ${target.z.toFixed(2)}` : 'N/A';
+              })()}
             </div>
           </div>
         </div>
@@ -5066,6 +5628,12 @@ export default function ScrollScene({
                     <span className="text-blue-400">{debugInfo.currentSection}</span>
                   </div>
                   <div className="flex justify-between">
+                    <span>Manual Edit Mode:</span>
+                    <span className={`text-2xl ${isManualEditMode ? 'text-green-400' : 'text-gray-400'}`}>
+                      {isManualEditMode ? '✓' : '✗'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
                     <span>Scene Stage:</span>
                     <span className="text-blue-400">{sceneStage}</span>
                   </div>
@@ -5179,7 +5747,7 @@ export default function ScrollScene({
       {/* Hotspot Category Tooltip */}
       {hoverTooltip.visible && (
         <div
-          className="fixed z-50 px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg shadow-lg transition-all duration-300 ease-out"
+          className="fixed z-50 px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg shadow-lg transition-all    duration-100 ease-out"
           style={{
             left: hoverTooltip.position.x + 10,
             top: hoverTooltip.position.y - 40,
@@ -5224,6 +5792,94 @@ export default function ScrollScene({
           </div>
         </div>
       )}
+
+      {((authRole === 'admin' || authRole === 'architect')) && (
+      <CameraPathEditor3D
+        cameraPoints={cameraPathData?.cameraPoints ? cameraPathData.cameraPoints.map((point: THREE.Vector3) => ({
+          x: point.x,
+          y: point.y,
+          z: point.z
+        })) : []}
+        lookAtTargets={cameraPathData?.lookAtTargets && cameraPathData.lookAtTargets.length > 0 ? cameraPathData.lookAtTargets.map((target: THREE.Vector3) => ({
+          x: target.x,
+          y: target.y,
+          z: target.z
+        })) : (() => {
+          // Generate default 9 lookAt targets in a circle with 100px radius
+          const defaultTargets: Array<{ x: number; y: number; z: number }> = [];
+          const numPoints = 9;
+          const radius = 100 / 4; // Divide by scale factor (4) to convert px to world units
+          for (let i = 0; i < numPoints; i++) {
+            const angle = (i / numPoints) * Math.PI * 2;
+            defaultTargets.push({
+              x: Math.cos(angle) * radius,
+              y: 0,
+              z: Math.sin(angle) * radius
+            });
+          }
+          return defaultTargets;
+        })()}
+        activePathId={activePathId}
+        isBirdView={isBirdView}
+        isEditorEnabled={isEditorEnabled}
+        onPointsChange={(newPoints) => {
+          const vector3Points = newPoints.map(point => new THREE.Vector3(point.x, point.y, point.z));
+          
+          // Set manual edit mode to prevent backend from overriding edits
+          setIsManualEditMode(true);
+          
+          setCameraPathData(prev => ({
+            ...prev,
+            cameraPoints: vector3Points
+          }));
+          
+          // Immediately rebuild the movement curve and update the camera along current progress
+          try {
+            if (vector3Points && vector3Points.length > 1) {
+              gsapCurveRef.current = new THREE.CatmullRomCurve3(vector3Points, false, 'catmullrom', 0.1);
+            } else {
+              gsapCurveRef.current = null;
+            }
+
+            // Only update camera position if bird view is NOT locked
+            const birdViewLocked = (window as any)?.__birdViewLocked === true;
+            if (cameraRef.current && rendererRef.current && sceneRef.current && gsapCurveRef.current && !birdViewLocked) {
+              // Re-apply camera along the current path progress to reflect height changes immediately
+              updateCameraAlongCurve(cameraRef.current, pathProgressRef.current.t);
+              rendererRef.current.render(sceneRef.current, cameraRef.current);
+            }
+          } catch (e) {
+            console.error('❌ Failed to rebuild movement curve after points change:', e);
+          }
+        }}
+        onLookAtTargetsChange={(newTargets) => {
+          const vector3Targets = newTargets.map(target => new THREE.Vector3(target.x, target.y, target.z));
+          setCameraPathData(prev => ({
+            ...prev,
+            lookAtTargets: vector3Targets
+          }));
+          // Immediately rebuild look-at curve and update camera to reflect changes live
+          try {
+            gsapLookAtTargetsRef.current = vector3Targets;
+            if (vector3Targets && vector3Targets.length > 1) {
+              gsapLookCurveRef.current = new THREE.CatmullRomCurve3(vector3Targets, false, 'catmullrom', 0.1);
+            } else {
+              gsapLookCurveRef.current = null;
+            }
+            // Only update camera position if bird view is NOT locked
+            const birdViewLocked = (window as any)?.__birdViewLocked === true;
+            if (cameraRef.current && rendererRef.current && sceneRef.current && gsapCurveRef.current && !birdViewLocked) {
+              // Re-apply camera along current path progress using the new look-at curve
+              updateCameraAlongCurve(cameraRef.current, pathProgressRef.current.t);
+              rendererRef.current.render(sceneRef.current, cameraRef.current);
+            }
+          } catch (e) {
+            console.error('❌ Failed to rebuild look-at curve after targets change:', e);
+          }
+        }}
+        onBirdViewToggle={() => {}} // Let the custom event handle the state change
+        onToggleEditor={() => setIsEditorEnabled(!isEditorEnabled)}
+      />)}
     </>
   );
 } 

@@ -181,7 +181,7 @@ const SwiperModal: React.FC<SwiperModalProps> = ({ images, onClose, initialSlide
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-[110] flex items-center justify-center"
       style={{ pointerEvents: 'none' }}
     >
       {/* Full Screen Backdrop */}
@@ -216,7 +216,7 @@ const SwiperModal: React.FC<SwiperModalProps> = ({ images, onClose, initialSlide
         {/* Return to Path Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 left-5 z-40 w-12 h-12 bg-transparent border border-white/30 text-white rounded-full flex items-center justify-center transition-all duration-300 hover:bg-white/10 hover:border-white/50 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] backdrop-blur-sm"
+          className="absolute top-5 left-5 z-40 w-12 h-12 bg-transparent border border-white/30 text-white rounded-full flex items-center justify-center transition-all    duration-100 hover:bg-white/10 hover:border-white/50 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] backdrop-blur-sm"
           style={{ pointerEvents: 'auto', zIndex: 20000, }}
           aria-label="Return to tour path"
         >
@@ -239,7 +239,7 @@ const SwiperModal: React.FC<SwiperModalProps> = ({ images, onClose, initialSlide
 
         {/* <button
           onClick={() => alert('Next Gallery')}
-          className="absolute top-5 right-5 z-40 w-12 h-12 bg-transparent border border-white/30 text-white rounded-full flex items-center justify-center transition-all duration-300 hover:bg-white/10 hover:border-white/50 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] backdrop-blur-sm"
+          className="absolute top-5 right-5 z-40 w-12 h-12 bg-transparent border border-white/30 text-white rounded-full flex items-center justify-center transition-all    duration-100 hover:bg-white/10 hover:border-white/50 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] backdrop-blur-sm"
           style={{ pointerEvents: 'auto' }}
           aria-label="Next gallery"
         >
@@ -384,7 +384,7 @@ const SwiperGallery: React.FC<SwiperGalleryProps> = ({
         {images.map((image, index) => (
           <div
             key={index}
-            className="group cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
+            className="group cursor-pointer transform transition-all    duration-100 hover:scale-105 hover:shadow-lg"
           >
             <AspectRatio ratio={2/3} className="relative overflow-hidden bg-gray-800">
               <img
@@ -400,7 +400,7 @@ const SwiperGallery: React.FC<SwiperGalleryProps> = ({
                   (e.target as HTMLImageElement).src = '/placeholder.svg';
                 }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity    duration-100" />
               {image.caption && (
                 <div className="absolute bottom-2 left-2 right-2">
                   <p className="text-white text-sm font-medium truncate">{image.caption}</p>
@@ -422,7 +422,7 @@ const SwiperGallery: React.FC<SwiperGalleryProps> = ({
           {images.map((image, index) => (
             <div
               key={index}
-              className="group cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
+              className="group cursor-pointer transform transition-all    duration-100 hover:scale-105 hover:shadow-lg"
               onClick={() => openModal(index)}
             >
               <AspectRatio ratio={2/3} className="relative overflow-hidden bg-gray-800">
@@ -439,7 +439,7 @@ const SwiperGallery: React.FC<SwiperGalleryProps> = ({
                     (e.target as HTMLImageElement).src = '/placeholder.svg';
                   }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity    duration-100" />
                 {image.caption && (
                   <div className="absolute bottom-2 left-2 right-2">
                     <p className="text-white text-sm font-medium truncate">{image.caption}</p>

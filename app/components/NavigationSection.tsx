@@ -10,6 +10,7 @@ import { GeoLocationSection } from "./GeoLocationSection";
 import LocaleSwitcherSelect from "./LocaleSwitcherSelect"
 import UserProfile from "./UserProfile"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useUserRole } from "@/hooks/useUserRole"
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -24,6 +25,9 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [showNav, setShowNav] = useState(false) // Start hidden
   const [isDark, setIsDark] = useState(false)
+  
+  // Get user role information
+  const { role, loading: userRoleLoading } = useUserRole()
 
   // Theme detection for logo filtering
   useEffect(() => {
@@ -86,18 +90,15 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY
-      if (currentScrollY < 100) {
-        // Hide nav when on HeroSection (top of page)
-        setShowNav(false)
-        setNavVisible(false)
-      } else if (currentScrollY > lastScrollY.current) {
-        setShowNav(false)
+      if (currentScrollY > lastScrollY.current && currentScrollY > 24) {
+        // scrolling down
         setNavVisible(false)
       } else {
-        setShowNav(true)
+        // scrolling up
         setNavVisible(true)
       }
       lastScrollY.current = currentScrollY
+      setShowNav(true)
     }
     window.addEventListener("scroll", handleScroll, { passive: true })
     return () => window.removeEventListener("scroll", handleScroll)
@@ -123,270 +124,195 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
     visible: { y: 0, opacity: 1, transition: { duration: 0.25, ease: "easeOut" } },
   }
 
-  return (
-    <AnimatePresence>
-      {showNav && (
-        <motion.nav
-          key="main-nav"
-          initial="hidden"
-          animate={navVisible ? "visible" : "hidden"}
-          exit="hidden"
+  // For role-based users, show simplified navigation
+  const renderRoleBasedNav = () => {
+    if (role === 'end_user' || role === 'architect' || role === 'admin') {
+      return (
+        <motion.nav 
+          id="main-navigation"
+          className="fixed top-0 left-0 right-0 z-[1003] w-full bg-white dark:bg-gray-900 border-b border-light-dark/30 dark:border-gray-700/30 backdrop-blur-md"
           variants={navVariants}
-          className="fixed top-0 left-0 right-0 z-[1003] w-full bg-light-light dark:bg-gray-900 border-b border-light-dark/30 dark:border-gray-700/30 backdrop-blur-md"
+          initial="visible"
+          animate={navVisible ? "visible" : "hidden"}
         >
-          <div className="max-w-7xl mx-auto flex items-center justify-between h-12 sm:h-14 md:h-16 px-2 py-10 relative">
-            {/* Left side - Hamburger menu and Logo */}
-            <div className="flex items-center gap-2">
-              {/* Morphing Hamburger/X for mobile */}
-              <button
-                className="md:hidden flex items-center justify-center p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-light-dark relative text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400"
-                onClick={() => setMobileOpen((v) => !v)}
-                aria-label={mobileOpen ? "Close menu" : "Open menu"}
-              >
-                <motion.svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-6 h-6 sm:w-7 sm:h-7"
-                >
-                  {/* Top line - fades out */}
-                  <motion.line
-                    x1="3" y1="7" x2="21" y2="7"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                    initial={false}
-                    animate={mobileOpen ? {
-                      opacity: 0,
-                      transition: { duration: 0.2, ease: "easeOut", delay: 0.1 }
-                    } : {
-                      opacity: 1,
-                      transition: { duration: 0.3, ease: "easeOut", delay: 0.2 }
-                    }}
-                  />
-                  {/* Middle line - fades out */}
-                  <motion.line
-                    x1="3" y1="12" x2="21" y2="12"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                    initial={false}
-                    animate={mobileOpen ? {
-                      opacity: 0,
-                      transition: { duration: 0.2, ease: "easeOut", delay: 0.1 }
-                    } : {
-                      opacity: 1,
-                      transition: { duration: 0.3, ease: "easeOut", delay: 0.2 }
-                    }}
-                  />
-                  {/* Bottom line - fades out */}
-                  <motion.line
-                    x1="3" y1="17" x2="21" y2="17"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                    initial={false}
-                    animate={mobileOpen ? {
-                      opacity: 0,
-                      transition: { duration: 0.2, ease: "easeOut", delay: 0.1 }
-                    } : {
-                      opacity: 1,
-                      transition: { duration: 0.3, ease: "easeOut", delay: 0.2 }
-                    }}
-                  />
-                  {/* X lines - fade in */}
-                  <motion.line
-                    x1="6" y1="6" x2="18" y2="18"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                    initial={false}
-                    animate={mobileOpen ? {
-                      opacity: 1,
-                      transition: { duration: 0.3, ease: "easeOut", delay: 0.2 }
-                    } : {
-                      opacity: 0,
-                      transition: { duration: 0.2, ease: "easeOut", delay: 0.1 }
-                    }}
-                  />
-                  <motion.line
-                    x1="18" y1="6" x2="6" y2="18"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                    initial={false}
-                    animate={mobileOpen ? {
-                      opacity: 1,
-                      transition: { duration: 0.3, ease: "easeOut", delay: 0.2 }
-                    } : {
-                      opacity: 0,
-                      transition: { duration: 0.2, ease: "easeOut", delay: 0.1 }
-                    }}
-                  />
-                </motion.svg>
-              </button>
-
-              {/* Logo or Brand */}
-              <a href="#" className={`font-bold ${navFont} text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors`}>
+          <div className="w-full flex items-center justify-between h-12 px-2 py-1">
+            {/* Logo only on left */}
+            <div className="flex items-center">
+              <a href="#" className="font-bold text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
                 <Image
                   src="/images/logo-procemento.png"
                   alt="Microcement"
-                  width={200}
-                  height={105}
-                  className="hidden sm:block h-8 w-auto transition-all duration-200"
-                  style={{
-                    filter: getLogoFilter(), // Dynamic theme-aware filtering
-                    opacity: 0.9,
-                    transition: 'filter 0.3s ease-in-out'
+                  width={30}
+                  height={20}
+                  style={{ 
+                    filter: getLogoFilter(),
+                    objectFit: 'contain'
                   }}
-                />
-                <Image
-                  src="/images/logo-procemento.png"
-                  alt="Microcement"
-                  width={100}
-                  height={52}
-                  className="block sm:hidden h-6 w-auto transition-all duration-200"
-                  style={{
-                    filter: getLogoFilter(), // Dynamic theme-aware filtering
-                    opacity: 0.9,
-                    transition: 'filter 0.3s ease-in-out'
-                  }}
+                  className="h-5 sm:h-6 md:h-8"
                 />
               </a>
             </div>
-            
-            {/* <GeoLocationSection /> */}
 
-            {/* Desktop Nav */}
-            <ul className={`hidden md:flex items-center gap-2 sm:gap-4 md:gap-6 ${navFont}`}>
-              {navLinks.map((link) =>
-                link.dropdown ? (
-                  <li key={link.name} className="relative">
-                    <button
-                      className="flex items-center gap-1 font-medium text-light-dark dark:text-white bg-transparent border-none outline-none cursor-pointer py-2 px-3 rounded hover:bg-light-main dark:hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-light-dark"
-                      onClick={() => handleDropdown(link.name)}
-                      onBlur={() => setTimeout(() => setOpenDropdown(null), 150)}
-                      aria-haspopup="true"
-                      aria-expanded={openDropdown === link.name}
-                    >
+            {/* Right side - Auth controls only */}
+            <div className="flex items-center gap-2">
+              <LocaleSwitcherSelect defaultValue={locale} label="" />
+              <ThemeToggle />
+              <UserProfile onUserChange={onUserChange} />
+            </div>
+          </div>
+        </motion.nav>
+      )
+    }
+
+    // Default navigation for guests - simplified
+    return (
+      <motion.nav 
+        id="main-navigation"
+        className="fixed top-0 left-0 right-0 z-[1003] w-full bg-white dark:bg-gray-900 border-b border-light-dark/30 dark:border-gray-700/30 backdrop-blur-md"
+        variants={navVariants}
+        initial="visible"
+        animate={navVisible ? "visible" : "hidden"}
+      >
+        <div className="w-full flex items-center justify-between h-12 px-2 py-1">
+          {/* Logo and Mobile Menu */}
+          <div className="flex items-center">
+            {/* Mobile Hamburger Menu */}
+            <button
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="md:hidden mr-3 p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              aria-label="Toggle menu"
+            >
+              <div className="w-6 h-6 flex flex-col justify-center items-center">
+                <span className={`w-5 h-0.5 bg-gray-700 dark:bg-gray-200 transition-all duration-300 ${mobileOpen ? 'rotate-45 translate-y-1.5' : ''}`}></span>
+                <span className={`w-5 h-0.5 bg-gray-700 dark:bg-gray-200 transition-all duration-300 mt-1 ${mobileOpen ? 'opacity-0' : ''}`}></span>
+                <span className={`w-5 h-0.5 bg-gray-700 dark:bg-gray-200 transition-all duration-300 mt-1 ${mobileOpen ? '-rotate-45 -translate-y-1.5' : ''}`}></span>
+              </div>
+            </button>
+
+            {/* Logo */}
+            <a href="#" className="font-bold text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
+              <Image
+                src="/images/logo-procemento.png"
+                alt="Microcement"
+                width={60}
+                height={40}
+                style={{ 
+                  filter: getLogoFilter(),
+                  objectFit: 'contain'
+                }}
+                className="h-5 sm:h-6 md:h-8"
+              />
+            </a>
+          </div>
+
+          {/* Desktop Navigation Menu Items */}
+          <ul className="hidden md:flex items-center space-x-6">
+            {navLinks.map((link, index) => (
+              <li key={index}>
+                {link.dropdown ? (
+                  <div className="relative group">
+                    <button className="text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex items-center">
                       {link.name}
-                      <svg className="ml-1 w-3 h-3 inline" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path d="M19 9l-7 7-7-7" />
+                      <svg className="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
-                    <AnimatePresence>
-                      {openDropdown === link.name && (
-                        <motion.ul
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={{ duration: 0.2 }}
-                          className="absolute left-0 mt-2 min-w-[160px] bg-light-light dark:bg-gray-800 rounded shadow-lg border border-light-dark dark:border-gray-700 z-50"
-                        >
-                          {link.dropdown.map((item) => (
-                            <li key={item.name}>
-                              <a
-                                href={item.href}
-                                className="block px-4 py-2 text-light-dark dark:text-white hover:bg-light-main dark:hover:bg-gray-700 rounded transition-colors"
-                                onClick={handleNavClick}
-                              >
-                                {item.name}
-                              </a>
-                            </li>
-                          ))}
-                        </motion.ul>
-                      )}
-                    </AnimatePresence>
-                  </li>
+                    <ul className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 border border-gray-200 dark:border-gray-700">
+                      {link.dropdown.map((item, i) => (
+                        <li key={i}>
+                          <a href={item.href} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            {item.name}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ) : (
-                  <li key={link.name}>
-                    <a
-                      href={link.href}
-                      className="font-medium text-light-dark dark:text-white bg-transparent border-none outline-none cursor-pointer py-2 px-3 rounded hover:bg-light-main dark:hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-light-dark"
-                      onClick={handleNavClick}
-                    >
-                      {link.name}
-                    </a>
-                  </li>
-                )
-              )}
-            </ul>
-            {/* Right side controls - Theme Toggle, Hamburger, and Language Toggle */}
-            <div className="flex items-center gap-2 text-gray-700 dark:text-gray-200">
-              {/* Language Dropdown */}
-              <LocaleSwitcherSelect
-                defaultValue={locale}
-                label="Select Language"/>
-              {/* Theme Toggle */}
-              <div className="flex-shrink-0">
-                <ThemeToggle />
-              </div>
-              {/* User Profile */}
-              <div className="flex-shrink-0">
-                <UserProfile onUserChange={onUserChange} />
-              </div>
-            </div>
+                  <a href={link.href} className="text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
+                    {link.name}
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+
+          {/* Right side - Auth controls */}
+          <div className="flex items-center gap-2">
+            <LocaleSwitcherSelect defaultValue={locale} label="" />
+            <ThemeToggle />
+            <UserProfile onUserChange={onUserChange} />
           </div>
 
           {/* Mobile Menu */}
           <AnimatePresence>
             {mobileOpen && (
               <motion.div
-                initial={{ y: -40, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: -40, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="md:hidden bg-light-light dark:bg-gray-900 border-t border-light-dark dark:border-gray-700 px-4 py-4"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="absolute top-full left-0 right-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-lg"
               >
-                <ul className="flex flex-col gap-2">
-                  {navLinks.map((link) =>
-                    link.dropdown ? (
-                      <li key={link.name} className="relative">
-                        <button
-                          className="w-full flex items-center justify-between font-medium text-light-dark dark:text-white bg-transparent border-none outline-none cursor-pointer py-2 px-3 rounded hover:bg-light-main dark:hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-light-dark"
-                          onClick={() => handleDropdown(link.name)}
-                          aria-haspopup="true"
-                          aria-expanded={openDropdown === link.name}
-                        >
-                          {link.name}
-                          <svg className="ml-1 w-3 h-3 inline" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </button>
-                        <AnimatePresence>
-                          {openDropdown === link.name && (
-                            <motion.ul
-                              initial={{ opacity: 0, y: -10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -10 }}
-                              transition={{ duration: 0.2 }}
-                              className="pl-4"
+                <ul className="py-2 space-y-1">
+                  {navLinks.map((link, index) => (
+                    <li key={index}>
+                      {link.dropdown ? (
+                        <div className="relative">
+                          <button
+                            onClick={() => setOpenDropdown(openDropdown === link.name ? null : link.name)}
+                            className="w-full px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center justify-between"
+                          >
+                            {link.name}
+                            <svg
+                              className={`w-4 h-4 transition-transform duration-200 ${openDropdown === link.name ? 'rotate-180' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
                             >
-                              {link.dropdown.map((item) => (
-                                <li key={item.name}>
-                                  <a
-                                    href={item.href}
-                                    className="block px-4 py-2 text-light-dark dark:text-white hover:bg-light-main dark:hover:bg-gray-700 rounded transition-colors"
-                                    onClick={handleNavClick}
-                                  >
-                                    {item.name}
-                                  </a>
-                                </li>
-                              ))}
-                            </motion.ul>
-                          )}
-                        </AnimatePresence>
-                      </li>
-                    ) : (
-                      <li key={link.name}>
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          <AnimatePresence>
+                            {openDropdown === link.name && (
+                              <motion.ul
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="bg-gray-50 dark:bg-gray-800"
+                              >
+                                {link.dropdown.map((item, i) => (
+                                  <li key={i}>
+                                    <a
+                                      href={item.href}
+                                      onClick={() => setMobileOpen(false)}
+                                      className="block px-8 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                    >
+                                      {item.name}
+                                    </a>
+                                  </li>
+                                ))}
+                              </motion.ul>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      ) : (
                         <a
                           href={link.href}
-                          className="block font-medium text-light-dark dark:text-white bg-transparent border-none outline-none cursor-pointer py-2 px-3 rounded hover:bg-light-main dark:hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-light-dark"
-                          onClick={handleNavClick}
+                          onClick={() => setMobileOpen(false)}
+                          className="block px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                         >
                           {link.name}
                         </a>
-                      </li>
-                    )
-                  )}
+                      )}
+                    </li>
+                  ))}
                 </ul>
               </motion.div>
             )}
           </AnimatePresence>
-        </motion.nav>
-      )}
-    </AnimatePresence>
-  )
-} 
+        </div>
+      </motion.nav>
+    )
+  }
+
+  return renderRoleBasedNav()
+}

@@ -164,14 +164,14 @@ export const SCENE_CONFIG = {
  * Get camera path data for a specific model
  * Now supports user-specific configurations from the database
  */
-export async function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT_MODEL_PATH, userId?: string) {
+export async function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT_MODEL_PATH, userId?: string, user?: any) {
   console.log('🎬 getCameraPathData called with userId:', userId ? 'present' : 'none');
   
   if (userId) {
     try {
       console.log('🔍 Attempting to load user-specific camera path data from Supabase...');
       const sceneConfigService = SceneConfigService.getInstance();
-      sceneConfigService.setUser({ id: userId });
+      sceneConfigService.setUser(user || { id: userId });
       
       // Try to get user's default config first
       let userConfig = await sceneConfigService.getDefaultConfig();
@@ -180,6 +180,7 @@ export async function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT
       // If no default config exists, return default data without creating DB entry
       if (!userConfig) {
         console.log('🔄 No user config found, using default data without creating DB entry');
+        console.log('📋 LOADING DEFAULT CAMERA PATH');
         return {
           cameraPoints: SCENE_CONFIG.DEFAULT_CAMERA_POINTS.map(point => point.clone()),
           lookAtTargets: SCENE_CONFIG.DEFAULT_LOOK_AT_TARGETS.map(target => target.clone())
@@ -192,6 +193,7 @@ export async function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT
           const activePath = await sceneConfigService.getActiveFollowPathForConfig(userConfig.id as unknown as string)
           if (activePath && Array.isArray(activePath.camera_points) && activePath.camera_points.length > 0) {
             console.log('🎯 Using active follow path camera data:', activePath.camera_points.length)
+            console.log('📋 LOADING CAMERA PATH FROM DB (active follow path)')
             return {
               cameraPoints: activePath.camera_points.map((p: any) => {
                 const x = typeof p.x === 'number' ? p.x : 0;
@@ -215,29 +217,45 @@ export async function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT
         console.log('  - Camera points:', userConfig.camera_points?.length || 0);
         console.log('  - Look at targets:', userConfig.look_at_targets?.length || 0);
         
-        return {
-          cameraPoints: (userConfig.camera_points || []).map((point: any) => {
-            const x = typeof point.x === 'number' ? point.x : 0;
-            const y = typeof point.y === 'number' ? point.y : 0;
-            const z = typeof point.z === 'number' ? point.z : 0;
-            return new THREE.Vector3(x, y, z);
-          }),
-          lookAtTargets: (userConfig.look_at_targets || []).map((target: any) => {
-            const x = typeof target.x === 'number' ? target.x : 0;
-            const y = typeof target.y === 'number' ? target.y : 0;
-            const z = typeof target.z === 'number' ? target.z : 0;
-            return new THREE.Vector3(x, y, z);
-          })
-        };
+        // Check if userConfig has valid camera data, otherwise use defaults
+        const hasValidCameraData = userConfig.camera_points && Array.isArray(userConfig.camera_points) && userConfig.camera_points.length > 0;
+        const hasValidLookAtData = userConfig.look_at_targets && Array.isArray(userConfig.look_at_targets) && userConfig.look_at_targets.length > 0;
+        
+        if (hasValidCameraData && hasValidLookAtData) {
+          console.log('📋 LOADING CAMERA PATH FROM DB (user config embedded data)')
+          return {
+            cameraPoints: userConfig.camera_points.map((point: any) => {
+              const x = typeof point.x === 'number' ? point.x : 0;
+              const y = typeof point.y === 'number' ? point.y : 0;
+              const z = typeof point.z === 'number' ? point.z : 0;
+              return new THREE.Vector3(x, y, z);
+            }),
+            lookAtTargets: userConfig.look_at_targets.map((target: any) => {
+              const x = typeof target.x === 'number' ? target.x : 0;
+              const y = typeof target.y === 'number' ? target.y : 0;
+              const z = typeof target.z === 'number' ? target.z : 0;
+              return new THREE.Vector3(x, y, z);
+            })
+          };
+        } else {
+          console.log('🔄 User config has no valid camera data, using defaults');
+          console.log('📋 LOADING DEFAULT CAMERA PATH');
+          return {
+            cameraPoints: SCENE_CONFIG.DEFAULT_CAMERA_POINTS.map(point => point.clone()),
+            lookAtTargets: SCENE_CONFIG.DEFAULT_LOOK_AT_TARGETS.map(target => target.clone())
+          };
+        }
       }
     } catch (error) {
       console.warn('❌ Failed to load user config, falling back to default:', error);
+      console.log('📋 LOADING DEFAULT CAMERA PATH (error fallback)');
     }
   }
   
   if (process.env.NODE_ENV === 'development') {
     console.log('🔄 Using default camera path data (no userId or Supabase error)');
   }
+  console.log('📋 LOADING DEFAULT CAMERA PATH (no userId)');
   // Fallback to default data
   return {
     cameraPoints: SCENE_CONFIG.DEFAULT_CAMERA_POINTS.map(point => point.clone()),
@@ -249,7 +267,7 @@ export async function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT
  * Get hotspot settings for a specific model/user combination
  * Now supports user-specific configurations from the database
  */
-export async function getHotspotSettings(modelPath: string = SCENE_CONFIG.DEFAULT_MODEL_PATH, userId?: string) {
+export async function getHotspotSettings(modelPath: string = SCENE_CONFIG.DEFAULT_MODEL_PATH, userId?: string, user?: any) {
   if (process.env.NODE_ENV === 'development') {
     console.log('🎨 getHotspotSettings called with userId:', userId ? 'present' : 'none');
   }
@@ -258,7 +276,7 @@ export async function getHotspotSettings(modelPath: string = SCENE_CONFIG.DEFAUL
     try {
       console.log('🔍 Attempting to load user-specific hotspot settings from Supabase...');
       const sceneConfigService = SceneConfigService.getInstance();
-      sceneConfigService.setUser({ id: userId });
+      sceneConfigService.setUser(user || { id: userId });
       
       // Try to get user's default config first
       let userConfig = await sceneConfigService.getDefaultConfig();
@@ -308,11 +326,11 @@ export async function getHotspotSettings(modelPath: string = SCENE_CONFIG.DEFAUL
  * Get complete scene configuration for a user
  * This is the main function to use for getting user-specific scene configs
  */
-export async function getUserSceneConfig(userId?: string) {
+export async function getUserSceneConfig(userId?: string, user?: any) {
   if (userId) {
     try {
       const sceneConfigService = SceneConfigService.getInstance();
-      sceneConfigService.setUser({ id: userId });
+      sceneConfigService.setUser(user || { id: userId });
       
       // Try to get user's default config first
       let userConfig = await sceneConfigService.getDefaultConfig();
@@ -324,6 +342,7 @@ export async function getUserSceneConfig(userId?: string) {
       }
       
       if (userConfig) {
+        console.log('🎯 [getUserSceneConfig] Converting user config to scene config');
         return sceneConfigService.convertToSceneConfig(userConfig);
       }
     } catch (error) {

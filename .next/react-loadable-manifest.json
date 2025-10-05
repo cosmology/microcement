@@ -1,81 +1,49 @@
 {
   "app/components/HomeClient.tsx -> ./ScrollScene": {
-    "id": 5561,
+    "id": "app/components/HomeClient.tsx -> ./ScrollScene",
     "files": [
-      "static/css/7458193303276b40.css",
-      "static/chunks/b536a0f1-02bcf7493b0a51a2.js",
-      "static/chunks/c15bf2b0.2c4774629432dc08.js",
-      "static/chunks/911-49ccbe30faf9a25c.js",
-      "static/chunks/605.8a68597bd40a9232.js",
-      "static/chunks/956.0584e4fbd88c44cc.js",
-      "static/chunks/561.5d5f6c774170de38.js"
+      "static/css/_app-pages-browser_app_components_ScrollScene_tsx.css",
+      "static/chunks/_app-pages-browser_app_components_ScrollScene_tsx.js"
     ]
   },
   "app/components/HomeClient.tsx -> gsap": {
-    "id": 7605,
+    "id": "app/components/HomeClient.tsx -> gsap",
     "files": [
-      "static/chunks/c15bf2b0.2c4774629432dc08.js",
-      "static/chunks/605.8a68597bd40a9232.js"
+      "static/chunks/_app-pages-browser_node_modules_pnpm_gsap_3_13_0_node_modules_gsap_index_js.js"
     ]
   },
   "app/components/HomeClient.tsx -> gsap/ScrollTrigger": {
-    "id": 5580,
+    "id": "app/components/HomeClient.tsx -> gsap/ScrollTrigger",
     "files": [
-      "static/chunks/199.4b2bc8aaa2008d90.js"
+      "static/chunks/_app-pages-browser_node_modules_pnpm_gsap_3_13_0_node_modules_gsap_ScrollTrigger_js.js"
     ]
   },
   "app/components/ScrollScene.tsx -> three/examples/jsm/loaders/GLTFLoader.js": {
-    "id": 9323,
+    "id": "app/components/ScrollScene.tsx -> three/examples/jsm/loaders/GLTFLoader.js",
     "files": [
-      "static/chunks/497.1e7b8fbe50af18cc.js",
-      "static/chunks/323.9225bab0aa1e1c34.js"
-    ]
-  },
-  "app/test/page.tsx -> ../components/ScrollScene": {
-    "id": 5561,
-    "files": [
-      "static/css/7458193303276b40.css",
-      "static/chunks/b536a0f1-02bcf7493b0a51a2.js",
-      "static/chunks/c15bf2b0.2c4774629432dc08.js",
-      "static/chunks/909-69ca2bb2980cac69.js",
-      "static/chunks/911-49ccbe30faf9a25c.js",
-      "static/chunks/605.8a68597bd40a9232.js",
-      "static/chunks/956.0584e4fbd88c44cc.js",
-      "static/chunks/561.5d5f6c774170de38.js",
-      "static/chunks/88.368518c000461b8f.js"
+      "static/chunks/_app-pages-browser_node_modules_pnpm_three_0_162_0_node_modules_three_examples_jsm_loaders_GL-d32f11.js"
     ]
   },
   "lib/services/ModelLoader.ts -> three/examples/jsm/loaders/GLTFLoader.js": {
-    "id": 9323,
+    "id": "lib/services/ModelLoader.ts -> three/examples/jsm/loaders/GLTFLoader.js",
     "files": [
-      "static/chunks/497.1e7b8fbe50af18cc.js",
-      "static/chunks/323.9225bab0aa1e1c34.js"
+      "static/chunks/_app-pages-browser_node_modules_pnpm_three_0_162_0_node_modules_three_examples_jsm_loaders_GL-d32f11.js"
     ]
   },
-  "node_modules/@supabase/auth-js/dist/module/lib/helpers.js -> @supabase/node-fetch": {
-    "id": 3537,
+  "node_modules/.pnpm/@supabase+auth-js@2.71.1/node_modules/@supabase/auth-js/dist/module/lib/helpers.js -> @supabase/node-fetch": {
+    "id": "node_modules/.pnpm/@supabase+auth-js@2.71.1/node_modules/@supabase/auth-js/dist/module/lib/helpers.js -> @supabase/node-fetch",
     "files": []
   },
-  "node_modules/@supabase/functions-js/dist/module/helper.js -> @supabase/node-fetch": {
-    "id": 3537,
+  "node_modules/.pnpm/@supabase+functions-js@2.4.6/node_modules/@supabase/functions-js/dist/module/helper.js -> @supabase/node-fetch": {
+    "id": "node_modules/.pnpm/@supabase+functions-js@2.4.6/node_modules/@supabase/functions-js/dist/module/helper.js -> @supabase/node-fetch",
     "files": []
   },
-  "node_modules/@supabase/realtime-js/dist/module/RealtimeClient.js -> @supabase/node-fetch": {
-    "id": 3537,
+  "node_modules/.pnpm/@supabase+realtime-js@2.15.5/node_modules/@supabase/realtime-js/dist/module/RealtimeClient.js -> @supabase/node-fetch": {
+    "id": "node_modules/.pnpm/@supabase+realtime-js@2.15.5/node_modules/@supabase/realtime-js/dist/module/RealtimeClient.js -> @supabase/node-fetch",
     "files": []
   },
-  "node_modules/@supabase/storage-js/dist/module/lib/helpers.js -> @supabase/node-fetch": {
-    "id": 3537,
+  "node_modules/.pnpm/@supabase+storage-js@2.12.1/node_modules/@supabase/storage-js/dist/module/lib/helpers.js -> @supabase/node-fetch": {
+    "id": "node_modules/.pnpm/@supabase+storage-js@2.12.1/node_modules/@supabase/storage-js/dist/module/lib/helpers.js -> @supabase/node-fetch",
     "files": []
-  },
-  "pages/test3d.tsx -> ../app/components/ScrollScene": {
-    "id": 8844,
-    "files": [
-      "static/css/7458193303276b40.css",
-      "static/chunks/69b51223.81ed6ef1f20075a9.js",
-      "static/chunks/281c3f4d.5d2da28224810978.js",
-      "static/chunks/704.c83de3a72d3d75c6.js",
-      "static/chunks/844.586cb835b69897a2.js"
-    ]
   }
 }

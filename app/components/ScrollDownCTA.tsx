@@ -16,8 +16,6 @@ export default function ScrollDownCTA({ className = "", onIntroComplete }: Scrol
 
   // Handle intro completion - only trigger when explicitly called
   const handleIntroComplete = () => {
-    console.log('🎯 ScrollDownCTA: Intro completed, triggering fadeIn');
-    console.log('🎯 ScrollDownCTA: Current states - isVisible:', isVisible, 'isIntroFinished:', isIntroFinished, 'isFadeIn:', isFadeIn);
     setIsIntroFinished(true);
     setIsVisible(true);
     // Prevent immediate auto-hide if page is already scrolled
@@ -25,18 +23,15 @@ export default function ScrollDownCTA({ className = "", onIntroComplete }: Scrol
     
     // Add fadeIn effect after a small delay
     setTimeout(() => {
-      console.log('🎯 ScrollDownCTA: Applying fadeIn class');
       setIsFadeIn(true);
     }, 100);
   };
 
   // Expose the handler to parent immediately on mount
   useEffect(() => {
-    console.log('🎯 ScrollDownCTA: Component mounted, exposing handler');
     (window as any).__scrollDownCTAIntroComplete = handleIntroComplete;
     
     return () => {
-      console.log('🎯 ScrollDownCTA: Component unmounting, cleaning up handler');
       delete (window as any).__scrollDownCTAIntroComplete;
     };
   }, []); // Empty dependency array to run only on mount
@@ -51,7 +46,6 @@ export default function ScrollDownCTA({ className = "", onIntroComplete }: Scrol
       }
       // Hide when page is scrolled
       if (scrollY > 0 && isVisible && !isFadeOut) {
-        console.log('🎯 ScrollDownCTA: Starting fadeOut due to scroll position:', scrollY);
         setIsFadeOut(true);
         setIsFadeIn(false);
         
@@ -61,7 +55,6 @@ export default function ScrollDownCTA({ className = "", onIntroComplete }: Scrol
           setIsFadeOut(false);
         }, 400); // Match the CSS transition duration
       } else if (scrollY === 0 && !isVisible && isIntroFinished && !isFadeIn) {
-        console.log('🎯 ScrollDownCTA: Showing due to scroll position at top:', scrollY);
         setIsVisible(true);
         setTimeout(() => setIsFadeIn(true), 100);
       }
@@ -80,7 +73,6 @@ export default function ScrollDownCTA({ className = "", onIntroComplete }: Scrol
 
   if (!isVisible) return null;
 
-  console.log('🎯 ScrollDownCTA: Rendering component with fadeIn:', isFadeIn, 'fadeOut:', isFadeOut);
 
   return (
     <div className={`fixed z-[9999] left-1/2 bottom-4 transform -translate-x-1/2 mb-10 scroll-down-cta ${isFadeIn ? 'fade-in' : ''} ${isFadeOut ? 'fade-out' : ''} ${className}`}>

@@ -1,0 +1,97 @@
+databaseChangeLog:
+  - changeSet:
+      id: add-user-data-v2
+      author: microcement-dev
+      comment: "Seed area types, users, profiles, relationships, scene configs, and follow paths"
+      changes:
+        - sql:
+            sql: |
+              -- Area types
+              INSERT INTO public.area_types (name, display_name, description, category, icon) VALUES
+              ('floor', 'Floor', 'Durable, seamless floors perfect for high-traffic areas.', 'interior', 'floor-icon')
+              ON CONFLICT (name) DO NOTHING;
+
+              -- Users (idempotent)
+              -- Seed users with configurable passwords. Override defaults by setting:
+              --   SELECT set_config('app.seed_admin_password', 'your-admin-password', false);
+              --   SELECT set_config('app.seed_architect_password', 'your-architect-password', false);
+              --   SELECT set_config('app.seed_end_user_password', 'your-end-user-password', false);
+              --   SELECT set_config('app.seed_additional_user_password', 'your-auxiliary-password', false);
+              INSERT INTO auth.users (
+                id, instance_id, aud, role, email, encrypted_password,
+                recovery_sent_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data,
+                created_at, updated_at, confirmation_token, email_change, recovery_token,
+                email_change_token_new, email_change_token_current, phone_change_token, reauthentication_token
+              )
+              SELECT 'c26f99a3-e036-45e8-ab35-2afb63c6cb8a','00000000-0000-0000-0000-000000000000','authenticated','authenticated','ivanprokic@gmail.com',crypt(coalesce(current_setting('app.seed_admin_password', true), 'changeme'), gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"ivanprokic@gmail.com","email_verified":true,"phone_verified":false,"sub":"c26f99a3-e036-45e8-a b35-2afb63c6cb8a"}',NOW(),NOW(),'','','','','','',''
+              WHERE NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'ivanprokic@gmail.com');
+
+              INSERT INTO auth.users (
+                id, instance_id, aud, role, email, encrypted_password,
+                recovery_sent_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data,
+                created_at, updated_at, confirmation_token, email_change, recovery_token,
+                email_change_token_new, email_change_token_current, phone_change_token, reauthentication_token
+              )
+              SELECT 'f1e2d3c4-b5a6-9780-1234-567890abcdef','00000000-0000-0000-0000-000000000000','authenticated','authenticated','ivanprokic@yahoo.com',crypt(coalesce(current_setting('app.seed_architect_password', true), 'changeme'), gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"ivanprokic@yahoo.com","email_verified":true,"phone_verified":false,"sub":"f1e2d3c4-b5a6-9780-1234-567890abcdef"}',NOW(),NOW(),'','','','','','',''
+              WHERE NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'ivanprokic@yahoo.com');
+
+              INSERT INTO auth.users (
+                id, instance_id, aud, role, email, encrypted_password,
+                recovery_sent_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data,
+                created_at, updated_at, confirmation_token, email_change, recovery_token,
+                email_change_token_new, email_change_token_current, phone_change_token, reauthentication_token
+              )
+              SELECT 'b1c2d3e4-f5a6-7890-1234-567890abcdef','00000000-0000-0000-0000-000000000000','authenticated','authenticated','biljana.h.g@gmail.com',crypt(coalesce(current_setting('app.seed_end_user_password', true), 'changeme'), gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"biljana.h.g@gmail.com","email_verified":true,"phone_verified":false,"sub":"b1c2d3e4-f5a6-7890-1234-567890abcdef"}',NOW(),NOW(),'','','','','','',''
+              WHERE NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'biljana.h.g@gmail.com');
+
+              INSERT INTO auth.users (
+                id, instance_id, aud, role, email, encrypted_password,
+                recovery_sent_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data,
+                created_at, updated_at, confirmation_token, email_change, recovery_token,
+                email_change_token_new, email_change_token_current, phone_change_token, reauthentication_token
+              )
+              SELECT 'ab71df59-1c1f-42c1-a9cc-8bc787c9e8fa','00000000-0000-0000-0000-000000000000','authenticated','authenticated','emilijaprokic2015@gmail.com',crypt(coalesce(current_setting('app.seed_additional_user_password', true), 'changeme'), gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"emilijaprokic2015@gmail.com","email_verified":true,"phone_verified":false,"sub":"ab71df59-1c1f-42c1-a9cc-8bc787c9e8fa"}',NOW(),NOW(),'','','','','','',''
+              WHERE NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'emilijaprokic2015@gmail.com');
+
+              -- Profiles
+              INSERT INTO public.user_profiles (user_id, role, first_name, last_name, company, phone, bio, is_active) VALUES
+              ('c26f99a3-e036-45e8-ab35-2afb63c6cb8a','admin','Ivan','Prokic','MicroCement Solutions','+1-555-0100','System administrator and architect with full access to all features and user management.',true)
+              ON CONFLICT (user_id) DO NOTHING;
+
+              INSERT INTO public.user_profiles (user_id, role, first_name, last_name, company, phone, bio, is_active) VALUES
+              ('f1e2d3c4-b5a6-9780-1234-567890abcdef','architect','Ivan','Prokic','Architectural Design Studio','+1-555-0101','Experienced architect specializing in microcement designs and client collaboration.',true)
+              ON CONFLICT (user_id) DO NOTHING;
+
+              INSERT INTO public.user_profiles (user_id, role, first_name, last_name, company, phone, bio, is_active) VALUES
+              ('b1c2d3e4-f5a6-7890-1234-567890abcdef','end_user','Biljana','Gavrilovic','Personal Project','+1-555-0102','Client with no current project configuration.',true)
+              ON CONFLICT (user_id) DO NOTHING;
+
+              INSERT INTO public.user_profiles (user_id, role, first_name, last_name, company, phone, bio, is_active) VALUES
+              ('ab71df59-1c1f-42c1-a9cc-8bc787c9e8fa','end_user','Emilija','Prokic','Personal Project','+1-555-0103','Client collaborating with architect on microcement project.',true)
+              ON CONFLICT (user_id) DO NOTHING;
+
+              -- Architect-client relationship
+              INSERT INTO public.architect_clients (architect_id, client_id, project_name, project_description, status, start_date, budget, notes) VALUES
+              ('f1e2d3c4-b5a6-9780-1234-567890abcdef','ab71df59-1c1f-42c1-a9cc-8bc787c9e8fa','Collaborative Project','Architect-client collaboration for microcement design review.','active',CURRENT_DATE,15000.00,'Client wants to review and collaborate on microcement designs.')
+              ON CONFLICT (architect_id, client_id) DO NOTHING;
+
+              -- Scene config (collaborative)
+              INSERT INTO public.scene_design_configs (
+                id, user_id, config_name, model_path, camera_fov, camera_near, camera_far,
+                orbital_height, orbital_radius_multiplier, orbital_speed, target_size, scale_multiplier,
+                rotation_y, intro_duration, intro_start_pos, intro_end_pos, hotspot_colors, pulse_animation,
+                hotspot_focal_distances, hotspot_categories, look_at_targets, api_hotspot_key_aliases,
+                is_default, showcase_areas, project_name, project_description, architect_id, client_id,
+                project_status, budget, timeline_days, priority, tags, notes, created_at, updated_at
+              ) VALUES (
+                'da54fc29-0134-40fa-97cd-908def6d9c33','ab71df59-1c1f-42c1-a9cc-8bc787c9e8fa','collaborative_project','/models/ema.glb',75,0.1,1000,35,5.5,0.15,25,1.8,1.2,2500,'{"x":0,"y":15,"z":0}','{"x":-5,"y":6,"z":20}','{"normal":16711680,"hover":16744448,"pulse":16711680}','{"duration":1000,"scale":1.8,"opacity":0.9}','{}','{}','[]','{}',true,'["kitchen","master_bathroom"]','Collaborative Project','Client collaborating with architect on microcement design review.','f1e2d3c4-b5a6-9780-1234-567890abcdef','ab71df59-1c1f-42c1-a9cc-8bc787c9e8fa','in_progress',15000.00,20,2,'["kitchen","bathroom","collaboration","microcement"]','Collaborative project between architect and client for design review.',NOW(),NOW()
+              ) ON CONFLICT (id) DO NOTHING;
+
+              -- Follow path (collaborative)
+              INSERT INTO public.scene_follow_paths (id, scene_design_config_id, path_name, path_description, camera_points, look_at_targets, is_active, path_order, created_at, updated_at) VALUES
+              (
+                'a8b9c0d1-e2f3-4567-890a-bcdef0123456','da54fc29-0134-40fa-97cd-908def6d9c33','collaborative_path','Collaborative project path for client-architect review',
+                '[{"x":52.789,"y":5,"z":7.394},{"x":26.431,"y":5,"z":4.865},{"x":7.035,"y":5,"z":-4.16},{"x":1.414,"y":5,"z":1.651},{"x":15.934,"y":5,"z":8.433},{"x":10.723,"y":5,"z":3.854},{"x":3.228,"y":6.5,"z":-0.735},{"x":1.791,"y":6.75,"z":-5.642},{"x":11.761,"y":7,"z":-5.575}]',
+                '[{"x":2.041,"y":0,"z":-12.068},{"x":-14.408,"y":0,"z":-41.196},{"x":-45.014,"y":0,"z":-44.588},{"x":-69.435,"y":0,"z":-57.641},{"x":38.766,"y":0,"z":-3.977},{"x":74.895,"y":0,"z":41.866},{"x":-32.177,"y":0,"z":-47.776},{"x":0.632,"y":0,"z":-33.329},{"x":34.312,"y":0,"z":-22.945}]',
+                true,1,NOW(),NOW()
+              ) ON CONFLICT (id) DO NOTHING;

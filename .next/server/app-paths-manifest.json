@@ -1,15 +1,3 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/api/blog/route": "app/api/blog/route.js",
-  "/api/scene-configs/route": "app/api/scene-configs/route.js",
-  "/api/blogs/route": "app/api/blogs/route.js",
-  "/api/scene-configs/[id]/route": "app/api/scene-configs/[id]/route.js",
-  "/api/test/route": "app/api/test/route.js",
-  "/api/gallery/route": "app/api/gallery/route.js",
-  "/page": "app/page.js",
-  "/test/page": "app/test/page.js",
-  "/login/page": "app/login/page.js",
-  "/test-auth/page": "app/test-auth/page.js",
-  "/[locale]/upload/page": "app/[locale]/upload/page.js",
   "/[locale]/page": "app/[locale]/page.js"
 }

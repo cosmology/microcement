@@ -105,7 +105,7 @@ export default function HeroSection() {
           <div className="w-full flex flex-col items-center justify-center mb-4">
             <motion.div
               className="font-bold text-gray-900 dark:text-white"
-              style={{ fontSize: 'clamp(2.4rem, 8vw, 4.5rem)', lineHeight: 1.03 }}
+              style={{ fontSize: 'clamp(3.6rem, 12vw, 6.75rem)', lineHeight: 1.03 }}
               initial={{ opacity: 0, x: -60 }}
               animate={mainIn ? { opacity: 1, x: 0 } : {}}
               transition={{ duration: 0.8, ease: 'easeOut' }}
@@ -115,7 +115,7 @@ export default function HeroSection() {
             {header2 && (
               <motion.div
                 className="font-bold text-gray-900 dark:text-white"
-                style={{ fontSize: 'clamp(2.4rem, 8vw, 4.5rem)', lineHeight: 1.03 }}
+                style={{ fontSize: 'clamp(3.6rem, 12vw, 6.75rem)', lineHeight: 1.03 }}
                 initial={{ opacity: 0, x: 60 }}
                 animate={mainIn ? { opacity: 1, x: 0 } : {}}
                 transition={{ duration: 0.8, ease: 'easeOut', delay: 0.05 }}
@@ -128,7 +128,7 @@ export default function HeroSection() {
           <div className="w-full flex items-center justify-center mb-6">
             <motion.div
               className="font-bold text-gray-900 dark:text-white pr-2"
-              style={{ fontSize: 'clamp(2.6rem, 7.5vw, 3.5rem)', lineHeight: 1.02 }}
+              style={{ fontSize: 'clamp(3.9rem, 11.25vw, 5.25rem)', lineHeight: 1.02 }}
               initial={{ opacity: 0, x: -80 }}
               animate={mainIn ? { opacity: 1, x: 0 } : {}}
               transition={{ duration: 0.8, ease: 'easeOut' }}
@@ -138,7 +138,7 @@ export default function HeroSection() {
             {header2 && (
               <motion.div
                 className="font-bold text-gray-900 dark:text-white pl-2"
-                style={{ fontSize: 'clamp(2.6rem, 7.5vw, 3.5rem)', lineHeight: 1.02 }}
+                style={{ fontSize: 'clamp(3.9rem, 11.25vw, 5.25rem)', lineHeight: 1.02 }}
                 initial={{ opacity: 0, x: 80 }}
                 animate={mainIn ? { opacity: 1, x: 0 } : {}}
                 transition={{ duration: 0.8, ease: 'easeOut', delay: 0.05 }}

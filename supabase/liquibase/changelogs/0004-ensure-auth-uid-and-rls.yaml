@@ -1,0 +1,109 @@
+databaseChangeLog:
+  - changeSet:
+      id: ensure-auth-uid-and-rls-v2
+      author: microcement-dev
+      runAlways: true
+      comment: "Final guard to ensure auth.uid() and RLS policies exist on every update"
+      changes:
+        - sql:
+            sql: |
+              CREATE SCHEMA IF NOT EXISTS auth;
+              CREATE OR REPLACE FUNCTION auth.uid()
+              RETURNS uuid
+              LANGUAGE sql STABLE
+              AS 'SELECT COALESCE(
+                  nullif(current_setting(''request.jwt.claims'', true), '''')::jsonb->>''sub'',
+                  (current_setting(''request.jwt.claims'', true)::jsonb->>''user_id'')
+                )::uuid';
+
+              GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated;
+              GRANT EXECUTE ON FUNCTION auth.uid() TO anon;
+              GRANT EXECUTE ON FUNCTION auth.uid() TO public;
+              GRANT EXECUTE ON FUNCTION auth.uid() TO authenticator;
+
+              ALTER TABLE public.area_types ENABLE ROW LEVEL SECURITY;
+              ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+              ALTER TABLE public.architect_clients ENABLE ROW LEVEL SECURITY;
+              ALTER TABLE public.scene_design_configs ENABLE ROW LEVEL SECURITY;
+              ALTER TABLE public.scene_follow_paths ENABLE ROW LEVEL SECURITY;
+
+              -- Re-assert policies
+              DO 'BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname=''public'' AND policyname=''user_profiles_read_own'') THEN
+                  EXECUTE ''CREATE POLICY user_profiles_read_own ON public.user_profiles FOR SELECT TO authenticated USING (auth.uid() = user_id)'';
+                END IF;
+              END' LANGUAGE plpgsql;
+
+              DO 'BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname=''public'' AND policyname=''user_profiles_update_own'') THEN
+                  EXECUTE ''CREATE POLICY user_profiles_update_own ON public.user_profiles FOR UPDATE TO authenticated USING (auth.uid() = user_id)'';
+                END IF;
+              END' LANGUAGE plpgsql;
+
+              DO 'BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname=''public'' AND policyname=''user_profiles_read_related'') THEN
+                  EXECUTE ''CREATE POLICY user_profiles_read_related ON public.user_profiles FOR SELECT TO authenticated USING (
+                    auth.uid() = user_id OR
+                    EXISTS (
+                      SELECT 1 FROM public.architect_clients ac
+                      WHERE (ac.architect_id = auth.uid() AND ac.client_id = public.user_profiles.user_id)
+                         OR (ac.client_id = auth.uid() AND ac.architect_id = public.user_profiles.user_id)
+                    )
+                  )'';
+                END IF;
+              END' LANGUAGE plpgsql;
+
+              DO 'BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname=''public'' AND policyname=''architect_clients_manage_rel'') THEN
+                  EXECUTE ''CREATE POLICY architect_clients_manage_rel ON public.architect_clients FOR ALL TO authenticated USING (architect_id = auth.uid() OR client_id = auth.uid())'';
+                END IF;
+              END' LANGUAGE plpgsql;
+
+              DO 'BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname=''public'' AND policyname=''scene_configs_read_own'') THEN
+                  EXECUTE ''CREATE POLICY scene_configs_read_own ON public.scene_design_configs FOR SELECT TO authenticated USING (user_id = auth.uid() OR client_id = auth.uid() OR architect_id = auth.uid())'';
+                END IF;
+              END' LANGUAGE plpgsql;
+
+              DO 'BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname=''public'' AND policyname=''scene_configs_insert_own'') THEN
+                  EXECUTE ''CREATE POLICY scene_configs_insert_own ON public.scene_design_configs FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid())'';
+                END IF;
+              END' LANGUAGE plpgsql;
+
+              DO 'BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname=''public'' AND policyname=''scene_configs_update_own'') THEN
+                  EXECUTE ''CREATE POLICY scene_configs_update_own ON public.scene_design_configs FOR UPDATE TO authenticated USING (user_id = auth.uid() OR architect_id = auth.uid())'';
+                END IF;
+              END' LANGUAGE plpgsql;
+
+              DO 'BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname=''public'' AND policyname=''scene_follow_paths_read'') THEN
+                  EXECUTE ''CREATE POLICY scene_follow_paths_read ON public.scene_follow_paths FOR SELECT TO authenticated USING (
+                    EXISTS (
+                      SELECT 1 FROM public.scene_design_configs sdc
+                      WHERE sdc.id = public.scene_follow_paths.scene_design_config_id
+                        AND (sdc.user_id = auth.uid() OR sdc.client_id = auth.uid() OR sdc.architect_id = auth.uid())
+                    )
+                  )'';
+                END IF;
+              END' LANGUAGE plpgsql;
+
+              DO 'BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname=''public'' AND policyname=''scene_follow_paths_manage'') THEN
+                  EXECUTE ''CREATE POLICY scene_follow_paths_manage ON public.scene_follow_paths FOR ALL TO authenticated USING (
+                    EXISTS (
+                      SELECT 1 FROM public.scene_design_configs sdc
+                      WHERE sdc.id = public.scene_follow_paths.scene_design_config_id
+                        AND (sdc.user_id = auth.uid() OR sdc.architect_id = auth.uid())
+                    )
+                  )'';
+                END IF;
+              END' LANGUAGE plpgsql;
+
+              DO 'BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname=''public'' AND policyname=''area_types_read_all'') THEN
+                  EXECUTE ''CREATE POLICY area_types_read_all ON public.area_types FOR SELECT TO authenticated USING (true)'';
+                END IF;
+              END' LANGUAGE plpgsql;
+

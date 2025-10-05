@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { PasswordInput } from '@/components/ui/password-input'
 import { supabase } from '@/lib/supabase'
 import { SceneConfigService } from '@/lib/services/SceneConfigService'
+import { UserProfileService, UserWithProfile } from '@/lib/services/UserProfileService'
 import { useTranslations } from 'next-intl'
 import { WAYPOINTS, dispatchGoToWaypoint } from '@/lib/scene/waypoints'
 
@@ -18,6 +19,7 @@ interface UserProfileProps {
 
 export default function UserProfile({ onUserChange, forceShowAuth = false }: UserProfileProps) {
   const [user, setUser] = useState<any>(null)
+  const [userWithProfile, setUserWithProfile] = useState<UserWithProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAuthModal, setShowAuthModal] = useState(forceShowAuth)
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
@@ -81,7 +83,7 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
       setLoadingPaths(true);
       try {
         const sceneConfigService = SceneConfigService.getInstance();
-        sceneConfigService.setUser({ id: user.id });
+        sceneConfigService.setUser(user);
         
         // Get user's default scene config
         const userConfig = await sceneConfigService.getDefaultConfig();
@@ -189,6 +191,33 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          console.log('🔐 [UserProfile] Initial auth check - Full user metadata:', {
+            user: session.user,
+            user_metadata: session.user.user_metadata,
+            app_metadata: session.user.app_metadata,
+            aud: session.user.aud,
+            created_at: session.user.created_at,
+            email: session.user.email,
+            email_confirmed_at: session.user.email_confirmed_at,
+            id: session.user.id,
+            last_sign_in_at: session.user.last_sign_in_at,
+            phone: session.user.phone,
+            role: session.user.role,
+            updated_at: session.user.updated_at
+          })
+
+          // Load user profile from database
+          const userProfileService = UserProfileService.getInstance()
+          const userWithProfile = await userProfileService.getUserWithProfile(session.user)
+          setUserWithProfile(userWithProfile)
+          
+          console.log('🔐 [UserProfile] User with profile loaded:', {
+            auth: userWithProfile.auth,
+            profile: userWithProfile.profile,
+            role: userWithProfile.profile?.role || 'no profile'
+          })
+        }
         setUser(session?.user ?? null)
         onUserChange?.(session?.user ?? null)
       } catch (error) {
@@ -201,7 +230,37 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
     checkAuth()
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        console.log('🔐 [UserProfile] User logged in - Full user metadata:', {
+          user: session.user,
+          user_metadata: session.user.user_metadata,
+          app_metadata: session.user.app_metadata,
+          aud: session.user.aud,
+          created_at: session.user.created_at,
+          email: session.user.email,
+          email_confirmed_at: session.user.email_confirmed_at,
+          id: session.user.id,
+          last_sign_in_at: session.user.last_sign_in_at,
+          phone: session.user.phone,
+          role: session.user.role,
+          updated_at: session.user.updated_at
+        })
+
+        // Load user profile from database
+        const userProfileService = UserProfileService.getInstance()
+        const userWithProfile = await userProfileService.getUserWithProfile(session.user)
+        setUserWithProfile(userWithProfile)
+        
+        console.log('🔐 [UserProfile] User with profile loaded on auth change:', {
+          auth: userWithProfile.auth,
+          profile: userWithProfile.profile,
+          role: userWithProfile.profile?.role || 'no profile'
+        })
+      } else {
+        // User logged out
+        setUserWithProfile(null)
+      }
       setUser(session?.user ?? null)
       onUserChange?.(session?.user ?? null)
       setLoading(false)
@@ -310,24 +369,51 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
             </Button>
             
             {/* Dropdown Menu aligned to header bottom */}
-            <div className="fixed right-0 w-64 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[1105]"
-                 style={{ top: headerBottom }}>
-              <div className="p-4">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-                    <UserRound className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            <div className="fixed right-2 w-64 bg-white dark:bg-gray-900 backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[1105] rounded-lg"
+                 style={{ top: '3rem' }}>
+              <div className="p-3">
+                <div className="flex items-center space-x-2 mb-3">
+                  <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+                    <UserRound className="h-4 w-4 text-gray-600 dark:text-gray-400" />
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900 dark:text-gray-100">{user.email}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Authenticated</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{user.email}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Authenticated
+                      </p>
+                      {userWithProfile?.profile?.role && (
+                        <Badge 
+                          variant={
+                            userWithProfile.profile.role === 'admin' ? 'destructive' :
+                            userWithProfile.profile.role === 'architect' ? 'default' :
+                            'secondary'
+                          }
+                          className="text-xs px-1.5 py-0.5"
+                        >
+                          {userWithProfile.profile.role}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
-                <div className="space-y-2">
+                {/* Debug Profile Info */}
+                {userWithProfile?.profile && (
+                  <div className="mb-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg text-xs">
+                    <p className="font-medium mb-1">Profile Details:</p>
+                    <p>Name: {userWithProfile.profile.first_name} {userWithProfile.profile.last_name}</p>
+                    <p>Company: {userWithProfile.profile.company || 'Not set'}</p>
+                    <p>Active: {userWithProfile.profile.is_active ? 'Yes' : 'No'}</p>
+                    <p>Created: {new Date(userWithProfile.profile.created_at).toLocaleDateString()}</p>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                    className="w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 py-1.5 px-2"
                     onClick={() => setShowAuthModal(true)}
                   >
                     <Settings className="h-4 w-4 mr-2" />
@@ -340,7 +426,7 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                        className="w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 py-1.5 px-2"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -381,7 +467,7 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                    className="w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 py-1.5 px-2"
                     onClick={handleSignOut}
                   >
                     <LogOut className="h-4 w-4 mr-2" />
@@ -396,8 +482,9 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
 
       {/* Authentication Modal */}
       {showAuthModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-lg z-[9999] flex items-start justify-center pt-[160px] px-4">
+          <div className="w-full max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl max-h-[calc(100vh-180px)] overflow-y-auto">
+            <Card className="border-0 bg-transparent">
             <CardHeader>
               <CardTitle className="text-center">
                 {authMode === 'signin' ? 'Sign In' : 'Sign Up'}
@@ -489,7 +576,8 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
                 </button>
               </div>
             </CardContent>
-          </Card>
+            </Card>
+          </div>
         </div>
       )}
     </>

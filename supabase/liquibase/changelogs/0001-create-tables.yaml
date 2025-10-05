@@ -1,0 +1,143 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-tables-v2
+      author: microcement-dev
+      comment: "Create enums, tables, constraints, and indexes"
+      changes:
+        - sql:
+            sql: |
+              -- 1) Create enum type user_role
+              DO 'BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = ''user_role'' AND typnamespace = ''public''::regnamespace) THEN
+                  CREATE TYPE public.user_role AS ENUM (''admin'', ''architect'', ''end_user'');
+                END IF;
+              END' LANGUAGE plpgsql;
+
+              -- 2) Create tables
+              CREATE TABLE IF NOT EXISTS public.area_types (
+                  id SERIAL PRIMARY KEY,
+                  name VARCHAR(50) NOT NULL UNIQUE,
+                  display_name VARCHAR(100) NOT NULL,
+                  description TEXT,
+                  category VARCHAR(50),
+                  icon VARCHAR(50),
+                  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+              );
+
+              CREATE TABLE IF NOT EXISTS public.user_profiles (
+                  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+                  role public.user_role NOT NULL DEFAULT 'end_user',
+                  first_name VARCHAR(100),
+                  last_name VARCHAR(100),
+                  company VARCHAR(255),
+                  phone VARCHAR(50),
+                  bio TEXT,
+                  is_active BOOLEAN DEFAULT TRUE,
+                  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+              );
+
+              CREATE TABLE IF NOT EXISTS public.architect_clients (
+                  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                  architect_id UUID NOT NULL REFERENCES public.user_profiles(user_id) ON DELETE CASCADE,
+                  client_id UUID NOT NULL REFERENCES public.user_profiles(user_id) ON DELETE CASCADE,
+                  project_name VARCHAR(255),
+                  project_description TEXT,
+                  status VARCHAR(50) DEFAULT 'pending',
+                  start_date DATE,
+                  budget DECIMAL(10, 2),
+                  notes TEXT,
+                  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+              );
+
+              CREATE TABLE IF NOT EXISTS public.scene_design_configs (
+                  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+                  config_name VARCHAR(255) NOT NULL,
+                  model_path TEXT NOT NULL,
+                  camera_fov INTEGER DEFAULT 75,
+                  camera_near DECIMAL(10, 2) DEFAULT 0.1,
+                  camera_far DECIMAL(10, 2) DEFAULT 1000,
+                  orbital_height DECIMAL(10, 2) DEFAULT 35,
+                  orbital_radius_multiplier DECIMAL(10, 2) DEFAULT 5.5,
+                  orbital_speed DECIMAL(10, 2) DEFAULT 0.15,
+                  target_size DECIMAL(10, 2) DEFAULT 25,
+                  scale_multiplier DECIMAL(10, 2) DEFAULT 1.8,
+                  rotation_y DECIMAL(10, 2) DEFAULT 1.2,
+                  intro_duration INTEGER DEFAULT 2500,
+                  intro_start_pos JSONB,
+                  intro_end_pos JSONB,
+                  hotspot_colors JSONB,
+                  pulse_animation JSONB,
+                  hotspot_focal_distances JSONB,
+                  hotspot_categories JSONB,
+                  look_at_targets JSONB,
+                  api_hotspot_key_aliases JSONB,
+                  is_default BOOLEAN DEFAULT FALSE,
+                  showcase_areas TEXT[],
+                  project_name VARCHAR(255),
+                  project_description TEXT,
+                  architect_id UUID REFERENCES public.user_profiles(user_id) ON DELETE SET NULL,
+                  client_id UUID REFERENCES public.user_profiles(user_id) ON DELETE SET NULL,
+                  project_status VARCHAR(50) DEFAULT 'draft',
+                  budget DECIMAL(10, 2),
+                  timeline_days INTEGER,
+                  priority INTEGER,
+                  tags TEXT[],
+                  notes TEXT,
+                  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+              );
+
+              CREATE TABLE IF NOT EXISTS public.scene_follow_paths (
+                  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                  scene_design_config_id UUID NOT NULL REFERENCES public.scene_design_configs(id) ON DELETE CASCADE,
+                  path_name VARCHAR(255) NOT NULL,
+                  path_description TEXT,
+                  camera_points JSONB NOT NULL,
+                  look_at_targets JSONB NOT NULL,
+                  is_active BOOLEAN DEFAULT TRUE,
+                  path_order INTEGER,
+                  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+              );
+
+              -- 3) Constraints that may already exist (guarded for re-runs)
+              DO 'BEGIN
+                IF NOT EXISTS (
+                  SELECT 1 FROM pg_constraint WHERE conname = ''architect_clients_unique''
+                ) THEN
+                  ALTER TABLE public.architect_clients
+                    ADD CONSTRAINT architect_clients_unique UNIQUE (architect_id, client_id);
+                END IF;
+              END' LANGUAGE plpgsql;
+
+              DO 'BEGIN
+                IF NOT EXISTS (
+                  SELECT 1 FROM pg_constraint WHERE conname = ''architect_clients_no_self_reference''
+                ) THEN
+                  ALTER TABLE public.architect_clients
+                    ADD CONSTRAINT architect_clients_no_self_reference CHECK (architect_id != client_id);
+                END IF;
+              END' LANGUAGE plpgsql;
+
+              DO 'BEGIN
+                IF NOT EXISTS (
+                  SELECT 1 FROM pg_constraint WHERE conname = ''scene_follow_paths_unique''
+                ) THEN
+                  ALTER TABLE public.scene_follow_paths
+                    ADD CONSTRAINT scene_follow_paths_unique UNIQUE (scene_design_config_id, path_name);
+                END IF;
+              END' LANGUAGE plpgsql;
+
+              -- 4) Indexes
+              CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON public.user_profiles(user_id);
+              CREATE INDEX IF NOT EXISTS idx_architect_clients_architect_id ON public.architect_clients(architect_id);
+              CREATE INDEX IF NOT EXISTS idx_architect_clients_client_id ON public.architect_clients(client_id);
+              CREATE INDEX IF NOT EXISTS idx_scene_design_configs_user_id ON public.scene_design_configs(user_id);
+              CREATE INDEX IF NOT EXISTS idx_scene_design_configs_architect_id ON public.scene_design_configs(architect_id);
+              CREATE INDEX IF NOT EXISTS idx_scene_design_configs_client_id ON public.scene_design_configs(client_id);
+              CREATE INDEX IF NOT EXISTS idx_scene_follow_paths_scene_design_config_id ON public.scene_follow_paths(scene_design_config_id);
+

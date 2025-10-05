@@ -18,8 +18,11 @@
     "bathroom": "Kupatilo",
     "kitchen": "Kuhinja",
     "livingRoom": "Dnevna Soba",
+    "living_room": "Dnevna Soba",
     "bedroomArea": "Zona Spavaće Sobe",
-    "officeSpace": "Prostor za Kancelariju"
+    "officeSpace": "Prostor za Kancelariju",
+    "default_path": "Podrazumevana Putanja",
+    "collaborative_path": "Kolektivna Putanja"
   },
   "Hero": {
     "header1": "Transformišite",
@@ -304,5 +307,34 @@
     "loggedInPrompt": "Vaš studio se priprema.",
     "contactPrompt": "Kontaktirajte naše specijaliste da konfigurišete vaše iskustvo.",
     "signOutButton": "Odjavi Se"
+  },
+  "Dock": {
+    "adminPanel": "Admin Panel",
+    "architectPortal": "Arhitektonski Portal",
+    "myProjects": "Moj Projekat",
+    "cameraControls": "Kontrole Kamere",
+    "cameraEditor": "Editor Kamere",
+    "birdView": "Ptičija Perspektiva",
+    "editor": "Editor",
+    "lookAtTargets": "Tačke Pogleda",
+    "heightPanel": "Panel Visine",
+    "lockBirdView": "Zaključaj Ptičiji Pogled",
+    "Upload Models": "Otpremi Modele",
+    "All Models": "Svi Modeli",
+    "User Management": "Upravljanje Korisnicima",
+    "System Settings": "Podešavanja Sistema",
+    "Client Models": "Modeli Klijenata",
+    "Upload Model": "Otpremi Model",
+    "Upload Project": "Otpremi Projekat",
+    "My Models": "Moji Modeli",
+    "loadingModels": "Učitavam modele",
+    "retry": "Pokušaj ponovo",
+    "noModelsAvailable": "Nema dostupnih modela",
+    "contactArchitect": "Kontaktiraj svog arhitektu da počneš",
+    "untitledProject": "Projekat bez naziva",
+    "architect": "Arhitekta",
+    "status": "Status",
+    "modelLoaded": "Model učitan",
+    "collaboratingWith": "Sarađujem sa"
   }
 } 

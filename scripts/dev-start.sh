@@ -22,7 +22,7 @@ echo "[start] Bringing up Supabase stack (arm64 default if on Apple Silicon)"
   # Pull all services except mailhog to avoid amd64-only image on ARM
   DOCKER_DEFAULT_PLATFORM=${DOCKER_DEFAULT_PLATFORM:-linux/arm64} docker compose pull studio kong auth rest realtime storage imgproxy meta functions analytics db vector supavisor liquibase || true
   # Avoid blocking startup on ARM or slow healthchecks by scaling out optional services
-  DOCKER_DEFAULT_PLATFORM=${DOCKER_DEFAULT_PLATFORM:-linux/arm64} docker compose up -d --remove-orphans --scale mailhog=0 --scale analytics=0
+  DOCKER_DEFAULT_PLATFORM=${DOCKER_DEFAULT_PLATFORM:-linux/arm64} docker compose up -d --scale mailhog=0 --scale analytics=0
 )
 
 echo "[start] Waiting for Postgres health..."
@@ -32,6 +32,85 @@ echo "[start] Running Liquibase migrations"
 (
   cd "$SUPABASE_DIR"
   docker compose run --rm liquibase liquibase update | cat
+)
+
+# Verify auth.uid() function and RLS policies before proceeding
+VERIFY_SECURITY() {
+  echo "[start] Verifying database security primitives (auth.uid() and RLS)"
+  (
+    cd "$SUPABASE_DIR"
+
+    # Verify auth.uid() exists
+    AUTH_UID_EXISTS=$(docker exec supabase-db psql -U postgres -d postgres -tAc "SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = 'auth' AND p.proname = 'uid'" 2>/dev/null | tr -d '[:space:]') || AUTH_UID_EXISTS=""
+
+    # Verify required RLS policies exist (expecting 10 policies total)
+    RLS_COUNT=$(docker exec supabase-db psql -U postgres -d postgres -tAc "SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND policyname IN (
+      'architect_clients_manage_rel',
+      'area_types_read_all',
+      'scene_configs_insert_own',
+      'scene_configs_read_own',
+      'scene_configs_update_own',
+      'scene_follow_paths_manage',
+      'scene_follow_paths_read',
+      'user_profiles_read_own',
+      'user_profiles_read_related',
+      'user_profiles_update_own'
+    )" 2>/dev/null | tr -d '[:space:]') || RLS_COUNT="0"
+
+    if [ "$AUTH_UID_EXISTS" != "1" ]; then
+      echo "[start] ❌ auth.uid() function is missing after migrations. Exiting."
+      exit 1
+    fi
+
+    if [ "$RLS_COUNT" != "10" ]; then
+      echo "[start] ❌ RLS policies are incomplete after migrations (found: ${RLS_COUNT}/10). Exiting."
+      echo "[start] Tip: Ensure changelogs 0003-create-rls.yaml and 0006-fix-rls-policies.yaml are included in changelog-master.xml"
+      exit 1
+    fi
+
+    echo "[start] ✅ Verified auth.uid() exists and all 10 RLS policies are present"
+  )
+}
+
+# Initial verification right after Liquibase
+VERIFY_SECURITY
+
+echo "[start] Restarting PostgREST to ensure auth.uid() function is available"
+(
+  cd "$SUPABASE_DIR"
+  docker compose restart rest >/dev/null 2>&1 || true
+  sleep 5
+)
+
+echo "[start] Ensuring schema permissions are granted"
+(
+  cd "$SUPABASE_DIR"
+  PW=$(docker compose config | awk -F ": " '/POSTGRES_PASSWORD:/ {print $2; exit}')
+  docker exec supabase-db psql -U postgres -d postgres -c "
+    -- Ensure schema permissions are granted
+    GRANT USAGE ON SCHEMA public TO authenticator;
+    GRANT USAGE ON SCHEMA public TO authenticated;
+    GRANT USAGE ON SCHEMA public TO anon;
+    
+    -- Ensure table permissions are granted
+    GRANT SELECT ON public.user_profiles TO authenticator;
+    GRANT SELECT ON public.scene_design_configs TO authenticator;
+    GRANT SELECT ON public.architect_clients TO authenticator;
+    GRANT SELECT ON public.scene_follow_paths TO authenticator;
+    GRANT SELECT ON public.area_types TO authenticator;
+    
+    GRANT SELECT ON public.user_profiles TO authenticated;
+    GRANT SELECT ON public.scene_design_configs TO authenticated;
+    GRANT SELECT ON public.architect_clients TO authenticated;
+    GRANT SELECT ON public.scene_follow_paths TO authenticated;
+    GRANT SELECT ON public.area_types TO authenticated;
+    
+    GRANT INSERT, UPDATE ON public.user_profiles TO authenticated;
+    GRANT INSERT, UPDATE ON public.scene_design_configs TO authenticated;
+    GRANT INSERT, UPDATE ON public.architect_clients TO authenticated;
+    GRANT INSERT, UPDATE ON public.scene_follow_paths TO authenticated;
+  " >/dev/null 2>&1
+  echo "[start] ✅ Schema permissions ensured"
 )
 
 echo "[start] Ensuring DB roles, schemas, and passwords"
@@ -64,18 +143,19 @@ echo "[start] Ensuring DB roles, schemas, and passwords"
       -c "ALTER ROLE supabase_storage_admin WITH LOGIN PASSWORD '$PW';" \
       -c "GRANT CONNECT ON DATABASE postgres TO supabase_storage_admin;" | cat || true
 
-    # Ensure auth schema exists and is owned by supabase_auth_admin; drop conflicting functions so migrations can recreate
+    # Ensure auth schema exists and is owned by supabase_auth_admin
     docker compose exec -T db psql -U postgres \
       -c "CREATE SCHEMA IF NOT EXISTS auth AUTHORIZATION supabase_auth_admin;" \
       -c "ALTER SCHEMA auth OWNER TO supabase_auth_admin;" \
       -c "GRANT USAGE ON SCHEMA auth TO supabase_auth_admin;" \
-      -c "DROP FUNCTION IF EXISTS auth.email() CASCADE;" \
-      -c "DO \$\$ BEGIN IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='auth' AND p.proname='uid') THEN EXECUTE 'DROP FUNCTION auth.uid() CASCADE'; END IF; END \$\$;" \
-      -c "DO \$\$ BEGIN IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='auth' AND p.proname='role') THEN EXECUTE 'DROP FUNCTION auth.role() CASCADE'; END IF; END \$\$;" | cat || true
+      -c "DROP FUNCTION IF EXISTS auth.email() CASCADE;" | cat || true
 
     docker compose restart rest auth realtime storage kong >/dev/null 2>&1 || true
   fi
 )
+
+# Final verification after role/schema adjustments
+VERIFY_SECURITY
 
 echo "[start] Ensuring Edge Functions entrypoint file"
 (
@@ -110,14 +190,54 @@ echo "[start] Ensuring _supabase database exists for pooler"
   docker compose restart supavisor >/dev/null 2>&1 || true
 )
 
+echo "[start] Ensuring Supabase client URL is set correctly"
+(
+  cd "$ROOT_DIR"
+  # Ensure NEXT_PUBLIC_SUPABASE_URL points to localhost for browser access
+  if grep -q "NEXT_PUBLIC_SUPABASE_URL=http://localhost:8000" .env; then
+    echo "[start] Supabase URL already set to localhost:8000"
+  else
+    echo "[start] Setting Supabase URL to localhost:8000"
+    sed -i.bak 's|NEXT_PUBLIC_SUPABASE_URL=.*|NEXT_PUBLIC_SUPABASE_URL=http://localhost:8000|' .env
+  fi
+)
+
+echo "[start] Restarting Kong to apply key-auth plugin"
+(
+  cd "$SUPABASE_DIR"
+  docker compose restart kong >/dev/null 2>&1 || true
+  sleep 3
+)
+
 echo "[start] Starting app stack from project root (profile: dev)"
 (
   cd "$ROOT_DIR"
-  docker compose --profile dev up -d --build --remove-orphans
+  docker compose --profile dev up -d --build
 )
 
 echo "[start] Status overview:\n"
 docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}' | sed 's/^/[start] /'
+
+echo "[start] Waiting for services to be ready..."
+sleep 10
+
+echo "[start] Quick verification - testing login..."
+(
+  cd "$ROOT_DIR"
+  # Quick test to verify login works
+  ARCHITECT_TOKEN=$(curl -s "http://localhost:8000/auth/v1/token?grant_type=password" \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -H "apikey: SUPABASE_ANON_KEY_PLACEHOLDER" \
+    -d '{"email":"ivanprokic@yahoo.com","password":"ivan12345"}' \
+    | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+  
+  if [ -n "$ARCHITECT_TOKEN" ]; then
+    echo "[start] ✅ Login successful - RLS setup complete"
+  else
+    echo "[start] ⚠️  Login test failed - check logs if issues persist"
+  fi
+)
 
 echo "[start] Done. Visit http://localhost:3000 and Supabase Studio at http://localhost:8000"
 

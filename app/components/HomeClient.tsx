@@ -17,7 +17,7 @@ import CTASection from "./CTASection"
 import NavigationSection from "./NavigationSection"
 import UserProfile from "./UserProfile"
 import AuthHandler from "./AuthHandler"
-import NoDesignAvailable from "./NoDesignAvailable"
+// import NoDesignAvailable from "./NoDesignAvailable" // Now defined locally
 import dynamic from "next/dynamic";
 import DebugInfo from "./DebugInfo";
 import ScrollDownCTA from "./ScrollDownCTA";
@@ -26,6 +26,8 @@ import { SceneConfigService } from '@/lib/services/SceneConfigService';
 import { supabase } from '@/lib/supabase';
 import { SCENE_CONFIG } from '@/lib/config/sceneConfig';
 import TimelineWaypoints from "./TimelineWaypoints";
+import DockedNavigation from "./DockedNavigation";
+import { useUserRole, UserRole } from "@/hooks/useUserRole";
 
 const ScrollScene = dynamic(() => import("./ScrollScene"), { ssr: false });
 
@@ -42,6 +44,10 @@ export default function HomeClient() {
   const [configCheckComplete, setConfigCheckComplete] = useState(false);
   const t = useTranslations('Index');
   const tMarker = useTranslations('MarkerPanels');
+  
+  // Get user role information
+  const { user: userWithRole, role, profile, loading: userRoleLoading } = useUserRole();
+
 
   // Section refs
   const hero = useRef<HTMLDivElement>(null);
@@ -84,7 +90,7 @@ export default function HomeClient() {
       if (user?.id) {
         try {
           const sceneConfigService = SceneConfigService.getInstance();
-          sceneConfigService.setUser({ id: user.id });
+          sceneConfigService.setUser(user);
           const userConfigs = await sceneConfigService.getUserConfigs();
           setHasUserConfig(userConfigs.length > 0);
           if (process.env.NODE_ENV === 'development') {
@@ -462,7 +468,7 @@ export default function HomeClient() {
                 
                 // Debug when panel is shown
                 if (slideProgress > 0.1) {
-                  console.log(`✅ Floor panel showing: slideProgress=${slideProgress.toFixed(2)}, opacity=${slideProgress}`);
+                  // console.log(`✅ Floor panel showing: slideProgress=${slideProgress.toFixed(2)}, opacity=${slideProgress}`);
                 }
                 return;
               }
@@ -500,7 +506,7 @@ export default function HomeClient() {
 
               // Debug all panels
               if (scrollPercent > 0) {
-                console.log(`🔍 Panel ${index} (${name}): scrollPercent=${scrollPercent.toFixed(1)}%, range=${start}-${end}%`);
+                // console.log(`🔍 Panel ${index} (${name}): scrollPercent=${scrollPercent.toFixed(1)}%, range=${start}-${end}%`);
               }
 
               if (scrollPercent >= start && scrollPercent <= end) {
@@ -588,125 +594,38 @@ export default function HomeClient() {
 
   if (!mounted) return null
 
-  return (
-    <div className="relative">
-      <AuthHandler onUserChange={setUser} />
-      
-      {/* Preloader */}
-      {!preloadDone && (
-        <Preloader onComplete={() => setPreloadDone(true)} />
-      )}
-      
-      {/* Navigation - Always visible with higher z-index */}
+  // Role-based content rendering
+  const renderContent = () => {
+    if (userRoleLoading) {
+      return <div>Loading...</div>
+    }
+
+    switch (role) {
+      case 'guest':
+        return renderGuestContent()
+      case 'end_user':
+        return renderEndUserContent()
+      case 'architect':
+      case 'admin':
+        return renderArchitectContent()
+      default:
+        return null
+    }
+  }
+
+  const renderGuestContent = () => (
+    <>
       <NavigationSection user={user} onUserChange={setUser} />
-      
-      {/* Show NoDesignAvailable for non-logged users or logged-in users with no configs */}
-      {(!user || (user && configCheckComplete && hasUserConfig === false)) && (
-        <NoDesignAvailable 
-          onLoginClick={() => setShowLoginModal(true)} 
-          onSignOutClick={handleSignOut}
-          isLoggedIn={!!user}
-        />
-      )}
-      
-      {/* Show main content only for logged-in users with scene configurations */}
-      {user && configCheckComplete && hasUserConfig === true && (
-        <>
-          <ScrollScene 
-            sceneStage={sceneStage} 
-            currentSection={currentSection}
-            user={user}
-            onIntroComplete={() => {
-          console.log('🎯 HomeClient: Intro completed, enabling scroll and triggering ScrollDownCTA');
-          setScrollEnabled(true);
-          
-          // Dispatch custom event for ContentProgress
-          window.dispatchEvent(new CustomEvent('introComplete'));
-          
-          // Trigger ScrollDownCTA intro completion with retry mechanism
-          const triggerScrollDownCTA = () => {
-            if ((window as any).__scrollDownCTAIntroComplete) {
-              console.log('🎯 HomeClient: Calling ScrollDownCTA intro complete handler');
-              (window as any).__scrollDownCTAIntroComplete();
-            } else {
-              console.log('🎯 HomeClient: ScrollDownCTA handler not found, retrying in 100ms');
-              setTimeout(triggerScrollDownCTA, 100);
-            }
-          };
-          
-          triggerScrollDownCTA();
-        }}
-        onIntroStart={() => setScrollEnabled(false)}
-        onDebugUpdate={setDebugData}
-      />
-      {debugData && <DebugInfo {...debugData} />}
-      {/* Timeline waypoints overlay */}
-      <TimelineWaypoints />
-      <ScrollDownCTA />
       <main 
-        className="relative z-20" 
+        className="relative z-20"
         style={{ 
-          visibility: preloadDone ? 'visible' : 'hidden',
-          pointerEvents: scrollEnabled ? 'auto' : 'none',
-          overflow: scrollEnabled ? 'auto' : 'hidden',
-          // Ensure proper scrolling on mobile
-          WebkitOverflowScrolling: 'touch',
-          touchAction: 'pan-y'
+          visibility: preloadDone ? 'visible' : 'hidden'
         }}
       >
         <div ref={hero} className="min-h-screen">
           <HeroSection />
         </div>
-        
-        {/* Virtual content sections for marker progression */}
-        {SCENE_CONFIG.MARKER_PANELS.map((marker, index) => {
-          const themeColors = getThemeColors();
-          
-          
-          return (
-            <div 
-              key={`marker-section-${index}`} 
-              className="h-screen relative overflow-hidden"
-              style={{ 
-                opacity: 1,
-                // Ensure proper height on mobile devices
-                minHeight: '100dvh' // Dynamic viewport height for mobile
-              }}
-            >
-              {/* Marker Panel - Responsive Full Width at Bottom */}
-              <div 
-                className="fixed z-50 w-full backdrop-blur-sm border-b border-light-dark dark:border-gray-700"
-                style={{
-                  bottom: '0px',
-                  height: window.innerWidth < 640 ? '70px' : window.innerWidth < 1024 ? '80px' : '85px',
-                  backgroundColor: `hsl(var(--background) / 0.8)`,
-                  opacity: 0, // Start hidden
-                  pointerEvents: 'none', // Start non-interactive
-                  // Ensure proper touch interaction
-                  touchAction: 'none',
-                  WebkitTouchCallout: 'none',
-                  WebkitUserSelect: 'none',
-                  userSelect: 'none'
-                }}
-                data-marker-index={index}
-                data-marker-name={tMarker(`${marker.name}.name`)}
-                data-progress-start={marker.progress.split('-')[0].replace('%', '')}
-                data-progress-end={marker.progress.split('-')[1].replace('%', '')}
-              >
-                <div className="max-w-4xl mx-auto px-3 sm:px-3 py-1 sm:py-1 h-full flex flex-col justify-center">
-                  <h3 className="text-foreground text-sm sm:text-base md:text-lg font-bold mb-0.5 sm:mb-1 leading-tight">
-                    {tMarker(`${marker.name}.name`)}
-                  </h3>
-                  <p className="text-muted-foreground text-xs sm:text-sm md:text-base leading-relaxed">
-                    {tMarker(`${marker.name}.content`)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-        
-        {/* <div ref={env} className="min-h-screen">
+        <div ref={env} className="min-h-screen">
           <EnvironmentalSection />
         </div>
         <div ref={comparison} className="min-h-screen opacity-90">
@@ -735,10 +654,124 @@ export default function HomeClient() {
         </div>
         <div ref={cta} className="min-h-screen">
           <CTASection />
-        </div> */}
+        </div>
       </main>
+      
+      {/* ScrollDownCTA for guest users */}
+      <ScrollDownCTA />
+    </>
+  )
+
+  const renderEndUserContent = () => (
+    <>
+      <DockedNavigation role={role} />
+      <div className="ml-64">
+        <NavigationSection user={user} onUserChange={setUser} />
+      </div>
+      
+      {/* Show NoDesignAvailable for end users with no configs */}
+      {configCheckComplete && hasUserConfig === false && (
+        <NoDesignAvailable 
+          onLoginClick={() => setShowLoginModal(true)} 
+          onSignOutClick={handleSignOut}
+          isLoggedIn={!!user}
+        />
+      )}
+      
+      {/* Show 3D scene only for end users with scene configurations */}
+      {configCheckComplete && hasUserConfig === true && (
+        <>
+          <ScrollScene 
+            sceneStage={sceneStage} 
+            currentSection={currentSection}
+            user={user}
+            onIntroComplete={() => {
+              setScrollEnabled(true);
+              window.dispatchEvent(new CustomEvent('introComplete'));
+              setTimeout(() => {
+                if ((window as any).__scrollDownCTAIntroComplete) {
+                  (window as any).__scrollDownCTAIntroComplete();
+                }
+              }, 100);
+            }}
+            onIntroStart={() => setScrollEnabled(false)}
+            onDebugUpdate={setDebugData}
+          />
+          {debugData && <DebugInfo {...debugData} />}
+          <TimelineWaypoints />
+          <ScrollDownCTA />
+          {/* Virtual scroll sections (no content) to drive scroll-based progression */}
+          <main className="relative z-10" style={{ visibility: preloadDone ? 'visible' : 'hidden' }}>
+            <div className="min-h-screen" />
+            {SCENE_CONFIG.MARKER_PANELS.map((marker, idx) => (
+              <div key={`vs-end-${idx}`} className="h-screen" data-marker-index={idx} data-progress-start={marker.progress.split('-')[0].replace('%','')} data-progress-end={marker.progress.split('-')[1].replace('%','')}></div>
+            ))}
+          </main>
         </>
       )}
+    </>
+  )
+
+  const renderArchitectContent = () => (
+    <>
+      <DockedNavigation role={role} />
+      <div className="ml-64">
+        <NavigationSection user={user} onUserChange={setUser} />
+      </div>
+      
+      {/* Show NoDesignAvailable if no configs */}
+      {configCheckComplete && hasUserConfig === false && (
+        <NoDesignAvailable 
+          onLoginClick={() => setShowLoginModal(true)} 
+          onSignOutClick={handleSignOut}
+          isLoggedIn={!!user}
+        />
+      )}
+      
+      {/* Show 3D scene with editor for architects/admins */}
+      {configCheckComplete && hasUserConfig === true && (
+        <>
+          <ScrollScene 
+            sceneStage={sceneStage} 
+            currentSection={currentSection}
+            user={user}
+            onIntroComplete={() => {
+              setScrollEnabled(true);
+              window.dispatchEvent(new CustomEvent('introComplete'));
+              setTimeout(() => {
+                if ((window as any).__scrollDownCTAIntroComplete) {
+                  (window as any).__scrollDownCTAIntroComplete();
+                }
+              }, 100);
+            }}
+            onIntroStart={() => setScrollEnabled(false)}
+            onDebugUpdate={setDebugData}
+          />
+          {debugData && <DebugInfo {...debugData} />}
+          <TimelineWaypoints />
+          <ScrollDownCTA />
+          {/* Virtual scroll sections (no content) to drive scroll-based progression */}
+          <main className="relative z-10" style={{ visibility: preloadDone ? 'visible' : 'hidden' }}>
+            <div className="min-h-screen" />
+            {SCENE_CONFIG.MARKER_PANELS.map((marker, idx) => (
+              <div key={`vs-arch-${idx}`} className="h-screen" data-marker-index={idx} data-progress-start={marker.progress.split('-')[0].replace('%','')} data-progress-end={marker.progress.split('-')[1].replace('%','')}></div>
+            ))}
+          </main>
+        </>
+      )}
+    </>
+  )
+
+  return (
+    <div className="relative">
+      <AuthHandler onUserChange={setUser} />
+      
+      {/* Preloader */}
+      {!preloadDone && (
+        <Preloader onComplete={() => setPreloadDone(true)} />
+      )}
+      
+      {preloadDone && renderContent()}
       
       {/* Login Modal */}
       {showLoginModal && (
@@ -758,4 +791,45 @@ export default function HomeClient() {
       )}
     </div>
   )
-} 
+
+  // handleSignOut already defined above
+}
+
+function NoDesignAvailable({ onLoginClick, onSignOutClick, isLoggedIn }: { 
+  onLoginClick: () => void, 
+  onSignOutClick: () => void 
+    isLoggedIn: boolean 
+}) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="text-center max-w-md mx-auto p-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text.white mb-4">
+          {isLoggedIn ? 'No Design Available' : 'Welcome'}
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400 mb-6">
+          {isLoggedIn 
+            ? 'You don\'t have any project designs yet. Contact your architect to get started.'
+            : 'Please log in to access your personalized design experience.'
+          }
+        </p>
+        <div className="space-y-3">
+          {isLoggedIn ? (
+            <button
+              onClick={onSignOutClick}
+              className="w-full bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Sign Out
+            </button>
+          ) : (
+            <button
+              onClick={onLoginClick}
+              className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Log In
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

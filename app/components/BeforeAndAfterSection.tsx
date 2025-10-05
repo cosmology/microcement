@@ -336,7 +336,7 @@ export default function BeforeAndAfterSection() {
                 setCurrentIndex(prev => prev - 1)
                 setSliderX(50)
               }}
-              className="p-4 rounded-full bg-white/20 dark:bg-gray-800/20 backdrop-blur-md shadow-lg border border-white/30 dark:border-gray-700/30 hover:bg-white/30 dark:hover:bg-gray-800/30 transition-all duration-300"
+              className="p-4 rounded-full bg-white/20 dark:bg-gray-800/20 backdrop-blur-md shadow-lg border border-white/30 dark:border-gray-700/30 hover:bg-white/30 dark:hover:bg-gray-800/30 transition-all    duration-100"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -356,7 +356,7 @@ export default function BeforeAndAfterSection() {
                 setCurrentIndex(prev => prev + 1)
                 setSliderX(50)
               }}
-              className="p-4 rounded-full bg-white/20 dark:bg-gray-800/20 backdrop-blur-md shadow-lg border border-white/30 dark:border-gray-700/30 hover:bg-white/30 dark:hover:bg-gray-800/30 transition-all duration-300"
+              className="p-4 rounded-full bg-white/20 dark:bg-gray-800/20 backdrop-blur-md shadow-lg border border-white/30 dark:border-gray-700/30 hover:bg-white/30 dark:hover:bg-gray-800/30 transition-all    duration-100"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -379,7 +379,7 @@ export default function BeforeAndAfterSection() {
                 setCurrentIndex(idx)
                 setSliderX(50)
               }}
-              className={`w-16 h-16 rounded-full border-2 flex items-center justify-center transition-all duration-300 overflow-hidden
+              className={`w-16 h-16 rounded-full border-2 flex items-center justify-center transition-all    duration-100 overflow-hidden
                 ${idx === currentIndex
                   ? "border-primary-500 scale-110 shadow-lg"
                   : "border-gray-300 opacity-60 hover:opacity-100"

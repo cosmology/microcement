@@ -169,7 +169,7 @@ export default function GallerySection() {
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-6 py-2 rounded-full font-medium transition-all duration-300 ${
+              className={`px-6 py-2 rounded-full font-medium transition-all    duration-100 ${
                 selectedCategory === category
                   ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-lg"
                   : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600"
@@ -202,11 +202,11 @@ export default function GallerySection() {
                   className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110"
                   priority={index < 4} // Prioritize loading for first 4 images
                 />
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all    duration-100 flex items-center justify-center">
                   <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
                     whileHover={{ opacity: 1, scale: 1 }}
-                    className="text-white font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                    className="text-white font-semibold opacity-0 group-hover:opacity-100 transition-opacity    duration-100"
                   >
                     {t('viewDetails')}
                   </motion.div>

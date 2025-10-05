@@ -17,7 +17,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     // Persist session in localStorage
     persistSession: true,
     // Detect session in URL
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    // Flow type for better JWT handling
+    flowType: 'pkce'
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'microcement-app'
+    }
   }
 })
 

@@ -11,8 +11,7 @@ type TimelineWaypointsProps = {
 export default function TimelineWaypoints({ className }: TimelineWaypointsProps) {
   const t = useTranslations('Navigation')
   const [isPortrait, setIsPortrait] = useState(false)
-  const [topOffsetPx, setTopOffsetPx] = useState<number>(16) // default 1rem
-  const [bottomReservePx, setBottomReservePx] = useState<number>(100) // reserve for bottom panel in portrait
+  const [topOffsetPx, setTopOffsetPx] = useState<number>(10) // 10px from top nav
   const rafRef = useRef<number | null>(null)
   const [progressT, setProgressT] = useState(0)
 
@@ -35,26 +34,27 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
     return () => window.removeEventListener('camera-path-progress', handler)
   }, [])
 
-  // Measure header position to place timeline under its bottom edge in both orientations
+  // Calculate positioning based on nav height and orientation
   useEffect(() => {
     if (typeof window === 'undefined') return
     const computeOffset = () => {
       try {
-        const nav = document.querySelector('nav') as HTMLElement | null
-        if (!nav) { setTopOffsetPx(16); return }
-        const rect = nav.getBoundingClientRect()
-        // Align to the header's bottom border + 1rem, otherwise stick to 1rem from top
-        const offset = rect.bottom > 0 ? Math.round(rect.bottom) + 16 : 16
-        setTopOffsetPx(offset)
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[TimelineWaypoints] orientation=', isPortrait ? 'portrait' : 'landscape', 'nav.bottom=', rect.bottom, 'offset(top)=', offset)
+        const nav = document.getElementById('main-navigation') as HTMLElement | null
+        if (!nav) { 
+          setTopOffsetPx(10); 
+          return 
         }
-        // Compute bottom reserved space for marker panel (same logic as panel height)
-        const w = window.innerWidth
-        const panelH = w < 640 ? 100 : (w < 1024 ? 110 : 120)
-        setBottomReservePx(panelH)
+        
+        const rect = nav.getBoundingClientRect()
+
+
+        // Always 10px padding from the top nav
+        const offset = rect.bottom > 0 ? Math.round(rect.bottom) + 10 : 10
+        setTopOffsetPx(offset)
+        
+        
       } catch {
-        setTopOffsetPx(16)
+        setTopOffsetPx(10)
       }
     }
     computeOffset()
@@ -67,7 +67,7 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
     window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', onResize)
     const obs = new MutationObserver(() => computeOffset())
-    const nav = document.querySelector('nav')
+    const nav = document.getElementById('main-navigation')
     if (nav) obs.observe(nav, { attributes: true, attributeFilter: ['style', 'class'] })
     return () => {
       window.removeEventListener('scroll', onScroll)
@@ -79,12 +79,48 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
 
   const containerStyle = useMemo<React.CSSProperties>(() => {
     if (isPortrait) {
-      // Portrait: start below header and reserve space for bottom panel
-      return { top: `${topOffsetPx}px`, bottom: `${bottomReservePx}px`, right: '1rem', left: 'auto', transform: 'none', transition: 'top 150ms ease-out' }
+      // Portrait: vertical timeline positioned on right side with fixed width
+      const navHeight = typeof window !== 'undefined' ? 
+        (document.getElementById('main-navigation')?.getBoundingClientRect().bottom || 0) : 0
+      const navHeightPx = Math.round(navHeight) + 10 // nav height + 10px padding
+      
+      // Get docked navigation width (expanded = 192px, collapsed = 48px)
+      const dockNavElement = document.querySelector('[class*="fixed left-0"]') as HTMLElement | null
+      const dockNavWidth = dockNavElement ? 
+        (dockNavElement.classList.contains('w-48') ? 192 : 48) : 0 // w-48 = 192px, w-12 = 48px
+      
+      // Portrait: fixed width timeline positioned on right side
+      const timelineWidth = 70 // Fixed width for vertical timeline
+      
+      // Console log navHeightPx for portrait
+      
+      return { 
+        top: `${navHeightPx}px`, 
+        bottom: '0px', 
+        left: 'auto', 
+        right: '1rem', // Position from right edge with 1rem padding
+        width: `${timelineWidth}px`,
+        transform: 'none', 
+        transition: 'top 150ms ease-out' 
+      }
     }
-    // Landscape: stick to top, centered horizontally, with dynamic offset from header bottom
-    return { top: `${topOffsetPx}px`, left: 0, right: 0, transform: 'none', transition: 'top 150ms ease-out' }
-  }, [isPortrait, topOffsetPx, bottomReservePx])
+    // Landscape: account for docked navigation width and reserve space on the right for full last label
+    const dockNavElement = typeof window !== 'undefined' ? 
+      document.querySelector('[class*="fixed left-0"]') as HTMLElement | null : null
+    const dockNavWidth = dockNavElement ? 
+      (dockNavElement.classList.contains('w-48') ? 192 : 48) : 0 // w-48 = 192px, w-12 = 48px
+    // Reserve right-side space so the "Living Room" label never clips off-screen
+    // Revert reserved right-side space adjustment
+    
+    return { 
+      top: `${topOffsetPx}px`, 
+      left: `${dockNavWidth}px`, 
+      right: '0px', 
+      bottom: 'auto', 
+      transform: 'none', 
+      transition: 'top 150ms ease-out' 
+    }
+  }, [isPortrait, topOffsetPx])
 
   const containerClasses = useMemo(() => (
     isPortrait 
@@ -106,7 +142,6 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
   const handleClick = (e: React.MouseEvent, index: number) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('[TimelineWaypoints] Dot clicked, requesting waypoint:', index)
     dispatchGoToWaypoint(index)
   }
 
@@ -127,18 +162,21 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
 
   return (
     <div className={`${containerClasses} ${className ?? ''}`} style={containerStyle} aria-label="Timeline waypoints">
-      {/* Vertical layout: column, fill height; Horizontal: row, fill width; always centered */}
-      <div className={`flex ${isPortrait ? 'flex-col items-center justify-center h-full py-4' : 'flex-row items-center justify-center w-full'} px-4`}>
+      {/* Portrait: column fills height aligned right, Landscape: row fills width; always centered */}
+      <div 
+        className={`flex ${isPortrait ? 'flex-col items-center justify-center h-full py-4 px-4 text-center' : 'flex-row items-center justify-center w-full px-4'}`}
+        style={isPortrait ? undefined : { paddingRight: '4rem' }}
+      >
         {/* First dot: Kitchen -> waypoint 2 */}
         <button
           aria-label={t('kitchen')}
-          className={`${dotBase} ${isKitchenPassed ? activeDot : inactiveDot} ${hoverDot} ${isPortrait ? '' : 'mr-3'}`}
+          className={`${dotBase} ${isKitchenPassed ? activeDot : inactiveDot} ${hoverDot} ${isPortrait ? '' : 'mr-1'}`}
           onClick={(e) => handleClick(e, WAYPOINTS.kitchen)}
           onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
         />
         {isPortrait
-          ? <span className="mt-2 mb-2 text-xs text-foreground/80">{t('kitchen')}</span>
+          ? <span className="mt-2 mb-2 text-xs text-foreground/80 text-center">{t('kitchen')}</span>
           : <span className="ml-2 mr-3 text-xs text-foreground/80">{t('kitchen')}</span>}
 
         {/* Line between dots */}
@@ -160,13 +198,13 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
         {/* Second dot: Bath -> waypoint 6 */}
         <button
           aria-label={t('bathroom')}
-          className={`${dotBase} ${isBathPassed ? activeDot : inactiveDot} ${hoverDot} ${isPortrait ? '' : 'mx-3'}`}
+          className={`${dotBase} ${isBathPassed ? activeDot : inactiveDot} ${hoverDot} ${isPortrait ? '' : 'ml-3'}`}
           onClick={(e) => handleClick(e, WAYPOINTS.bath)}
           onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
           onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
         />
         {isPortrait
-          ? <span className="mt-2 mb-2 text-xs text-foreground/80">{t('bathroom')}</span>
+          ? <span className="mt-2 text-xs text-foreground/80 text-center">{t('bathroom')}</span>
           : <span className="ml-2 mr-3 text-xs text-foreground/80">{t('bathroom')}</span>}
 
         {/* Line between dots */}
@@ -194,8 +232,8 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
           onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
         />
         {isPortrait
-          ? <span className="mt-2 text-xs text-foreground/80">{t('livingRoom')}</span>
-          : <span className="ml-2 text-xs text-foreground/80">{t('livingRoom')}</span>}
+          ? <span className="mt-2 text-xs text-foreground/80 text-center whitespace-nowrap">{t('livingRoom')}</span>
+          : <span className="ml-2 text-xs text-foreground/80 whitespace-nowrap">{t('livingRoom')}</span>}
 
         {/* No trailing line after last dot; progress ends at Living */}
       </div>

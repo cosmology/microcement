@@ -58,9 +58,9 @@ function LocaleSwitcherContent({
           select?.click();
         }}
       >
-        <Earth size={20} className="text-current transition-colors duration-200 group-hover:text-purple-600 dark:group-hover:text-purple-400" />
-        <span className="text-sm font-medium">{currentLocale.toUpperCase()}</span>
-        <ChevronDown size={16} className="text-current/70 transition-colors duration-200 group-hover:text-purple-600 dark:group-hover:text-purple-400" />
+        <Earth size={16} className="text-current transition-colors duration-200 group-hover:text-purple-600 dark:group-hover:text-purple-400" />
+        <span className="text-xs font-medium">{currentLocale.toUpperCase()}</span>
+        <ChevronDown size={12} className="text-current/70 transition-colors duration-200 group-hover:text-purple-600 dark:group-hover:text-purple-400" />
       </button>
       
       <select
@@ -83,9 +83,9 @@ export default function LocaleSwitcherSelect(props: Props) {
   return (
     <Suspense fallback={
       <div className="flex items-center gap-2 px-3 py-2 rounded-full text-gray-700 dark:text-gray-200">
-        <Earth size={20} className="text-gray-500 dark:text-gray-400" />
-        <span className="text-sm font-medium">EN</span>
-        <ChevronDown size={16} className="text-gray-400 dark:text-gray-500" />
+        <Earth size={16} className="text-gray-500 dark:text-gray-400" />
+        <span className="text-xs font-medium">EN</span>
+        <ChevronDown size={12} className="text-gray-400 dark:text-gray-500" />
       </div>
     }>
       <LocaleSwitcherContent {...props} />

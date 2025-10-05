@@ -20,23 +20,17 @@ export class SceneConfigService {
 
   setUser(user: any) {
     this.currentUser = user
-    // Optional: clear caches when switching user to avoid leakage
-    // Keep only the active user's entries to minimize memory
-    if (user?.id) {
-      const keepId = user.id as string
-      ;[...this.userConfigsCache.keys()].forEach(k => { if (k !== keepId) this.userConfigsCache.delete(k) })
-      ;[...this.defaultConfigCache.keys()].forEach(k => { if (k !== keepId) this.defaultConfigCache.delete(k) })
-      this.pendingUserConfigs.clear()
-      this.pendingDefaultConfig.clear()
-    }
+    // Clear all caches when switching user to avoid leakage
+    this.userConfigsCache.clear()
+    this.defaultConfigCache.clear()
+    this.pendingUserConfigs.clear()
+    this.pendingDefaultConfig.clear()
   }
 
   async getUserConfigs(): Promise<UserSceneConfig[]> {
     if (!this.currentUser) {
       throw new Error('User not authenticated')
     }
-
-    // All authenticated users can access their scene configs
 
     const userId: string = this.currentUser.id
 
@@ -49,6 +43,7 @@ export class SceneConfigService {
     if (pending) return pending
 
     const promise = (async () => {
+      // First, try to get the user's own configs
       const { data, error } = await supabase
         .from('scene_design_configs')
         .select('*')
@@ -59,7 +54,44 @@ export class SceneConfigService {
         throw new Error(error.message)
       }
 
-      const result = data || []
+      const userConfigs = data || []
+      
+      // If user has their own configs, return them
+      if (userConfigs.length > 0) {
+        const result = userConfigs
+        this.userConfigsCache.set(userId, result)
+        this.pendingUserConfigs.delete(userId)
+        return result
+      }
+
+      // If no own configs, check for architect relationship (for end_users)
+      const { data: architectRelationship } = await supabase
+        .from('architect_clients')
+        .select('architect_id')
+        .eq('client_id', userId)
+        .eq('status', 'active')
+        .single()
+
+      if (architectRelationship) {
+        // Get architect's configs
+        const { data: architectConfigs, error: architectError } = await supabase
+          .from('scene_design_configs')
+          .select('*')
+          .eq('user_id', architectRelationship.architect_id)
+          .order('created_at', { ascending: false })
+
+        if (architectError) {
+          console.warn('Error fetching architect configs:', architectError)
+        }
+
+        const result = architectConfigs || []
+        this.userConfigsCache.set(userId, result)
+        this.pendingUserConfigs.delete(userId)
+        return result
+      }
+
+      // No configs found
+      const result: UserSceneConfig[] = []
       this.userConfigsCache.set(userId, result)
       this.pendingUserConfigs.delete(userId)
       return result
@@ -110,13 +142,43 @@ export class SceneConfigService {
     if (pending) return pending
 
     const promise = (async () => {
-      const { data, error } = await supabase
+      // First, try to get the user's own default config
+      let { data, error } = await supabase
         .from('scene_design_configs')
         .select('*')
         .eq('user_id', userId)
         .eq('is_default', true)
         .single()
 
+      if (!error && data) {
+        console.log('✅ [SceneConfigService] Found user\'s own default config:', data.config_name)
+        this.defaultConfigCache.set(userId, data)
+        this.pendingDefaultConfig.delete(userId)
+        return data
+      }
+
+      // If no own config found, check if user is an end_user with an architect relationship
+      const { data: architectData, error: architectError } = await supabase
+        .from('architect_clients')
+        .select('architect_id')
+        .eq('client_id', userId)
+        .eq('status', 'active')
+        .single()
+
+      if (!architectError && architectData) {
+        console.log('🔍 [SceneConfigService] No own config found, checking architect relationship')
+        
+        // Get the architect's default config directly
+        const architectConfig = await this.getArchitectDefaultConfig(userId)
+        if (architectConfig) {
+          console.log('✅ [SceneConfigService] Loaded architect config for end_user')
+          this.defaultConfigCache.set(userId, architectConfig)
+          this.pendingDefaultConfig.delete(userId)
+          return architectConfig
+        }
+      }
+
+      // No config found
       if (error) {
         if ((error as any).code === 'PGRST116') {
           this.defaultConfigCache.set(userId, null)
@@ -126,9 +188,9 @@ export class SceneConfigService {
         throw new Error(error.message)
       }
 
-      this.defaultConfigCache.set(userId, data)
+      this.defaultConfigCache.set(userId, null)
       this.pendingDefaultConfig.delete(userId)
-      return data
+      return null
     })()
 
     this.pendingDefaultConfig.set(userId, promise)
@@ -410,8 +472,23 @@ export class SceneConfigService {
 
   // Convert UserSceneConfig to format expected by the 3D scene
   convertToSceneConfig(userConfig: UserSceneConfig) {
+    // Use model_path from database first, then fallback to config name, then default
+    let modelPath = '/models/no-material.glb'; // Default
+    
+    if ((userConfig as any).model_path) {
+      modelPath = (userConfig as any).model_path;
+      console.log('🎯 [SceneConfigService] Using model_path from database:', modelPath);
+    } else if (userConfig.config_name === 'ema_showcase') {
+      modelPath = '/models/ema.glb';
+      console.log('🎯 [SceneConfigService] Using ema_showcase config name fallback:', modelPath);
+    } else {
+      console.log('🎯 [SceneConfigService] Using default model path:', modelPath);
+    }
+    
+    console.log('🎯 [SceneConfigService] Final model path:', modelPath, 'for config:', userConfig.config_name);
+    
     return {
-      DEFAULT_MODEL_PATH: userConfig.model_path,
+      DEFAULT_MODEL_PATH: modelPath,
       CAMERA_FOV: userConfig.camera_fov,
       CAMERA_NEAR: userConfig.camera_near,
       CAMERA_FAR: userConfig.camera_far,
@@ -431,6 +508,74 @@ export class SceneConfigService {
       DEFAULT_CAMERA_POINTS: userConfig.camera_points,
       DEFAULT_LOOK_AT_TARGETS: userConfig.look_at_targets,
       API_HOTSPOT_KEY_ALIASES: userConfig.api_hotspot_key_aliases
+    }
+  }
+
+  /**
+   * Get architect's default config for end_user collaboration
+   */
+  async getArchitectDefaultConfig(userId: string): Promise<UserSceneConfig | null> {
+    if (!this.currentUser) {
+      throw new Error('User not authenticated')
+    }
+
+    try {
+      // Check if user is an end_user with an architect
+      const { data: architectData, error: architectError } = await supabase
+        .from('architect_clients')
+        .select('architect_id')
+        .eq('client_id', userId)
+        .eq('status', 'active')
+        .single()
+
+      console.log('🔍 [SceneConfigService] Architect clients query result:', architectData)
+      console.log('🔍 [SceneConfigService] Architect clients query error:', architectError)
+      console.log('🔍 [SceneConfigService] User ID being queried:', userId)
+
+      if (architectError || !architectData) {
+        console.log('🔍 [SceneConfigService] No architect relationship found for user:', userId)
+        return null
+      }
+
+      console.log('🔍 [SceneConfigService] Found architect relationship, fetching architect config')
+      console.log('🔍 [SceneConfigService] Architect ID:', architectData.architect_id)
+      console.log('🔍 [SceneConfigService] Current user ID:', this.currentUser?.id)
+
+      // Check if we have a valid session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      console.log('🔍 [SceneConfigService] Session check:', session ? 'valid' : 'invalid', sessionError)
+
+      if (sessionError || !session) {
+        console.error('❌ [SceneConfigService] No valid session for architect config query')
+        return null
+      }
+
+      // Get the architect's default config
+      // Filter by the specific architect's user_id
+      const { data: architectConfig, error: architectConfigError } = await supabase
+        .from('scene_design_configs')
+        .select('*')
+        .eq('user_id', architectData.architect_id)
+        .eq('is_default', true)
+        .single()
+
+      console.log('🔍 [SceneConfigService] Architect config query result:', architectConfig)
+      console.log('🔍 [SceneConfigService] Architect config query error:', architectConfigError)
+
+      if (architectConfigError) {
+        console.error('❌ [SceneConfigService] Error fetching architect config:', architectConfigError)
+        return null
+      }
+
+      if (architectConfig) {
+        console.log('✅ [SceneConfigService] Loaded architect config for end_user:', architectConfig.id)
+        return architectConfig as UserSceneConfig
+      }
+
+      return null
+    } catch (error) {
+      console.error('❌ [SceneConfigService] Error in getArchitectDefaultConfig:', error)
+      return null
     }
   }
 }

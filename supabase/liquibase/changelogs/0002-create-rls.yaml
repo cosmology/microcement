@@ -1,0 +1,125 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-rls-v2
+      author: microcement-dev
+      comment: "Create auth.uid() and all RLS policies"
+      changes:
+        - sql:
+            sql: |
+              -- Ensure auth schema exists
+              CREATE SCHEMA IF NOT EXISTS auth;
+
+              -- Create auth.uid() function (PostgREST v12 friendly)
+              CREATE OR REPLACE FUNCTION auth.uid()
+              RETURNS uuid
+              LANGUAGE sql STABLE
+              AS 'SELECT COALESCE(
+                  nullif(current_setting(''request.jwt.claims'', true), '''')::jsonb->>''sub'',
+                  (current_setting(''request.jwt.claims'', true)::jsonb->>''user_id'')
+                )::uuid';
+
+              -- Grants for auth.uid()
+              GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated;
+              GRANT EXECUTE ON FUNCTION auth.uid() TO anon;
+              GRANT EXECUTE ON FUNCTION auth.uid() TO public;
+              GRANT EXECUTE ON FUNCTION auth.uid() TO authenticator;
+
+              -- Enable RLS
+              ALTER TABLE public.area_types ENABLE ROW LEVEL SECURITY;
+              ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+              ALTER TABLE public.architect_clients ENABLE ROW LEVEL SECURITY;
+              ALTER TABLE public.scene_design_configs ENABLE ROW LEVEL SECURITY;
+              ALTER TABLE public.scene_follow_paths ENABLE ROW LEVEL SECURITY;
+
+              -- Grants on schema/tables
+              GRANT USAGE ON SCHEMA public TO authenticator;
+              GRANT USAGE ON SCHEMA public TO authenticated;
+              GRANT USAGE ON SCHEMA public TO anon;
+
+              GRANT SELECT ON public.user_profiles TO authenticator;
+              GRANT SELECT ON public.scene_design_configs TO authenticator;
+              GRANT SELECT ON public.architect_clients TO authenticator;
+              GRANT SELECT ON public.scene_follow_paths TO authenticator;
+              GRANT SELECT ON public.area_types TO authenticator;
+
+              GRANT SELECT ON public.user_profiles TO authenticated;
+              GRANT SELECT ON public.scene_design_configs TO authenticated;
+              GRANT SELECT ON public.architect_clients TO authenticated;
+              GRANT SELECT ON public.scene_follow_paths TO authenticated;
+              GRANT SELECT ON public.area_types TO authenticated;
+
+              GRANT INSERT, UPDATE ON public.user_profiles TO authenticated;
+              GRANT INSERT, UPDATE ON public.scene_design_configs TO authenticated;
+              GRANT INSERT, UPDATE ON public.architect_clients TO authenticated;
+              GRANT INSERT, UPDATE ON public.scene_follow_paths TO authenticated;
+
+              -- Policies
+              DROP POLICY IF EXISTS user_profiles_read_own ON public.user_profiles;
+              CREATE POLICY user_profiles_read_own ON public.user_profiles
+                FOR SELECT TO authenticated
+                USING (auth.uid() = user_id);
+
+              DROP POLICY IF EXISTS user_profiles_update_own ON public.user_profiles;
+              CREATE POLICY user_profiles_update_own ON public.user_profiles
+                FOR UPDATE TO authenticated
+                USING (auth.uid() = user_id);
+
+              DROP POLICY IF EXISTS user_profiles_read_related ON public.user_profiles;
+              CREATE POLICY user_profiles_read_related ON public.user_profiles
+                FOR SELECT TO authenticated
+                USING (
+                  auth.uid() = user_id OR
+                  EXISTS (
+                    SELECT 1 FROM public.architect_clients ac
+                    WHERE (ac.architect_id = auth.uid() AND ac.client_id = public.user_profiles.user_id)
+                       OR (ac.client_id = auth.uid() AND ac.architect_id = public.user_profiles.user_id)
+                  )
+                );
+
+              DROP POLICY IF EXISTS architect_clients_manage_rel ON public.architect_clients;
+              CREATE POLICY architect_clients_manage_rel ON public.architect_clients
+                FOR ALL TO authenticated
+                USING (architect_id = auth.uid() OR client_id = auth.uid());
+
+              DROP POLICY IF EXISTS scene_configs_read_own ON public.scene_design_configs;
+              CREATE POLICY scene_configs_read_own ON public.scene_design_configs
+                FOR SELECT TO authenticated
+                USING (user_id = auth.uid() OR client_id = auth.uid() OR architect_id = auth.uid());
+
+              DROP POLICY IF EXISTS scene_configs_insert_own ON public.scene_design_configs;
+              CREATE POLICY scene_configs_insert_own ON public.scene_design_configs
+                FOR INSERT TO authenticated
+                WITH CHECK (user_id = auth.uid());
+
+              DROP POLICY IF EXISTS scene_configs_update_own ON public.scene_design_configs;
+              CREATE POLICY scene_configs_update_own ON public.scene_design_configs
+                FOR UPDATE TO authenticated
+                USING (user_id = auth.uid() OR architect_id = auth.uid());
+
+              DROP POLICY IF EXISTS scene_follow_paths_read ON public.scene_follow_paths;
+              CREATE POLICY scene_follow_paths_read ON public.scene_follow_paths
+                FOR SELECT TO authenticated
+                USING (
+                  EXISTS (
+                    SELECT 1 FROM public.scene_design_configs sdc
+                    WHERE sdc.id = public.scene_follow_paths.scene_design_config_id
+                      AND (sdc.user_id = auth.uid() OR sdc.client_id = auth.uid() OR sdc.architect_id = auth.uid())
+                  )
+                );
+
+              DROP POLICY IF EXISTS scene_follow_paths_manage ON public.scene_follow_paths;
+              CREATE POLICY scene_follow_paths_manage ON public.scene_follow_paths
+                FOR ALL TO authenticated
+                USING (
+                  EXISTS (
+                    SELECT 1 FROM public.scene_design_configs sdc
+                    WHERE sdc.id = public.scene_follow_paths.scene_design_config_id
+                      AND (sdc.user_id = auth.uid() OR sdc.architect_id = auth.uid())
+                  )
+                );
+
+              DROP POLICY IF EXISTS area_types_read_all ON public.area_types;
+              CREATE POLICY area_types_read_all ON public.area_types
+                FOR SELECT TO authenticated
+                USING (true);
+

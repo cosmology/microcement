@@ -18,8 +18,11 @@
     "bathroom": "Baño",
     "kitchen": "Cocina",
     "livingRoom": "Sala",
+    "living_room": "Sala",
     "bedroomArea": "Área del Dormitorio",
-    "officeSpace": "Espacio de Oficina"
+    "officeSpace": "Espacio de Oficina",
+    "default_path": "Ruta Predeterminada",
+    "collaborative_path": "Ruta Colaborativa"
   },
   "Hero": {
     "header1": "Transforma",
@@ -304,5 +307,34 @@
     "loggedInPrompt": "Tu estudio se está preparando.",
     "contactPrompt": "Contacta a nuestros especialistas para configurar tu experiencia.",
     "signOutButton": "Cerrar Sesión"
+  },
+  "Dock": {
+    "adminPanel": "Panel de Administración",
+    "architectPortal": "Portal Arquitectónico", 
+    "myProjects": "Mi Proyecto",
+    "cameraControls": "Controles de Cámara",
+    "cameraEditor": "Editor de Cámara",
+    "birdView": "Vista de Pájaro",
+    "editor": "Editor",
+    "lookAtTargets": "Objetivos de Mirada",
+    "heightPanel": "Panel de Altura",
+    "lockBirdView": "Bloquear Vista de Pájaro",
+    "Upload Models": "Subir Modelos",
+    "All Models": "Todos los Modelos",
+    "User Management": "Gestión de Usuarios",
+    "System Settings": "Configuración del Sistema",
+    "Client Models": "Modelos de Cliente",
+    "Upload Model": "Subir Modelo",
+    "Upload Project": "Subir Proyecto",
+    "My Models": "Mis Modelos",
+    "loadingModels": "Cargando modelos",
+    "retry": "Reintentar",
+    "noModelsAvailable": "No hay modelos disponibles",
+    "contactArchitect": "Contacta a tu arquitecto para comenzar",
+    "untitledProject": "Proyecto Sin Título",
+    "architect": "Arquitecto",
+    "status": "Estado",
+    "modelLoaded": "Modelo cargado",
+    "collaboratingWith": "Colaborando con"
   }
 } 

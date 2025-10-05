@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<databaseChangeLog
-    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
-    <!-- Include all migration files -->
-    <include file="init-0001.yaml" relativeToChangelogFile="true"/>
-    <include file="data-0002.yaml" relativeToChangelogFile="true"/>
-    <include file="data-0003.yaml" relativeToChangelogFile="true"/>
+    <include file="changelogs/0001-create-tables.yaml" relativeToChangelogFile="true"/>
+    <include file="changelogs/0002-create-rls.yaml" relativeToChangelogFile="true"/>
+    <include file="changelogs/0003-add-user-data.yaml" relativeToChangelogFile="true"/>
+    <include file="changelogs/0004-ensure-auth-uid-and-rls.yaml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>
