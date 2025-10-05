@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.SUPABASE_SERVER_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SERVICE_ROLE_KEY!
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+function getServerSupabase() {
+  const url = process.env.SUPABASE_SERVER_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SERVICE_ROLE_KEY
+  if (!url || !key) {
+    throw new Error('Supabase server URL or SERVICE_ROLE_KEY missing')
+  }
+  return createClient(url, key)
+}
 
 export async function GET(request: NextRequest) {
-  console.log('🔍 [API] Camera path GET request received')
-    console.log('🔍 [API] Environment check:', {
-      supabaseUrl: process.env.SUPABASE_SERVER_URL || process.env.NEXT_PUBLIC_SUPABASE_URL,
-      hasServiceKey: !!process.env.SERVICE_ROLE_KEY
-    })
+  // Silent logs in production
+  // console.log('🔍 [API] Camera path GET request received')
   
   try {
+    const supabase = getServerSupabase()
 
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
@@ -101,14 +103,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    // Validate server env early
-    if (!process.env.SERVICE_ROLE_KEY) {
-      console.error('❌ [API] Missing SERVICE_ROLE_KEY in environment')
-      return NextResponse.json(
-        { error: 'Server misconfiguration: SERVICE_ROLE_KEY missing' },
-        { status: 500 }
-      )
-    }
+    const supabase = getServerSupabase()
 
     // Parse JSON body defensively
     let body: any
@@ -131,7 +126,7 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    console.log('💾 [API] Saving camera path for user:', userId, 'scene:', sceneDesignConfigId, 'points:', Array.isArray(cameraPoints) ? cameraPoints.length : 'n/a')
+    // console.log('💾 [API] Saving camera path for user:', userId, 'scene:', sceneDesignConfigId, 'points:', Array.isArray(cameraPoints) ? cameraPoints.length : 'n/a')
 
     // Authorization: ensure the caller owns or is related to this scene config
     const { data: ownerCheck, error: ownerError } = await supabase
@@ -141,7 +136,7 @@ export async function PUT(request: NextRequest) {
       .single()
 
     if (ownerError || !ownerCheck) {
-      console.warn('⚠️ [API] Scene config not found or fetch error', ownerError)
+      // console.warn('⚠️ [API] Scene config not found or fetch error', ownerError)
       return NextResponse.json({ error: 'Scene config not found' }, { status: 404 })
     }
 
@@ -150,10 +145,7 @@ export async function PUT(request: NextRequest) {
       .includes(userId)
 
     if (!isAuthorized) {
-      console.warn('🚫 [API] Unauthorized attempt to modify camera path', {
-        userId,
-        sceneDesignConfigId
-      })
+      // console.warn('🚫 [API] Unauthorized attempt to modify camera path', { userId, sceneDesignConfigId })
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -171,8 +163,8 @@ export async function PUT(request: NextRequest) {
       .upsert({
         scene_design_config_id: sceneDesignConfigId,
         path_name: 'current', // Use a default path name
-        camera_points: cameraPoints,
-        look_at_targets: lookAtTargets || [],
+        camera_points: normPoints,
+        look_at_targets: normLooks,
         is_active: true,
         updated_at: new Date().toISOString()
       }, {
@@ -194,7 +186,7 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    console.log('✅ [API] Successfully saved camera path')
+    // console.log('✅ [API] Successfully saved camera path')
 
     return NextResponse.json({
       success: true,
