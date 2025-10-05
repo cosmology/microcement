@@ -106,7 +106,7 @@ export default function DockedNavigation({ role }: DockedNavigationProps) {
             {role !== 'end_user' && (
               <>
                 {/* Camera Controls Header */}
-                {/* <li className="group/menu-item relative border-b border-gray-300 dark:border-gray-600 pb-2 mb-1">
+                <li className="group/menu-item relative border-b border-gray-300 dark:border-gray-600 pb-2 mb-1">
                   <div className="flex items-center gap-2 py-2 px-1.5 hover:bg-purple-100 dark:hover:bg-purple-900 rounded-md">
                     <div className="flex items-center justify-center shrink-0">
                       <Camera className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -115,7 +115,7 @@ export default function DockedNavigation({ role }: DockedNavigationProps) {
                       {t('cameraControls')}
                     </span>
                   </div>
-                </li> */}
+                </li>
 
                 {/* Camera-related control icons (5 total) - all at same level when collapsed */}
                 {/* Bird View */}
