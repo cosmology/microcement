@@ -1,3 +1,6 @@
+import { supabase } from '@/lib/supabase'
+import { SceneConfigService } from '@/lib/services/SceneConfigService'
+
 export class DebouncedUpdater {
   private timeoutId: NodeJS.Timeout | null = null
   private delay: number
@@ -28,24 +31,52 @@ export class DebouncedUpdater {
 // Remove the old instance - we'll create a new one below
 
 // Mock user and scene config IDs for development
-export const getCurrentUserId = (): string => {
-  // In a real app, this would come from authentication
-  return 'f1e2d3c4-b5a6-9780-1234-567890abcdef'
+export const getCurrentUserId = (): string | null => {
+  // Prefer window-provided id set by app after auth
+  if (typeof window !== 'undefined' && (window as any).__currentUserId) {
+    return (window as any).__currentUserId as string
+  }
+  return null
 }
 
-export const getCurrentSceneConfigId = (): string => {
-  // In a real app, this would come from the current scene configuration
-  return 'd4e5f6a7-b8c9-0123-4567-89abcdef0123'
+export const getCurrentSceneConfigId = (): string | null => {
+  if (typeof window !== 'undefined' && (window as any).__currentSceneConfigId) {
+    return (window as any).__currentSceneConfigId as string
+  }
+  return null
 }
 
 // Extend the DebouncedUpdater class to include camera point methods
 export class CameraPointUpdater extends DebouncedUpdater {
-  getCurrentUserId(): string {
-    return getCurrentUserId()
+  async getCurrentUserId(): Promise<string | null> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const userId = user?.id ?? null
+      if (typeof window !== 'undefined') {
+        ;(window as any).__currentUserId = userId
+      }
+      return userId
+    } catch {
+      return null
+    }
   }
 
-  getCurrentSceneConfigId(): string {
-    return getCurrentSceneConfigId()
+  async getCurrentSceneConfigId(): Promise<string | null> {
+    try {
+      const userId = await this.getCurrentUserId()
+      if (!userId) return null
+      
+      const svc = SceneConfigService.getInstance()
+      svc.setUser({ id: userId })
+      const cfg = await svc.getDefaultConfig()
+      const sceneConfigId = cfg?.id ?? null
+      if (typeof window !== 'undefined') {
+        ;(window as any).__currentSceneConfigId = sceneConfigId
+      }
+      return sceneConfigId
+    } catch {
+      return null
+    }
   }
 
   updatePoints(points: Array<{ x: number; y: number; z: number }>, targets: Array<{ x: number; y: number; z: number }>) {
@@ -53,8 +84,11 @@ export class CameraPointUpdater extends DebouncedUpdater {
     this.latestPoints = points
     this.latestTargets = targets
     
+    console.log('🔥 [DebouncedUpdater] updatePoints called with', points.length, 'points')
+    
     // Use inherited debouncing mechanism
     this.update(() => {
+      console.log('🔥 [DebouncedUpdater] Debounced callback triggered, calling savePoints')
       this.savePoints()
     })
   }
@@ -63,16 +97,27 @@ export class CameraPointUpdater extends DebouncedUpdater {
   private latestTargets: Array<{ x: number; y: number; z: number }> = []
   
   private async savePoints() {
-    const userId = this.getCurrentUserId()
-    const sceneConfigId = this.getCurrentSceneConfigId()
+    console.log('🔥 [DebouncedUpdater] savePoints() method called')
+    
+    // Always get fresh user ID and scene config ID from Supabase
+    const userId = await this.getCurrentUserId()
+    const sceneConfigId = await this.getCurrentSceneConfigId()
+    
+    console.log('🔍 [DebouncedUpdater] Fresh user ID from Supabase:', userId)
+    console.log('🔍 [DebouncedUpdater] Fresh scene config ID:', sceneConfigId)
     
     if (this.latestPoints.length === 0) {
       console.log('⚠️ [DebouncedUpdater] No points to save')
       return
     }
+    if (!userId || !sceneConfigId) {
+      console.warn('⚠️ [DebouncedUpdater] Missing identifiers for save', { userId, sceneConfigId })
+      return
+    }
     
     try {
       console.log('🔥 [DebouncedUpdater] Debounced save triggered for', this.latestPoints.length, 'points')
+      console.log('🔥 [DebouncedUpdater] About to call savePoints() method')
       
       const response = await fetch('/api/camera-path', {
         method: 'PUT',

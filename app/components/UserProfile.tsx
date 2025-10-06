@@ -39,6 +39,7 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
   const rafRef = useRef<number | null>(null)
   
   const t = useTranslations('Navigation')
+  const tu = useTranslations('UserProfile')
 
   // Compute header bottom offset so dropdown aligns with header bottom border
   useEffect(() => {
@@ -217,6 +218,9 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
             profile: userWithProfile.profile,
             role: userWithProfile.profile?.role || 'no profile'
           })
+          if (typeof window !== 'undefined') {
+            ;(window as any).__currentUserId = session.user.id
+          }
         }
         setUser(session?.user ?? null)
         onUserChange?.(session?.user ?? null)
@@ -251,6 +255,9 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
         const userProfileService = UserProfileService.getInstance()
         const userWithProfile = await userProfileService.getUserWithProfile(session.user)
         setUserWithProfile(userWithProfile)
+        if (typeof window !== 'undefined') {
+          ;(window as any).__currentUserId = session.user.id
+        }
         
         console.log('🔐 [UserProfile] User with profile loaded on auth change:', {
           auth: userWithProfile.auth,
@@ -260,6 +267,10 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
       } else {
         // User logged out
         setUserWithProfile(null)
+        if (typeof window !== 'undefined') {
+          ;(window as any).__currentUserId = null
+          ;(window as any).__currentSceneConfigId = null
+        }
       }
       setUser(session?.user ?? null)
       onUserChange?.(session?.user ?? null)
@@ -353,7 +364,7 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
             size="sm"
             onClick={() => openAuthModal('signin')}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors duration-200 text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400"
-            title="Sign in to your account"
+            title={tu('signInTooltip', { default: 'Sign in to your account' })}
           >
             <UserRound className="h-5 w-5 text-current" />
           </Button>
@@ -380,7 +391,7 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
                     <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{user.email}</p>
                     <div className="flex items-center gap-2">
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Authenticated
+                        {tu('authenticated', { default: 'Authenticated' })}
                       </p>
                       {userWithProfile?.profile?.role && (
                         <Badge 
@@ -398,14 +409,22 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
                   </div>
                 </div>
                 
-                {/* Debug Profile Info */}
+                {/* Debug/Profile Info */}
                 {userWithProfile?.profile && (
                   <div className="mb-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg text-xs">
-                    <p className="font-medium mb-1">Profile Details:</p>
-                    <p>Name: {userWithProfile.profile.first_name} {userWithProfile.profile.last_name}</p>
-                    <p>Company: {userWithProfile.profile.company || 'Not set'}</p>
-                    <p>Active: {userWithProfile.profile.is_active ? 'Yes' : 'No'}</p>
-                    <p>Created: {new Date(userWithProfile.profile.created_at).toLocaleDateString()}</p>
+                    <p className="font-medium mb-1">{tu('profileDetails', { default: 'Profile Details:' })}</p>
+                    <p>
+                      {tu('name', { default: 'Name' })}: {userWithProfile.profile.first_name} {userWithProfile.profile.last_name}
+                    </p>
+                    <p>
+                      {tu('company', { default: 'Company' })}: {userWithProfile.profile.company || tu('notSet', { default: 'Not set' })}
+                    </p>
+                    <p>
+                      {tu('active', { default: 'Active' })}: {userWithProfile.profile.is_active ? tu('yes', { default: 'Yes' }) : tu('no', { default: 'No' })}
+                    </p>
+                    <p>
+                      {tu('created', { default: 'Created' })}: {new Date(userWithProfile.profile.created_at).toLocaleDateString()}
+                    </p>
                   </div>
                 )}
 
@@ -417,7 +436,7 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
                     onClick={() => setShowAuthModal(true)}
                   >
                     <Settings className="h-4 w-4 mr-2" />
-                    Account Settings
+                    {tu('accountSettings', { default: 'Account Settings' })}
                   </Button>
                   
                   {/* Follow Path Dropdown */}
@@ -434,7 +453,7 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
                         }}
                       >
                         <Camera className="h-4 w-4 mr-2" />
-                        {loadingPaths ? "Loading..." : followPathOptions.find(p => p.id === selectedFollowPath)?.name ?? "Follow Path"}
+                        {loadingPaths ? tu('loading', { default: 'Loading...' }) : followPathOptions.find(p => p.id === selectedFollowPath)?.name ?? tu('followPath', { default: 'Follow Path' })}
                         <ChevronDown className="h-4 w-4 ml-auto" />
                       </Button>
                       
@@ -471,7 +490,7 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
                     onClick={handleSignOut}
                   >
                     <LogOut className="h-4 w-4 mr-2" />
-                    Sign Out
+                    {tu('signOut', { default: 'Sign Out' })}
                   </Button>
                 </div>
               </div>

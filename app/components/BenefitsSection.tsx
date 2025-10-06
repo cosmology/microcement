@@ -99,7 +99,7 @@ export default function BenefitsSection() {
           initial={{ opacity: 0, y: 40 }}
           animate={getAnim(headerState, forceIntro)}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          className="text-4xl md:text-5xl font-light text-center text-gray-900 dark:text-white mb-16"
+          className="text-4xl md:text-5xl font-light text-center text-gray-900 dark:text-purple-=200 mb-16"
         >
           {t('title')}
         </motion.h2>

@@ -336,5 +336,21 @@
     "status": "Estado",
     "modelLoaded": "Modelo cargado",
     "collaboratingWith": "Colaborando con"
+  },
+  "UserProfile": {
+    "signInTooltip": "Inicia sesión en tu cuenta",
+    "authenticated": "Autenticado",
+    "profileDetails": "Detalles del Perfil:",
+    "name": "Nombre",
+    "company": "Empresa",
+    "notSet": "No establecido",
+    "active": "Activo",
+    "yes": "Sí",
+    "no": "No",
+    "created": "Creado",
+    "accountSettings": "Configuración de Cuenta",
+    "loading": "Cargando...",
+    "followPath": "Seguir Ruta",
+    "signOut": "Cerrar Sesión"
   }
 } 

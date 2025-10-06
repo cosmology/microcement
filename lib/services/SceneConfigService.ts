@@ -19,12 +19,16 @@ export class SceneConfigService {
   }
 
   setUser(user: any) {
+    const prevId = this.currentUser?.id
+    const nextId = user?.id
+    // Only reset caches if the user actually changed
     this.currentUser = user
-    // Clear all caches when switching user to avoid leakage
-    this.userConfigsCache.clear()
-    this.defaultConfigCache.clear()
-    this.pendingUserConfigs.clear()
-    this.pendingDefaultConfig.clear()
+    if (prevId !== nextId) {
+      this.userConfigsCache.clear()
+      this.defaultConfigCache.clear()
+      this.pendingUserConfigs.clear()
+      this.pendingDefaultConfig.clear()
+    }
   }
 
   async getUserConfigs(): Promise<UserSceneConfig[]> {

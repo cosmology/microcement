@@ -28,11 +28,12 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
   onBirdViewToggle,
   onToggleEditor
 }) => {
+  const isDebug = false
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [selectedDotIndex, setSelectedDotIndex] = useState<number | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  const mousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
   const [hoveredDotIndex, setHoveredDotIndex] = useState<number | null>(null)
   const [showLookAtTargets, setShowLookAtTargets] = useState(false)
   const [selectedLookAtIndex, setSelectedLookAtIndex] = useState<number | null>(null)
@@ -92,7 +93,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
   const handleHeightClick = useCallback((index: number, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('🎯 Height click triggered for point:', index)
+    if (isDebug) console.log('🎯 Height click triggered for point:', index)
     setSelectedHeightIndex(selectedHeightIndex === index ? null : index)
     setSelectedDotIndex(null) // Clear camera point selection
     setSelectedLookAtIndex(null) // Clear lookAt selection
@@ -145,13 +146,13 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
     
     // Only load from database if we don't already have camera points from props
     if (cameraPoints && cameraPoints.length > 0) {
-      console.log('ℹ️ [CameraPathEditor3D] Using camera points from props:', cameraPoints.length)
+      if (isDebug) console.log('ℹ️ [CameraPathEditor3D] Using camera points from props:', cameraPoints.length)
       return
     }
     
     try {
       isLoadingRef.current = true
-      console.log('🔄 [CameraPathEditor3D] Loading camera points from database...')
+      if (isDebug) console.log('🔄 [CameraPathEditor3D] Loading camera points from database...')
       
       const userId = cameraPointUpdater.getCurrentUserId()
       const sceneConfigId = cameraPointUpdater.getCurrentSceneConfigId()
@@ -161,19 +162,19 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
       if (response.ok) {
         const data = await response.json()
         if (data.cameraPoints && data.cameraPoints.length > 0) {
-          console.log('✅ [CameraPathEditor3D] Loaded camera points from database:', data.cameraPoints.length)
+          if (isDebug) console.log('✅ [CameraPathEditor3D] Loaded camera points from database:', data.cameraPoints.length)
           onPointsChange(data.cameraPoints)
           if (data.lookAtTargets) {
             onLookAtTargetsChange(data.lookAtTargets)
           }
         } else {
-          console.log('⚠️ [CameraPathEditor3D] No camera points found in database, keeping default points')
+          if (isDebug) console.log('⚠️ [CameraPathEditor3D] No camera points found in database, keeping default points')
         }
       } else {
-        console.warn('⚠️ [CameraPathEditor3D] Failed to load from database, keeping default points')
+        if (isDebug) console.warn('⚠️ [CameraPathEditor3D] Failed to load from database, keeping default points')
       }
     } catch (error) {
-      console.error('[CameraPathEditor3D] Error loading from database:', error)
+      if (isDebug) console.error('[CameraPathEditor3D] Error loading from database:', error)
     } finally {
       isLoadingRef.current = false
     }
@@ -199,18 +200,18 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
       })
       
       if (response.ok) {
-        console.log('✅ [CameraPathEditor3D] Saved camera points to database')
+        if (isDebug) console.log('✅ [CameraPathEditor3D] Saved camera points to database')
       } else {
-        console.error('❌ [CameraPathEditor3D] Failed to save to database')
+        if (isDebug) console.error('❌ [CameraPathEditor3D] Failed to save to database')
       }
     } catch (error) {
-      console.error('[CameraPathEditor3D] Error saving to database:', error)
+      if (isDebug) console.error('[CameraPathEditor3D] Error saving to database:', error)
     }
   }, [])
 
   // Component mounted - skip database load for now
   useEffect(() => {
-    console.log('🎯 [CameraPathEditor3D] Component mounted, isBirdView:', isBirdView)
+    if (isDebug) console.log('🎯 [CameraPathEditor3D] Component mounted, isBirdView:', isBirdView)
     // loadCameraPointsFromDatabase() // Skip for now to prevent errors
   }, []) // Remove dependencies to prevent re-running on every render
 
@@ -403,12 +404,12 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
 
     // Draw debug hit areas if enabled
     if (showDebugHitAreas) {
-      console.log('🎨 [CameraPathEditor3D] Drawing debug hit areas, cameraPoints:', cameraPoints.length, 'showLookAtTargets:', showLookAtTargets)
+      if (isDebug) console.log('🎨 [CameraPathEditor3D] Drawing debug hit areas, cameraPoints:', cameraPoints.length, 'showLookAtTargets:', showLookAtTargets)
       
       // Draw camera point hit areas
       cameraPoints.forEach((point, index) => {
         const screenPos = projectToScreen(point)
-        console.log(`🎨 [CameraPathEditor3D] Drawing debug circle for point ${index} at:`, screenPos)
+        if (isDebug) console.log(`🎨 [CameraPathEditor3D] Drawing debug circle for point ${index} at:`, screenPos)
         ctx.save()
         ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)' // Red debug circle - more visible
         ctx.lineWidth = 3
@@ -424,7 +425,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
       if (showLookAtTargets) {
         lookAtTargets.forEach((target, index) => {
           const screenPos = projectLookAtToScreen(target)
-          console.log(`🎨 [CameraPathEditor3D] Drawing debug circle for lookAt ${index} at:`, screenPos)
+          if (isDebug) console.log(`🎨 [CameraPathEditor3D] Drawing debug circle for lookAt ${index} at:`, screenPos)
           ctx.save()
           ctx.strokeStyle = 'rgba(0, 255, 0, 0.8)' // Green debug circle - more visible
           ctx.lineWidth = 3
@@ -439,7 +440,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
     }
 
     // Crosshair removed per request to avoid blocking UI panels
-  }, [cameraPoints, lookAtTargets, isEditorEnabled, projectToScreen, projectLookAtToScreen, selectedDotIndex, hoveredDotIndex, selectedLookAtIndex, hoveredLookAtIndex, showLookAtTargets, mousePos, selectedHeightIndex, showDebugHitAreas])
+  }, [cameraPoints, lookAtTargets, isEditorEnabled, projectToScreen, projectLookAtToScreen, selectedDotIndex, hoveredDotIndex, selectedLookAtIndex, hoveredLookAtIndex, showLookAtTargets, selectedHeightIndex, showDebugHitAreas])
 
   // Handle mouse events
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -523,40 +524,26 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
     const rawX = (e.clientX - rect.left) * scaleX
     const rawY = (e.clientY - rect.top) * scaleY
     
-    // Always update mouse position for crosshair
-    setMousePos({ x: rawX, y: rawY })
+    // Update mouse position without triggering React re-render
+    mousePosRef.current = { x: rawX, y: rawY }
     
-    // Check for hover detection on camera points
+    // Check for hover detection on camera points (compute first, then set state if changed)
+    let nextHoveredDot: number | null = null
     for (let i = 0; i < cameraPoints.length; i++) {
       const screenPos = projectToScreen(cameraPoints[i])
       const distance = Math.sqrt((rawX - screenPos.x) ** 2 + (rawY - screenPos.y) ** 2)
       if (distance <= 20) {
-        setHoveredDotIndex(i)
-        setHoveredLookAtIndex(null) // Clear lookAt hover
+        nextHoveredDot = i
+        break
+      }
+    }
+    if (nextHoveredDot !== hoveredDotIndex) {
+      setHoveredDotIndex(nextHoveredDot)
+      if (nextHoveredDot !== null) {
+        setHoveredLookAtIndex(null)
         const canvas = canvasRef.current
         if (canvas) canvas.style.cursor = 'pointer'
-        // Convert canvas coordinates to viewport coordinates for tooltip
-        const canvasEl = canvasRef.current
-        if (canvasEl) {
-          const rect = canvasEl.getBoundingClientRect()
-          const scaleX = rect.width / canvasEl.width
-          const scaleY = rect.height / canvasEl.height
-          
-          // Debug logging for coordinate conversion
-          console.log(`🎯 [CameraPathEditor3D] Point ${i} coordinate conversion:`, {
-            canvasPos: screenPos,
-            canvasSize: { width: canvasEl.width, height: canvasEl.height },
-            rectSize: { width: rect.width, height: rect.height },
-            scale: { scaleX, scaleY },
-            viewportPos: { x: rect.left + screenPos.x * scaleX, y: rect.top + screenPos.y * scaleY }
-          })
-          
-          // Tooltip removed per user request
-          // setTooltip({ visible: true, x: viewportX, y: viewportY, text: `Point ${i}` })
-        }
-        break
       } else {
-        setHoveredDotIndex(null)
         const canvas = canvasRef.current
         if (canvas) canvas.style.cursor = 'default'
         setTooltip(prev => ({ ...prev, visible: false }))
@@ -565,37 +552,22 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
 
     // Check for hover detection on lookAt targets
     if (showLookAtTargets) {
+      let nextHoveredLookAt: number | null = null
       for (let i = 0; i < lookAtTargets.length; i++) {
         const screenPos = projectLookAtToScreen(lookAtTargets[i])
         const distance = Math.sqrt((rawX - screenPos.x) ** 2 + (rawY - screenPos.y) ** 2)
         if (distance <= 16) {
-          setHoveredLookAtIndex(i)
-          setHoveredDotIndex(null) // Clear camera point hover
+          nextHoveredLookAt = i
+          break
+        }
+      }
+      if (nextHoveredLookAt !== hoveredLookAtIndex) {
+        setHoveredLookAtIndex(nextHoveredLookAt)
+        if (nextHoveredLookAt !== null) {
+          setHoveredDotIndex(null)
           const canvas = canvasRef.current
           if (canvas) canvas.style.cursor = 'pointer'
-          const center = projectLookAtToScreen(lookAtTargets[i])
-          // Convert canvas coordinates to viewport coordinates for tooltip
-          const canvasEl = canvasRef.current
-          if (canvasEl) {
-            const rect = canvasEl.getBoundingClientRect()
-            const scaleX = rect.width / canvasEl.width
-            const scaleY = rect.height / canvasEl.height
-            
-            // Debug logging for coordinate conversion
-            console.log(`🎯 [CameraPathEditor3D] LookAt ${i} coordinate conversion:`, {
-              canvasPos: center,
-              canvasSize: { width: canvasEl.width, height: canvasEl.height },
-              rectSize: { width: rect.width, height: rect.height },
-              scale: { scaleX, scaleY },
-              viewportPos: { x: rect.left + center.x * scaleX, y: rect.top + center.y * scaleY }
-            })
-            
-            // Tooltip removed per user request
-            // setTooltip({ visible: true, x: viewportX, y: viewportY, text: `L${i}` })
-          }
-          break
         } else {
-          setHoveredLookAtIndex(null)
           const canvas = canvasRef.current
           if (canvas) canvas.style.cursor = hoveredDotIndex !== null ? 'pointer' : 'default'
           if (hoveredDotIndex === null) setTooltip(prev => ({ ...prev, visible: false }))
@@ -654,7 +626,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
     }
     
     // Smooth dragging feedback
-  }, [isDragging, selectedDotIndex, selectedLookAtIndex, dragOffset, cameraPoints, lookAtTargets, onPointsChange, onLookAtTargetsChange, screenToWorld, isEditorEnabled, projectToScreen, projectLookAtToScreen, showLookAtTargets])
+  }, [isDragging, selectedDotIndex, selectedLookAtIndex, dragOffset, cameraPoints, lookAtTargets, onPointsChange, onLookAtTargetsChange, screenToWorld, isEditorEnabled, projectToScreen, projectLookAtToScreen, showLookAtTargets, hoveredDotIndex, hoveredLookAtIndex])
 
   const handleMouseUp = useCallback((e?: React.MouseEvent) => {
     // Prevent event bubbling to avoid triggering underlying hotspot events
@@ -687,11 +659,10 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
 
   // Redraw when debug hit areas toggle changes
   useEffect(() => {
-    if (isEditorEnabled && cameraPoints && cameraPoints.length > 0) {
-      console.log('🎨 [CameraPathEditor3D] Debug hit areas toggled, showDebugHitAreas:', showDebugHitAreas)
+    if (isEditorEnabled) {
       drawScene()
     }
-  }, [drawScene, isEditorEnabled, cameraPoints, showDebugHitAreas])
+  }, [showDebugHitAreas])
 
   // Bird view toggle handler
   const handleBirdViewToggle = useCallback((e: React.MouseEvent) => {

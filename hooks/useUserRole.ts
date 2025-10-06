@@ -23,9 +23,9 @@ export function useUserRole(): UserRoleInfo {
   useEffect(() => {
     const loadUserProfile = async () => {
       try {
-        // Add timeout to prevent hanging - increased to 15 seconds
+        // Add timeout to prevent hanging - reduced to 5 seconds
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('User profile loading timeout')), 15000) // 15 second timeout
+          setTimeout(() => reject(new Error('User profile loading timeout')), 5000) // 5 second timeout
         })
         
         const profilePromise = (async () => {
@@ -67,15 +67,15 @@ export function useUserRole(): UserRoleInfo {
     const fallbackTimeout = setTimeout(() => {
       console.warn('⚠️ [useUserRole] Fallback timeout - clearing loading state')
       setLoading(false)
-    }, 20000) // 20 second fallback timeout
+    }, 8000) // 8 second fallback timeout
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         try {
-          // Add timeout to prevent hanging - increased to 15 seconds
+          // Add timeout to prevent hanging - reduced to 5 seconds
           const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Auth state change timeout')), 15000) // 15 second timeout
+            setTimeout(() => reject(new Error('Auth state change timeout')), 5000) // 5 second timeout
           })
           
           const profilePromise = (async () => {

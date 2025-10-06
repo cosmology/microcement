@@ -7,8 +7,15 @@ function getServerSupabase() {
   if (!url || !key) {
     throw new Error('Supabase server URL or SERVICE_ROLE_KEY missing')
   }
-  return createClient(url, key)
+  console.log('🔑 [API] Using service role key for Supabase client')
+  return createClient(url, key, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
 }
+
 
 export async function GET(request: NextRequest) {
   // Silent logs in production
@@ -104,6 +111,10 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const supabase = getServerSupabase()
+    
+    // Debug: Log the request headers to see if JWT is being passed
+    const authHeader = request.headers.get('authorization')
+    console.log('🔍 [API] Request headers - Authorization:', authHeader ? 'Present' : 'Not present')
 
     // Parse JSON body defensively
     let body: any
@@ -129,24 +140,44 @@ export async function PUT(request: NextRequest) {
     // console.log('💾 [API] Saving camera path for user:', userId, 'scene:', sceneDesignConfigId, 'points:', Array.isArray(cameraPoints) ? cameraPoints.length : 'n/a')
 
     // Authorization: ensure the caller owns or is related to this scene config
+    console.log('🔍 [API] Querying scene_design_configs with service role key')
     const { data: ownerCheck, error: ownerError } = await supabase
       .from('scene_design_configs')
       .select('id,user_id,architect_id,client_id')
       .eq('id', sceneDesignConfigId)
       .single()
+    
+    console.log('🔍 [API] Query result:', { ownerCheck, ownerError })
 
     if (ownerError || !ownerCheck) {
-      // console.warn('⚠️ [API] Scene config not found or fetch error', ownerError)
-      return NextResponse.json({ error: 'Scene config not found' }, { status: 404 })
+      const usedUrl = process.env.SUPABASE_SERVER_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+      console.warn('⚠️ [API] Scene config not found or fetch error', { ownerError, sceneDesignConfigId, usedUrl })
+      return NextResponse.json(
+        { error: 'Scene config not found', details: (ownerError as any)?.message || null, usedUrl, sceneDesignConfigId },
+        { status: 404 }
+      )
     }
 
-    const isAuthorized = [ownerCheck.user_id, ownerCheck.architect_id, ownerCheck.client_id]
-      .filter(Boolean)
-      .includes(userId)
+    const candidateIds = [ownerCheck.user_id, ownerCheck.architect_id, ownerCheck.client_id].filter(Boolean) as string[]
+    const isAuthorized = candidateIds.includes(userId)
 
     if (!isAuthorized) {
-      // console.warn('🚫 [API] Unauthorized attempt to modify camera path', { userId, sceneDesignConfigId })
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      console.warn('🚫 [API] Forbidden camera path update attempt', {
+        userId,
+        sceneDesignConfigId,
+        ownerCheck,
+        candidateIds,
+      })
+      return NextResponse.json(
+        {
+          error: 'Forbidden',
+          details: 'User not related to scene configuration',
+          userId,
+          sceneDesignConfigId,
+          allowedUserIds: candidateIds,
+        },
+        { status: 403 }
+      )
     }
 
     // Basic input validation and normalization

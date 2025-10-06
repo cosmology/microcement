@@ -57,7 +57,7 @@ export default function LuxurySection() {
           initial={{ opacity: 0, y: 40 }}
           animate={getAnim(headerState)}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          className="text-4xl md:text-5xl font-light text-center mb-12 text-gray-900 dark:text-white"
+          className="text-4xl md:text-5xl font-light text-center mb-12 text-gray-900 dark:text-purple-200"
         >
           {t('title')}
         </motion.h2>

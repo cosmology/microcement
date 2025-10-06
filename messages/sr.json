@@ -336,5 +336,21 @@
     "status": "Status",
     "modelLoaded": "Model učitan",
     "collaboratingWith": "Sarađujem sa"
+  },
+  "UserProfile": {
+    "signInTooltip": "Prijavite se na svoj nalog",
+    "authenticated": "Autentifikovan",
+    "profileDetails": "Detalji profila:",
+    "name": "Ime",
+    "company": "Kompanija",
+    "notSet": "Nije postavljeno",
+    "active": "Aktivan",
+    "yes": "Da",
+    "no": "Ne",
+    "created": "Kreiran",
+    "accountSettings": "Podešavanja naloga",
+    "loading": "Učitavam...",
+    "followPath": "Prati putanju",
+    "signOut": "Odjavi se"
   }
 } 

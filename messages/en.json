@@ -336,5 +336,21 @@
     "status": "Status",
     "modelLoaded": "Model loaded",
     "collaboratingWith": "Collaborating with"
+  },
+  "UserProfile": {
+    "signInTooltip": "Sign in to your account",
+    "authenticated": "Authenticated",
+    "profileDetails": "Profile Details:",
+    "name": "Name",
+    "company": "Company",
+    "notSet": "Not set",
+    "active": "Active",
+    "yes": "Yes",
+    "no": "No",
+    "created": "Created",
+    "accountSettings": "Account Settings",
+    "loading": "Loading...",
+    "followPath": "Follow Path",
+    "signOut": "Sign Out"
   }
 } 
