@@ -19,6 +19,7 @@ interface ArchitectClient {
   notes: string | null
   created_at: string | null
   updated_at: string | null
+  scene_config_id?: string
   architect?: {
     first_name: string | null
     last_name: string | null
@@ -37,6 +38,7 @@ export default function ModelsList({ userId, onModelSelected }: ModelsListProps)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedModel, setSelectedModel] = useState<ArchitectClient | null>(null)
+  const [missingConfigFor, setMissingConfigFor] = useState<ArchitectClient | null>(null)
 
   useEffect(() => {
     fetchModels()
@@ -89,19 +91,33 @@ export default function ModelsList({ userId, onModelSelected }: ModelsListProps)
         return
       }
 
-      // Use the architect_id directly since we know the architect details
-      const modelsWithArchitects = data.map(model => ({
-        ...model,
-        architect: {
-          first_name: 'Ivan',
-          last_name: 'Prokic', 
-          company: 'Home Renovation Co',
-          user_id: model.architect_id
-        }
-      }))
+      // For each model, fetch the scene config ID
+      const modelsWithDetails = await Promise.all(
+        data.map(async (model) => {
+          // Get the scene config for this client-architect relationship
+          const { data: sceneConfig } = await supabase
+            .from('scene_design_configs')
+            .select('id')
+            .eq('architect_id', model.architect_id)
+            .eq('client_id', model.client_id)
+            .eq('is_default', true)
+            .single()
 
-      console.log('🔍 [ModelsList] Models with architects:', modelsWithArchitects)
-      setModels(modelsWithArchitects)
+          return {
+            ...model,
+            scene_config_id: sceneConfig?.id || null,
+            architect: {
+              first_name: 'Ivan',
+              last_name: 'Prokic', 
+              company: 'Home Renovation Co',
+              user_id: model.architect_id
+            }
+          }
+        })
+      )
+
+      console.log('🔍 [ModelsList] Models with details:', modelsWithDetails)
+      setModels(modelsWithDetails)
     } catch (err) {
       console.error('🔍 [ModelsList] Error fetching models:', err)
       setError('Failed to load models')
@@ -113,22 +129,26 @@ export default function ModelsList({ userId, onModelSelected }: ModelsListProps)
   const handleModelSelect = (model: ArchitectClient) => {
     setSelectedModel(model)
     console.log('🔍 [ModelsList] Model selected:', model)
-    console.log('🔍 [ModelsList] Architect ID:', model.architect_id)
+    console.log('🔍 [ModelsList] Scene config ID:', model.scene_config_id)
     console.log('🔍 [ModelsList] Project name:', model.project_name)
     
-    // Dispatch event to load the architect's model
+    if (!model.scene_config_id) {
+      console.error('🔍 [ModelsList] No scene config ID found for model')
+      setMissingConfigFor(model)
+      return
+    }
+    
+    // Dispatch event to load the scene config
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('load-collaborative-model', {
         detail: {
-          architectId: model.architect_id,
-          projectName: model.project_name,
+          sceneConfigId: model.scene_config_id,
           clientId: model.client_id
         }
       }))
       
       console.log('🔍 [ModelsList] Event dispatched with details:', {
-        architectId: model.architect_id,
-        projectName: model.project_name,
+        sceneConfigId: model.scene_config_id,
         clientId: model.client_id
       })
       
@@ -188,6 +208,35 @@ export default function ModelsList({ userId, onModelSelected }: ModelsListProps)
       <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
         {t('My Models')} ({models.length})
       </div>
+
+      {missingConfigFor && (
+        <div className="mb-3 p-3 rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/20">
+          <div className="text-sm text-amber-800 dark:text-amber-200">
+            {missingConfigFor.project_name || t('untitledProject')}: No scene configuration found.
+          </div>
+          <div className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+            Start by uploading a model to begin collaboration with your architect.
+          </div>
+          <div className="mt-2">
+            <button
+              onClick={() => {
+                // Try smooth-scroll to an upload section if present
+                const uploadEl = document.getElementById('upload')
+                if (uploadEl) {
+                  uploadEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
+                // Also emit a custom event so parent UI can open upload panel if needed
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('open-upload', { detail: { clientId: missingConfigFor.client_id } }))
+                }
+              }}
+              className="px-3 py-1.5 text-xs rounded bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {t('Upload Project')}
+            </button>
+          </div>
+        </div>
+      )}
       
       <div className="space-y-2">
         {models.map((model) => (

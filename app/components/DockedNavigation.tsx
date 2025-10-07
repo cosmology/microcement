@@ -5,6 +5,7 @@ import { Upload, FolderOpen, Settings, Users, Camera } from 'lucide-react'
 import { UserRole, useUserRole } from '@/hooks/useUserRole'
 import { useTranslations } from 'next-intl'
 import ModelsList from './ModelsList'
+import { ArchitectModelsList } from './ArchitectModelsList'
 
 interface DockedNavigationProps {
   role: UserRole
@@ -34,7 +35,7 @@ export default function DockedNavigation({ role }: DockedNavigationProps) {
         ]
       case 'architect':
         return [
-          { icon: FolderOpen, label: 'Client Models', href: '#clients' },
+          { icon: FolderOpen, label: 'My Models', href: '#my-models', onClick: () => setShowModelsList(!showModelsList) },
           { icon: Upload, label: 'Upload Model', href: '#upload' }
         ]
       case 'end_user':
@@ -207,6 +208,17 @@ export default function DockedNavigation({ role }: DockedNavigationProps) {
             userId={userWithRole.id} 
             onModelSelected={() => setShowModelsList(false)}
           />
+        </div>
+      )}
+
+      {/* Models List for architect */}
+      {role === 'architect' && showModelsList && userWithRole && (
+        <div className="absolute left-full top-0 w-80 h-full bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-lg z-50 overflow-y-auto">
+          <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 p-4 z-10">
+            <h2 className="text-lg font-semibold text-foreground">{t('myModels', { default: 'My Models' })}</h2>
+            <p className="text-xs text-muted-foreground mt-1">{t('clientProjectsSubtitle', { default: 'Client projects and models' })}</p>
+          </div>
+          <ArchitectModelsList architectId={userWithRole.id} />
         </div>
       )}
 

@@ -13,6 +13,20 @@ const nextConfig = {
         pathname: '/wp-content/uploads/**',
       },
     ],
+    localPatterns: [
+      {
+        pathname: '/images/**',
+        search: '',
+      },
+      {
+        pathname: '/public/**',
+        search: '',
+      },
+      {
+        pathname: '/**',
+        search: '**',
+      },
+    ],
   },
   reactStrictMode: true,
   eslint: { ignoreDuringBuilds: true },

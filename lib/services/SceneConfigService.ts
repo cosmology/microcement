@@ -110,18 +110,33 @@ export class SceneConfigService {
       throw new Error('User not authenticated')
     }
 
+    const userId = this.currentUser.id
+
+    // Query by ID only and let RLS handle access control
+    // RLS policy allows access if user_id, client_id, or architect_id matches
     const { data, error } = await supabase
       .from('scene_design_configs')
       .select('*')
       .eq('id', id)
-      .eq('user_id', this.currentUser.id)
       .single()
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return null // Config not found
+        console.log('🔍 [SceneConfigService] Config not found or access denied for ID:', id)
+        return null // Config not found or access denied by RLS
       }
       throw new Error(error.message)
+    }
+
+    // Verify user has access (redundant check, RLS already handles this)
+    const hasAccess = 
+      data.user_id === userId || 
+      data.client_id === userId || 
+      data.architect_id === userId
+
+    if (!hasAccess) {
+      console.log('🔍 [SceneConfigService] User does not have access to config:', id)
+      return null
     }
 
     return data
@@ -152,7 +167,7 @@ export class SceneConfigService {
         .select('*')
         .eq('user_id', userId)
         .eq('is_default', true)
-        .single()
+        .maybeSingle()
 
       if (!error && data) {
         console.log('✅ [SceneConfigService] Found user\'s own default config:', data.config_name)
@@ -167,7 +182,7 @@ export class SceneConfigService {
         .select('architect_id')
         .eq('client_id', userId)
         .eq('status', 'active')
-        .single()
+        .maybeSingle()
 
       if (!architectError && architectData) {
         console.log('🔍 [SceneConfigService] No own config found, checking architect relationship')
@@ -179,6 +194,34 @@ export class SceneConfigService {
           this.defaultConfigCache.set(userId, architectConfig)
           this.pendingDefaultConfig.delete(userId)
           return architectConfig
+        }
+      }
+
+      // If no own config found, check if user is an architect with active clients
+      const { data: clientData, error: clientError } = await supabase
+        .from('architect_clients')
+        .select('client_id')
+        .eq('architect_id', userId)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle()
+
+      if (!clientError && clientData) {
+        console.log('🔍 [SceneConfigService] No own config found, checking if architect has clients')
+        
+        // Get the collaborative project config where this user is the architect
+        const { data: collabConfig, error: collabError } = await supabase
+          .from('scene_design_configs')
+          .select('*')
+          .eq('architect_id', userId)
+          .eq('is_default', true)
+          .maybeSingle()
+
+        if (!collabError && collabConfig) {
+          console.log('✅ [SceneConfigService] Loaded collaborative config for architect:', collabConfig.config_name)
+          this.defaultConfigCache.set(userId, collabConfig)
+          this.pendingDefaultConfig.delete(userId)
+          return collabConfig
         }
       }
 
@@ -555,13 +598,13 @@ export class SceneConfigService {
       }
 
       // Get the architect's default config
-      // Filter by the specific architect's user_id
+      // Filter by the specific architect's user_id OR architect_id
       const { data: architectConfig, error: architectConfigError } = await supabase
         .from('scene_design_configs')
         .select('*')
-        .eq('user_id', architectData.architect_id)
+        .or(`user_id.eq.${architectData.architect_id},architect_id.eq.${architectData.architect_id}`)
         .eq('is_default', true)
-        .single()
+        .maybeSingle()
 
       console.log('🔍 [SceneConfigService] Architect config query result:', architectConfig)
       console.log('🔍 [SceneConfigService] Architect config query error:', architectConfigError)

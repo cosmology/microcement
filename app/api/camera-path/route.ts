@@ -38,12 +38,22 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 [API] Loading camera path for user:', userId, 'scene:', sceneDesignConfigId)
 
-    // Query the scene_follow_paths table for the 'current' path
+    // Determine the correct path name based on the scene config
+    let pathName = 'current' // Default path name
+    
+    // Check if this is the collaborative project
+    if (sceneDesignConfigId === 'da54fc29-0134-40fa-97cd-908def6d9c33') {
+      pathName = 'collaborative_path'
+    }
+    
+    console.log('🔍 [API] Loading path name:', pathName, 'for scene config:', sceneDesignConfigId)
+
+    // Query the scene_follow_paths table for the correct path
     const { data, error } = await supabase
       .from('scene_follow_paths')
       .select('*')
       .eq('scene_design_config_id', sceneDesignConfigId)
-      .eq('path_name', 'current')
+      .eq('path_name', pathName)
       .eq('is_active', true)
       .single()
 
@@ -188,12 +198,22 @@ export async function PUT(request: NextRequest) {
       x: Number(p?.x ?? 0), y: Number(p?.y ?? 0), z: Number(p?.z ?? 0)
     })) : []
 
+    // Determine the correct path name based on the scene config
+    let pathName = 'current' // Default path name
+    
+    // Check if this is the collaborative project
+    if (sceneDesignConfigId === 'da54fc29-0134-40fa-97cd-908def6d9c33') {
+      pathName = 'collaborative_path'
+    }
+    
+    console.log('🔍 [API] Using path name:', pathName, 'for scene config:', sceneDesignConfigId)
+
     // Upsert the camera path data using the composite unique constraint
     const { data, error } = await supabase
       .from('scene_follow_paths')
       .upsert({
         scene_design_config_id: sceneDesignConfigId,
-        path_name: 'current', // Use a default path name
+        path_name: pathName,
         camera_points: normPoints,
         look_at_targets: normLooks,
         is_active: true,

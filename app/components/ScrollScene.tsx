@@ -4305,79 +4305,62 @@ export default function ScrollScene({
       });
     };
 
-    const loadCollaborativeSceneConfig = async (architectId: string, projectName: string) => {
+    const loadCollaborativeSceneConfig = async (sceneConfigId: string) => {
       try {
-        console.log('🤝 [ScrollScene] Loading collaborative scene config for architect:', architectId);
-        console.log('🤝 [ScrollScene] Project name:', projectName);
+        console.log('🤝 [ScrollScene] Loading collaborative scene config:', sceneConfigId);
         
-        // Ensure we have a valid session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        console.log('🤝 [ScrollScene] Current session:', session);
-        console.log('🤝 [ScrollScene] Session error:', sessionError);
-        
-        if (sessionError || !session) {
-          console.error('🤝 [ScrollScene] No valid session found:', sessionError);
+        // Check if this config is already loaded
+        if (userSceneConfig?.id === sceneConfigId) {
+          console.log('🤝 [ScrollScene] Scene config already loaded, skipping reload');
           return;
         }
         
-        console.log('🤝 [ScrollScene] Session available, user ID:', session.user.id);
-        
-        // Get the architect's default config directly from the database
-        const { data: architectConfig, error: architectError } = await supabase
-          .from('scene_design_configs')
-          .select('*')
-          .eq('user_id', architectId)
-          .eq('is_default', true)
-          .single()
+        // Get the scene config directly by ID using the service
+        const sceneConfigService = SceneConfigService.getInstance();
+        const config = await sceneConfigService.getConfigById(sceneConfigId);
 
-        console.log('🤝 [ScrollScene] Query result - config:', architectConfig);
-        console.log('🤝 [ScrollScene] Query result - error:', architectError);
+        console.log('🤝 [ScrollScene] Query result - config:', config);
 
-        if (architectError) {
-          console.error('🤝 [ScrollScene] Error fetching architect config:', architectError);
-          console.error('🤝 [ScrollScene] Error details:', JSON.stringify(architectError, null, 2));
+        if (!config) {
+          console.error('🤝 [ScrollScene] Scene config not found:', sceneConfigId);
           return;
         }
 
-        if (architectConfig) {
-          console.log('🤝 [ScrollScene] Loaded architect config:', architectConfig);
+        console.log('🤝 [ScrollScene] Loaded scene config:', config.config_name);
+        console.log('🤝 [ScrollScene] Model path from config:', (config as any).model_path);
+        
+        // Get the active follow path for this config
+        const followPath = await sceneConfigService.getActiveFollowPathForConfig(config.id);
+        
+        console.log('🤝 [ScrollScene] Follow path:', followPath);
+
+        if (followPath && (config as any).model_path) {
+          // Transform the config to include model_path in the expected format
+          const transformedConfig = {
+            ...config,
+            model_path: (config as any).model_path,
+            DEFAULT_MODEL_PATH: (config as any).model_path
+          };
           
-          // Set the active path ID
-          setActivePathId(architectConfig.id);
+          // Update the scene config with the transformed config
+          setUserSceneConfig(transformedConfig as any);
           
-          // Load the camera path data from scene_follow_paths table
-          const { data: followPaths, error: followPathsError } = await supabase
-            .from('scene_follow_paths')
-            .select('*')
-            .eq('scene_design_config_id', architectConfig.id)
-            .eq('is_active', true)
-            .single()
-
-          console.log('🤝 [ScrollScene] Follow paths query result:', followPaths);
-          console.log('🤝 [ScrollScene] Follow paths error:', followPathsError);
-
-          if (followPathsError) {
-            console.error('🤝 [ScrollScene] Error fetching follow paths:', followPathsError);
-            return;
-          }
-
-          if (followPaths) {
-            setCameraPathData({
-              cameraPoints: followPaths.camera_points || [],
-              lookAtTargets: followPaths.look_at_targets || []
-            });
-            
-            console.log('🤝 [ScrollScene] Collaborative model loaded successfully');
-            console.log('🤝 [ScrollScene] Project:', projectName);
-            console.log('🤝 [ScrollScene] Camera points:', followPaths.camera_points?.length || 0);
-            console.log('🤝 [ScrollScene] LookAt targets:', followPaths.look_at_targets?.length || 0);
-            console.log('🤝 [ScrollScene] Camera points data:', followPaths.camera_points);
-            console.log('🤝 [ScrollScene] LookAt targets data:', followPaths.look_at_targets);
-          } else {
-            console.log('🤝 [ScrollScene] No active follow paths found for architect config');
-          }
+          // Update camera path data
+          setCameraPathData({
+            cameraPoints: followPath.camera_points || [],
+            lookAtTargets: followPath.look_at_targets || []
+          });
+          
+          console.log('🤝 [ScrollScene] Collaborative model loaded successfully');
+          console.log('🤝 [ScrollScene] Config:', config.config_name);
+          console.log('🤝 [ScrollScene] Model path:', (config as any).model_path);
+          console.log('🤝 [ScrollScene] Camera points:', followPath.camera_points?.length || 0);
+          console.log('🤝 [ScrollScene] LookAt targets:', followPath.look_at_targets?.length || 0);
         } else {
-          console.log('🤝 [ScrollScene] No architect config found');
+          console.error('🤝 [ScrollScene] Missing follow path or model path:', {
+            hasFollowPath: !!followPath,
+            modelPath: (config as any).model_path
+          });
         }
       } catch (error) {
         console.error('🤝 [ScrollScene] Error loading collaborative scene config:', error);
@@ -4386,10 +4369,15 @@ export default function ScrollScene({
 
     const handleLoadCollaborativeModel = (event: CustomEvent) => {
       console.log('🤝 [ScrollScene] Load collaborative model event received:', event.detail);
-      const { architectId, projectName, clientId } = event.detail;
+      const { sceneConfigId, clientId } = event.detail;
       
-      // Load the architect's scene configuration
-      loadCollaborativeSceneConfig(architectId, projectName);
+      if (!sceneConfigId) {
+        console.error('🤝 [ScrollScene] No scene config ID provided in event');
+        return;
+      }
+      
+      // Load the scene configuration by ID
+      loadCollaborativeSceneConfig(sceneConfigId);
     };
 
     console.log('🎯 [ScrollScene] Adding bird-view-animation event listener');
