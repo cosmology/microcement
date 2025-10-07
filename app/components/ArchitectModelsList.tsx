@@ -53,8 +53,8 @@ export function ArchitectModelsList({ architectId }: { architectId: string }) {
             .eq('user_id', client.client_id)
             .maybeSingle()
 
-          // Get client's models
-          const { data: models } = await supabase
+          // Get client's models (raw from DB)
+          const { data: rawModels } = await supabase
             .from('scene_design_configs')
             .select('id, config_name, model_path, is_default')
             .or(`user_id.eq.${client.client_id},client_id.eq.${client.client_id}`)
@@ -64,12 +64,20 @@ export function ArchitectModelsList({ architectId }: { architectId: string }) {
             ? `${profile.first_name} ${profile.last_name}`
             : 'Unknown Client'
 
+          // Normalize models into UI-friendly shape
+          const models = (rawModels || []).map((m: any) => ({
+            id: String(m.id),
+            configName: String(m.config_name ?? ''),
+            modelPath: String(m.model_path ?? ''),
+            isDefault: Boolean(m.is_default)
+          }))
+
           return {
             clientId: client.client_id,
             clientName,
             clientEmail: '', // Email not needed for display
             projectName: client.project_name,
-            models: models || []
+            models
           }
         })
       )
