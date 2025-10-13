@@ -8,5 +8,7 @@
     <include file="changelogs/0002-create-rls.yaml" relativeToChangelogFile="true"/>
     <include file="changelogs/0003-add-user-data.yaml" relativeToChangelogFile="true"/>
     <include file="changelogs/0004-ensure-auth-uid-and-rls.yaml" relativeToChangelogFile="true"/>
+    <include file="changelogs/0005-storage.yaml" relativeToChangelogFile="true"/>
+    <include file="changelogs/0006-user-assets.yaml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

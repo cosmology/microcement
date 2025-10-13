@@ -82,7 +82,7 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
       // Portrait: vertical timeline positioned on right side with fixed width
       const navHeight = typeof window !== 'undefined' ? 
         (document.getElementById('main-navigation')?.getBoundingClientRect().bottom || 0) : 0
-      const navHeightPx = Math.round(navHeight) + 10 // nav height + 10px padding
+      const navHeightPx = Math.round(navHeight) + 14 // nav height + 10px padding
       
       // Get docked navigation width (expanded = 192px, collapsed = 48px)
       const dockNavElement = document.querySelector('[class*="fixed left-0"]') as HTMLElement | null
@@ -125,7 +125,7 @@ export default function TimelineWaypoints({ className }: TimelineWaypointsProps)
   const containerClasses = useMemo(() => (
     isPortrait 
       ? "fixed z-[49] select-none w-auto h-auto flex items-center justify-center"
-      : "fixed z-[49] select-none w-full"
+      : "fixed z-[49] select-none w-full pt-1"
   ), [isPortrait])
 
   const lineClasses = useMemo(() => {

@@ -3,14 +3,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { UserRound, LogOut, Settings, Camera, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { PasswordInput } from '@/components/ui/password-input'
 import { supabase } from '@/lib/supabase'
 import { SceneConfigService } from '@/lib/services/SceneConfigService'
 import { UserProfileService, UserWithProfile } from '@/lib/services/UserProfileService'
 import { useTranslations } from 'next-intl'
 import { WAYPOINTS, dispatchGoToWaypoint } from '@/lib/scene/waypoints'
+import AuthModal from './AuthModal'
 
 interface UserProfileProps {
   onUserChange?: (user: any) => void
@@ -22,12 +21,6 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
   const [userWithProfile, setUserWithProfile] = useState<UserWithProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAuthModal, setShowAuthModal] = useState(forceShowAuth)
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [authLoading, setAuthLoading] = useState(false)
-  const [authError, setAuthError] = useState('')
-  const [authInfo, setAuthInfo] = useState('')
   
   // Follow Path state
   const [followPaths, setFollowPaths] = useState<Array<{id: string, path_name: string, is_active: boolean, camera_points?: any, look_at_targets?: any}>>([])
@@ -297,53 +290,9 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
     }
   }
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setAuthLoading(true)
-    setAuthError('')
-    setAuthInfo('')
-
-    try {
-      if (authMode === 'signup') {
-        const { data, error } = await supabase.auth.signUp({ email, password })
-        if (error) throw error
-        // Inform user to check inbox for confirmation link
-        if (!error) {
-          setAuthInfo(
-            `We sent a confirmation link to ${email}. Please check your inbox to complete your registration.`
-          )
-        }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
-        // Success will be handled by auth state change
-      }
-    } catch (error: any) {
-      const rawMsg: string = error?.message || 'Authentication failed'
-      if (error?.name === 'TypeError' && /Failed to fetch/i.test(rawMsg)) {
-        setAuthError('Network error contacting auth service. Please retry in a moment.')
-        console.error('Auth network error (signup/signin):', error)
-        return
-      }
-      // Friendly error mapping
-      if (/Invalid login credentials/i.test(rawMsg) || /invalid credentials/i.test(rawMsg)) {
-        setAuthError('Invalid email or password. Please try again or sign up.')
-      } else if (/FetchError|Failed to fetch|NetworkError/i.test(rawMsg)) {
-        setAuthError('Unable to reach auth service. Please check your connection and retry.')
-      } else if (/rate limit/i.test(rawMsg)) {
-        setAuthError('Too many attempts. Please wait a moment and try again.')
-      } else {
-        setAuthError(rawMsg)
-      }
-    } finally {
-      setAuthLoading(false)
-    }
-  }
-
-  const openAuthModal = (mode: 'signin' | 'signup') => {
-    setAuthMode(mode)
-    setShowAuthModal(true)
-    setAuthError('')
+  const handleAuthSuccess = (user: any) => {
+    console.log('✅ [UserProfile] User authentication successful:', user.email)
+    setShowAuthModal(false)
   }
 
   if (loading) {
@@ -362,7 +311,7 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => openAuthModal('signin')}
+            onClick={() => setShowAuthModal(true)}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors duration-200 text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400"
             title={tu('signInTooltip', { default: 'Sign in to your account' })}
           >
@@ -380,7 +329,7 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
             </Button>
             
             {/* Dropdown Menu aligned to header bottom */}
-            <div className="fixed right-2 w-64 bg-white dark:bg-gray-900 backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[1105] rounded-lg"
+            <div className="fixed right-1 w-64 bg-white dark:bg-gray-900 backdrop-blur-sm shadow-lg border border-gray-200/50 dark:border-gray-700/50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[1105] rounded-lg"
                  style={{ top: '3rem' }}>
               <div className="p-3">
                 <div className="flex items-center space-x-2 mb-3">
@@ -500,105 +449,12 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
       </div>
 
       {/* Authentication Modal */}
-      {showAuthModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-lg w-screen h-screen">
-          <div className="w-full max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
-            <Card className="border-0 bg-transparent">
-            <CardHeader>
-              <CardTitle className="text-center">
-                {authMode === 'signin' ? 'Sign In' : 'Sign Up'}
-              </CardTitle>
-              <CardDescription className="text-center">
-                {authMode === 'signin' 
-                  ? 'Sign in to access your scene configurations'
-                  : 'Create a new account to get started'
-                }
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleAuth} className="space-y-4">
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Email
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                    placeholder="Enter your email"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Password
-                  </label>
-                  <PasswordInput
-                    id="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                    placeholder="Enter your password"
-                    required
-                    minLength={6}
-                  />
-                </div>
-
-                {authError && (
-                  <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
-                    <p className="text-sm text-red-600 dark:text-red-400">{authError}</p>
-                  </div>
-                )}
-
-                {authInfo && (
-                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
-                    <p className="text-sm text-blue-700 dark:text-blue-300">{authInfo}</p>
-                  </div>
-                )}
-
-                <div className="flex space-x-2">
-                  <Button 
-                    type="submit" 
-                    className="flex-1" 
-                    disabled={authLoading}
-                  >
-                    {authLoading ? 'Loading...' : (authMode === 'signin' ? 'Sign In' : 'Sign Up')}
-                  </Button>
-                  
-                  <Button 
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowAuthModal(false)}
-                    className="px-4"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-
-              <div className="mt-4 text-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode(authMode === 'signin' ? 'signup' : 'signin')
-                    setAuthError('')
-                  }}
-                  className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300"
-                >
-                  {authMode === 'signin' 
-                    ? "Don't have an account? Sign up" 
-                    : "Already have an account? Sign in"
-                  }
-                </button>
-              </div>
-            </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
+      <AuthModal 
+        open={showAuthModal} 
+        onOpenChange={setShowAuthModal}
+        defaultMode="signin"
+        onAuthSuccess={handleAuthSuccess}
+      />
     </>
   )
 }

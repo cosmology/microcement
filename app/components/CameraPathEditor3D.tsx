@@ -3,31 +3,75 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { cameraPointUpdater } from '@/lib/utils/debouncedUpdater'
 import * as THREE from 'three'
-import { Eye, Ruler, Bird, Tangent, Lock, LockOpen } from 'lucide-react'
+import gsap from 'gsap'
+import { Eye, Ruler, Bird, Waypoints, Lock, LockOpen, Route, RouteOff, Orbit } from 'lucide-react'
+import { useCameraStore } from '@/lib/stores/cameraStore'
+import { useThemeStore } from '@/lib/stores/themeStore'
+import { useTranslations } from 'next-intl'
+import { Slider } from '@/components/ui/slider'
 
+// Canvas constants - Simple and optimized for 800x600 (4:3 aspect ratio)
+const CANVAS_WIDTH = 800
+const CANVAS_HEIGHT = 600
+
+// Simple scale formula: Higher = more zoom (bigger circles, smaller view)
+//                       Lower = less zoom (smaller circles, wider view)
+// Current scale 10 = 1 world unit shows as 10 pixels on canvas
+const CANVAS_SCALE = 4
+
+// Waypoint visual constants (in pixels)
+const WAYPOINT_RADIUS = 12   // Diameter = 24px
+const LOOKAT_RADIUS = 12     // Same size for lookAt targets  
+const HIT_AREA_PADDING = 4   // Extra clickable area beyond visual radius
+
+// Text size constants (in pixels)
+const WAYPOINT_TEXT_SIZE = 12  // Font size for waypoint labels (0-8)
+const LOOKAT_TEXT_SIZE = 12    // Font size for lookAt labels (L0-L8)
+const HEIGHT_BADGE_TEXT_SIZE = 12 // Font size for height display (Y: X.X)
+
+// Props are now optional - component reads from Zustand store
 interface CameraPathEditor3DProps {
-  cameraPoints: Array<{ x: number; y: number; z: number }>
-  lookAtTargets: Array<{ x: number; y: number; z: number }>
-  activePathId: string
-  isBirdView: boolean
-  isEditorEnabled: boolean
-  onPointsChange: (points: Array<{ x: number; y: number; z: number }>) => void
-  onLookAtTargetsChange: (targets: Array<{ x: number; y: number; z: number }>) => void
-  onBirdViewToggle: () => void
-  onToggleEditor: () => void
+  activePathId?: string
 }
 
 const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
-  cameraPoints,
-  lookAtTargets,
-  activePathId,
-  isBirdView,
-  isEditorEnabled,
-  onPointsChange,
-  onLookAtTargetsChange,
-  onBirdViewToggle,
-  onToggleEditor
+  activePathId = 'main-camera-path'
 }) => {
+  const t = useTranslations('CameraPathEditor')
+  const { resolvedTheme } = useThemeStore()
+  
+  // Subscribe to Zustand store instead of using props
+  const {
+    cameraPoints: storeCameraPoints,
+    lookAtTargets: storeLookAtTargets,
+    cameraType,
+    orbitalHeight,
+    isBirdView,
+    isEditorEnabled,
+    showLookAtTargets,
+    selectedHeightIndex,
+    isBirdViewLocked,
+    cameraRef,
+    rendererRef,
+    sceneRef,
+    updateCameraPoint,
+    updateLookAtTarget,
+    setCameraPoints,
+    setLookAtTargets,
+    toggleCameraType,
+    setOrbitalHeight,
+    toggleBirdView,
+    toggleBirdViewLock,
+    toggleEditor,
+    toggleLookAtTargets,
+    setSelectedHeightIndex,
+    showPathVisuals,
+    togglePathVisuals,
+  } = useCameraStore()
+  
+  // Convert store data to local format
+  const cameraPoints = storeCameraPoints
+  const lookAtTargets = storeLookAtTargets
   const isDebug = false
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [selectedDotIndex, setSelectedDotIndex] = useState<number | null>(null)
@@ -35,15 +79,13 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const mousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
   const [hoveredDotIndex, setHoveredDotIndex] = useState<number | null>(null)
-  const [showLookAtTargets, setShowLookAtTargets] = useState(false)
   const [selectedLookAtIndex, setSelectedLookAtIndex] = useState<number | null>(null)
   const [hoveredLookAtIndex, setHoveredLookAtIndex] = useState<number | null>(null)
-  const [selectedHeightIndex, setSelectedHeightIndex] = useState<number | null>(null)
   const [hoveredHeightIndex, setHoveredHeightIndex] = useState<number | null>(null)
-  const [isBirdViewLocked, setIsBirdViewLocked] = useState<boolean>(false)
   const [tooltip, setTooltip] = useState<{ visible: boolean; x: number; y: number; text: string }>({ visible: false, x: 0, y: 0, text: '' })
   const [showDebugHitAreas, setShowDebugHitAreas] = useState(false)
-
+  
+  // Sync window global for backwards compatibility
   useEffect(() => {
     ;(window as any).__birdViewLocked = isBirdViewLocked
   }, [isBirdViewLocked])
@@ -61,12 +103,10 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
     const width = canvas.width
     const height = canvas.height
     
-    // Scale doubled to match 2x canvas size (1600x1200 instead of 800x600)
-    const scale = 8
     const centerX = width / 2
     const centerY = height / 2
-    const screenX = centerX + point.x * scale
-    const screenY = centerY - point.z * scale // Flip Z for screen coordinates
+    const screenX = centerX + point.x * CANVAS_SCALE
+    const screenY = centerY - point.z * CANVAS_SCALE // Flip Z for screen coordinates
     
     return { x: screenX, y: screenY }
   }, [])
@@ -79,12 +119,10 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
     const width = canvas.width
     const height = canvas.height
     
-    // Scale doubled to match 2x canvas size
-    const scale = 8
     const centerX = width / 2
     const centerY = height / 2
-    const screenX = centerX + point.x * scale
-    const screenY = centerY - point.z * scale
+    const screenX = centerX + point.x * CANVAS_SCALE
+    const screenY = centerY - point.z * CANVAS_SCALE
     
     return { x: screenX, y: screenY }
   }, [])
@@ -103,23 +141,28 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
     const newPoints = [...cameraPoints]
     newPoints[index] = { ...newPoints[index], y: newHeight }
     
-    onPointsChange(newPoints)
-    cameraPointUpdater.updatePoints(newPoints, lookAtTargets)
+    // Update 3D camera FIRST (before store update)
+    const camera = (window as any).sceneEditorCamera || (window as any).scrollSceneCamera
+    const renderer = (window as any).sceneEditorRenderer || (window as any).scrollSceneRenderer
+    const scene = (window as any).sceneEditorScene || (window as any).scrollSceneScene
     
-    // Update camera in real-time
-    const camera = (window as any).scrollSceneCamera
-    if (camera) {
+    if (camera && renderer && scene) {
       const point = newPoints[index]
-      camera.position.set(point.x, point.y, point.z)
       
-      // Force render
-      const renderer = (window as any).scrollSceneRenderer
-      const scene = (window as any).scrollSceneScene
-      if (renderer && scene) {
-        renderer.render(scene, camera)
-      }
+      // Direct position update
+      camera.position.x = point.x
+      camera.position.y = point.y
+      camera.position.z = point.z
+      camera.updateMatrixWorld(true)
+      
+      // Force immediate render - critical for real-time feedback
+      renderer.render(scene, camera)
     }
-  }, [cameraPoints, lookAtTargets, onPointsChange])
+    
+    // Update store AFTER visual feedback (for 2D canvas and persistence)
+    setCameraPoints(newPoints)
+    cameraPointUpdater.updatePoints(newPoints, lookAtTargets)
+  }, [cameraPoints, lookAtTargets, setCameraPoints])
 
   // Convert screen coordinates back to 3D world coordinates
   const screenToWorld = useCallback((screenX: number, screenY: number) => {
@@ -129,12 +172,10 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
     const width = canvas.width
     const height = canvas.height
     
-    // Scale doubled to match 2x canvas size
-    const scale = 8
     const centerX = width / 2
     const centerY = height / 2
-    const worldX = (screenX - centerX) / scale
-    const worldZ = (centerY - screenY) / scale // Flip Z back
+    const worldX = (screenX - centerX) / CANVAS_SCALE
+    const worldZ = (centerY - screenY) / CANVAS_SCALE // Flip Z back
     
     // Preserve height by default; caller will inject current Y when needed
     return { x: worldX, y: 0, z: worldZ }
@@ -163,9 +204,9 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
         const data = await response.json()
         if (data.cameraPoints && data.cameraPoints.length > 0) {
           if (isDebug) console.log('✅ [CameraPathEditor3D] Loaded camera points from database:', data.cameraPoints.length)
-          onPointsChange(data.cameraPoints)
+          setCameraPoints(data.cameraPoints)
           if (data.lookAtTargets) {
-            onLookAtTargetsChange(data.lookAtTargets)
+            setLookAtTargets(data.lookAtTargets)
           }
         } else {
           if (isDebug) console.log('⚠️ [CameraPathEditor3D] No camera points found in database, keeping default points')
@@ -178,7 +219,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
     } finally {
       isLoadingRef.current = false
     }
-  }, [onPointsChange, onLookAtTargetsChange, cameraPoints])
+  }, [setCameraPoints, setLookAtTargets, cameraPoints])
 
   // Save camera points to database
   const saveCameraPointsToDatabase = useCallback(async (points: Array<{ x: number; y: number; z: number }>, targets: Array<{ x: number; y: number; z: number }>) => {
@@ -222,8 +263,6 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
     
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    
-    // console.log('🎨 [CameraPathEditor3D] Drawing scene with', cameraPoints.length, 'points')
     
     // Clear canvas completely
     ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -289,7 +328,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
           ctx.setLineDash([2, 2])
           ctx.beginPath()
           ctx.moveTo(screenPos.x, screenPos.y)
-          ctx.lineTo(screenPos.x, screenPos.y - point.y * 4) // Scaled height visibility
+          ctx.lineTo(screenPos.x, screenPos.y - point.y * CANVAS_SCALE) // Height scaled proportionally
           ctx.stroke()
           ctx.setLineDash([]) // Reset dash
         }
@@ -303,7 +342,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
         }
         ctx.fillStyle = fillColor
         ctx.beginPath()
-        ctx.arc(screenPos.x, screenPos.y, 20, 0, Math.PI * 2) // Doubled radius to match 2x canvas size
+        ctx.arc(screenPos.x, screenPos.y, WAYPOINT_RADIUS, 0, Math.PI * 2)
         ctx.fill()
         
         // Ring border like timeline waypoints (keep 1px)
@@ -317,9 +356,9 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
       ctx.shadowBlur = 0
       ctx.shadowOffsetY = 0
       
-      // Draw point number (1rem = 16px)
+      // Draw point number
       ctx.fillStyle = '#ffffff'
-      ctx.font = 'bold 16px Arial'
+      ctx.font = `bold ${WAYPOINT_TEXT_SIZE}px Arial`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.strokeStyle = '#000000'
@@ -347,7 +386,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
         ctx.stroke()
         
         ctx.fillStyle = '#ffffff'
-        ctx.font = '16px Arial'
+        ctx.font = `${HEIGHT_BADGE_TEXT_SIZE}px Arial`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
         ctx.fillText(`Y: ${point.y.toFixed(1)}`, screenPos.x, screenPos.y - 50)
@@ -365,9 +404,9 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
         // Save context state
         ctx.save()
         
-        // Draw orange spheres for lookAt targets
-        if (screenPos.x >= -100 && screenPos.x <= canvas.width + 100 && 
-            screenPos.y >= -100 && screenPos.y <= canvas.height + 100) {
+        // Draw orange spheres for lookAt targets (with wider bounds to show off-screen targets)
+        if (screenPos.x >= -200 && screenPos.x <= canvas.width + 200 && 
+            screenPos.y >= -200 && screenPos.y <= canvas.height + 200) {
           
           // Draw orange circle for lookAt target
           let fillColor = '#f97316' // orange-500
@@ -378,7 +417,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
           }
           ctx.fillStyle = fillColor
           ctx.beginPath()
-          ctx.arc(screenPos.x, screenPos.y, 16, 0, Math.PI * 2) // Scaled 2x (8 -> 16)
+          ctx.arc(screenPos.x, screenPos.y, LOOKAT_RADIUS, 0, Math.PI * 2)
           ctx.fill()
           
           // Ring border (keep 1px)
@@ -386,9 +425,9 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
           ctx.lineWidth = 1
           ctx.stroke()
           
-          // Draw "L" label for lookAt target (1rem = 16px)
+          // Draw "L" label for lookAt target
           ctx.fillStyle = '#ffffff'
-          ctx.font = 'bold 16px Arial'
+          ctx.font = `bold ${LOOKAT_TEXT_SIZE}px Arial`
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
           ctx.strokeStyle = '#000000'
@@ -415,7 +454,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
         ctx.lineWidth = 3
         ctx.setLineDash([8, 4])
         ctx.beginPath()
-        ctx.arc(screenPos.x, screenPos.y, 20, 0, Math.PI * 2) // Match hit detection radius
+        ctx.arc(screenPos.x, screenPos.y, WAYPOINT_RADIUS + HIT_AREA_PADDING, 0, Math.PI * 2)
         ctx.stroke()
         ctx.setLineDash([])
         ctx.restore()
@@ -431,7 +470,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
           ctx.lineWidth = 3
           ctx.setLineDash([8, 4])
           ctx.beginPath()
-          ctx.arc(screenPos.x, screenPos.y, 16, 0, Math.PI * 2) // Match hit detection radius
+          ctx.arc(screenPos.x, screenPos.y, LOOKAT_RADIUS + HIT_AREA_PADDING, 0, Math.PI * 2)
           ctx.stroke()
           ctx.setLineDash([])
           ctx.restore()
@@ -444,7 +483,17 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
 
   // Handle mouse events
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!isEditorEnabled) return
+    console.log('🖱️ [MOUSEDOWN] Handler called!', { 
+      isEditorEnabled, 
+      showLookAtTargets,
+      lookAtTargetsCount: lookAtTargets.length,
+      cameraPointsCount: cameraPoints.length
+    });
+    
+    if (!isEditorEnabled) {
+      console.log('❌ [MOUSEDOWN] Editor not enabled, returning');
+      return;
+    }
     
     // Prevent event bubbling to avoid triggering underlying hotspot events
     e.preventDefault()
@@ -466,7 +515,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
       const screenPos = projectToScreen(cameraPoints[i])
       const distance = Math.sqrt((x - screenPos.x) ** 2 + (y - screenPos.y) ** 2)
       
-      if (distance < 20) { // Match visual radius exactly
+      if (distance < WAYPOINT_RADIUS + HIT_AREA_PADDING) { // Hit area includes padding
         // Check if double-click for height editing
         if (e.detail === 2) {
           console.log('🎯 Double-click detected on point:', i)
@@ -481,6 +530,10 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
           return
         }
         
+        // Set flags immediately when drag starts
+        ;(window as any).__suppressCameraResume = true
+        ;(window as any).__pauseAnimationLoop = true
+        
         setSelectedDotIndex(i)
         setSelectedLookAtIndex(null) // Clear lookAt selection
         setSelectedHeightIndex(null) // Clear height selection
@@ -492,11 +545,20 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
 
     // Check if clicking on a lookAt target
     if (showLookAtTargets) {
+      console.log('🔍 [MOUSEDOWN] Checking lookAt targets, count:', lookAtTargets.length, 'showLookAtTargets:', showLookAtTargets);
       for (let i = 0; i < lookAtTargets.length; i++) {
         const screenPos = projectLookAtToScreen(lookAtTargets[i])
         const distance = Math.sqrt((x - screenPos.x) ** 2 + (y - screenPos.y) ** 2)
         
-        if (distance < 16) { // Match visual radius exactly
+        console.log(`🔍 [MOUSEDOWN] LookAt ${i} distance:`, distance, 'threshold:', LOOKAT_RADIUS + HIT_AREA_PADDING);
+        
+        if (distance < LOOKAT_RADIUS + HIT_AREA_PADDING) { // Hit area includes padding
+          console.log('✅ [MOUSEDOWN] LookAt target selected:', i);
+          
+          // Set flags immediately when drag starts
+          ;(window as any).__suppressCameraResume = true
+          ;(window as any).__pauseAnimationLoop = true
+          
           setSelectedLookAtIndex(i)
           setSelectedDotIndex(null) // Clear camera point selection
           setSelectedHeightIndex(null) // Clear height selection
@@ -505,6 +567,8 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
           break
         }
       }
+    } else {
+      console.log('❌ [MOUSEDOWN] showLookAtTargets is false, not checking lookAt targets');
     }
   }, [cameraPoints, lookAtTargets, isEditorEnabled, projectToScreen, projectLookAtToScreen, showLookAtTargets, handleHeightClick])
 
@@ -532,7 +596,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
     for (let i = 0; i < cameraPoints.length; i++) {
       const screenPos = projectToScreen(cameraPoints[i])
       const distance = Math.sqrt((rawX - screenPos.x) ** 2 + (rawY - screenPos.y) ** 2)
-      if (distance <= 20) {
+      if (distance <= WAYPOINT_RADIUS + HIT_AREA_PADDING) {
         nextHoveredDot = i
         break
       }
@@ -556,7 +620,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
       for (let i = 0; i < lookAtTargets.length; i++) {
         const screenPos = projectLookAtToScreen(lookAtTargets[i])
         const distance = Math.sqrt((rawX - screenPos.x) ** 2 + (rawY - screenPos.y) ** 2)
-        if (distance <= 16) {
+        if (distance <= LOOKAT_RADIUS + HIT_AREA_PADDING) {
           nextHoveredLookAt = i
           break
         }
@@ -583,50 +647,159 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
     // Convert screen coordinates to world coordinates
     const worldPos = screenToWorld(x, y)
     
+    console.log('🎯 [DRAG] Dragging:', { 
+      selectedDotIndex, 
+      selectedLookAtIndex, 
+      isDragging, 
+      worldPos 
+    });
+    
     // Update camera point or lookAt target
     if (selectedDotIndex !== null) {
-      // While dragging in editor, suppress camera resume in ScrollScene
+      console.log('📍 [DRAG] Dragging waypoint:', selectedDotIndex);
+      // CRITICAL: Set flags FIRST before any store updates to prevent curve regeneration
       ;(window as any).__suppressCameraResume = true
+      ;(window as any).__pauseAnimationLoop = true
+      
       // Update camera point, preserving existing height
       const newPoints = [...cameraPoints]
       const currentY = cameraPoints[selectedDotIndex]?.y ?? 0
       newPoints[selectedDotIndex] = { x: worldPos.x, y: currentY, z: worldPos.z }
       
-      // Visual feedback - redraw immediately
-      onPointsChange(newPoints)
+      // Update 3D camera FIRST (before store update)
+      const camera = (window as any).sceneEditorCamera || (window as any).scrollSceneCamera
+      const renderer = (window as any).sceneEditorRenderer || (window as any).scrollSceneRenderer
+      const scene = (window as any).sceneEditorScene || (window as any).scrollSceneScene
+      
+      if (camera && renderer && scene) {
+        // Kill any GSAP animations on camera to prevent interference
+        gsap.killTweensOf(camera.position);
+        gsap.killTweensOf(camera.quaternion);
+        gsap.killTweensOf(camera);
+        
+        const point = newPoints[selectedDotIndex]
+        
+        // Direct position update
+        camera.position.x = point.x
+        camera.position.y = point.y
+        camera.position.z = point.z
+        camera.updateMatrixWorld(true)
+        
+        // Update lookAt to the corresponding target if it exists
+        if (lookAtTargets && lookAtTargets[selectedDotIndex]) {
+          const lookAtTarget = lookAtTargets[selectedDotIndex]
+          camera.lookAt(lookAtTarget.x, lookAtTarget.y, lookAtTarget.z)
+          camera.updateMatrixWorld(true)
+        }
+        
+        // Force immediate render - critical for real-time feedback
+        renderer.render(scene, camera)
+      }
+      
+      // Update store AFTER visual feedback (for 2D canvas and persistence)
+      updateCameraPoint(selectedDotIndex, newPoints[selectedDotIndex])
       
       // Enable debounced API save on drag
       cameraPointUpdater.updatePoints(newPoints, lookAtTargets)
     } else if (selectedLookAtIndex !== null) {
+      console.log('👁️ [DRAG] Dragging lookAt target:', selectedLookAtIndex);
+      console.log('👁️ [DRAG] Bird view state before:', { 
+        storeBirdView: isBirdView,
+        windowBirdView: (window as any).__isBirdView,
+        birdViewLocked: (window as any).__birdViewLocked
+      });
+      
+      // CRITICAL: Set flags FIRST before any store updates
       ;(window as any).__suppressCameraResume = true
+      ;(window as any).__pauseAnimationLoop = true
+      
+      // CRITICAL: Temporarily disable bird view to show camera perspective from waypoint
+      ;(window as any).__isBirdView = false
+      ;(window as any).__tempDisableBirdView = true  // Flag to track temporary disable
+      
+      console.log('👁️ [DRAG] Bird view state after:', { 
+        windowBirdView: (window as any).__isBirdView,
+        tempDisable: (window as any).__tempDisableBirdView
+      });
+      
       // Update lookAt target, preserving existing height
       const newLookAtTargets = [...lookAtTargets]
       const currentY = lookAtTargets[selectedLookAtIndex]?.y ?? 0
       newLookAtTargets[selectedLookAtIndex] = { x: worldPos.x, y: currentY, z: worldPos.z }
       
-      // Visual feedback - redraw immediately
-      onLookAtTargetsChange(newLookAtTargets)
+      // Update 3D camera lookAt FIRST (before store update)
+      const camera = (window as any).sceneEditorCamera || (window as any).scrollSceneCamera
+      const renderer = (window as any).sceneEditorRenderer || (window as any).scrollSceneRenderer
+      const scene = (window as any).sceneEditorScene || (window as any).scrollSceneScene
       
-      // Update camera lookAt target in real-time
-      const camera = (window as any).scrollSceneCamera
-      if (camera && newLookAtTargets[selectedLookAtIndex]) {
+      if (camera && renderer && scene && newLookAtTargets[selectedLookAtIndex]) {
         const target = newLookAtTargets[selectedLookAtIndex]
-        camera.lookAt(target.x, target.y, target.z)
         
-        // Force render to show the change immediately
-        const renderer = (window as any).scrollSceneRenderer
-        const scene = (window as any).scrollSceneScene
-        if (renderer && scene) {
-          renderer.render(scene, camera)
+        // CRITICAL: Ensure camera is at the correct waypoint position first
+        const correspondingWaypoint = cameraPoints[selectedLookAtIndex]
+        if (correspondingWaypoint) {
+          camera.position.x = correspondingWaypoint.x
+          camera.position.y = correspondingWaypoint.y
+          camera.position.z = correspondingWaypoint.z
         }
+        
+        // Update camera lookAt direction
+        camera.lookAt(target.x, target.y, target.z)
+        camera.updateMatrixWorld(true)
+        
+        console.log('👁️ [LOOKAT DRAG] Camera position:', camera.position.x, camera.position.y, camera.position.z);
+        console.log('👁️ [LOOKAT DRAG] Looking at:', target.x, target.y, target.z);
+        console.log('👁️ [LOOKAT DRAG] Camera quaternion:', camera.quaternion.x, camera.quaternion.y, camera.quaternion.z, camera.quaternion.w);
+        console.log('👁️ [LOOKAT DRAG] Pause flags:', {
+          pauseLoop: (window as any).__pauseAnimationLoop,
+          suppressResume: (window as any).__suppressCameraResume,
+          birdViewLocked: (window as any).__birdViewLocked,
+          isBirdView: (window as any).__isBirdView
+        });
+        
+        // Force immediate render - critical for real-time feedback
+        renderer.render(scene, camera)
+        console.log('✅ [LOOKAT DRAG] Render complete');
+        
+        // Verify camera state immediately after render
+        console.log('🔍 [LOOKAT DRAG] Camera state after render:', {
+          position: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+          quaternion: { x: camera.quaternion.x, y: camera.quaternion.y, z: camera.quaternion.z, w: camera.quaternion.w }
+        });
+        
+        // Check if GSAP is overriding our changes and kill any active tweens
+        const gsapData = (camera.position as any)._gsap;
+        if (gsapData) {
+          console.log('⚠️ [LOOKAT DRAG] GSAP is controlling camera position!', gsapData);
+        }
+        
+        // Always kill GSAP animations during lookAt drag to prevent interference
+        gsap.killTweensOf(camera.position);
+        gsap.killTweensOf(camera.quaternion);
+        gsap.killTweensOf(camera);
+        console.log('🔪 [LOOKAT DRAG] Killed all GSAP animations on camera');
+        
+        // Force another render on next frame to ensure visibility
+        requestAnimationFrame(() => {
+          if (renderer && scene && camera) {
+            renderer.render(scene, camera);
+            console.log('✅ [LOOKAT DRAG] Second render complete');
+            console.log('🔍 [LOOKAT DRAG] Final camera position:', camera.position.x, camera.position.y, camera.position.z);
+          }
+        });
+      } else {
+        console.error('❌ [LOOKAT DRAG] Missing refs:', { camera: !!camera, renderer: !!renderer, scene: !!scene });
       }
+      
+      // Update store AFTER visual feedback (for 2D canvas and persistence)
+      updateLookAtTarget(selectedLookAtIndex, newLookAtTargets[selectedLookAtIndex])
       
       // Enable debounced API save on drag
       cameraPointUpdater.updatePoints(cameraPoints, newLookAtTargets)
     }
     
     // Smooth dragging feedback
-  }, [isDragging, selectedDotIndex, selectedLookAtIndex, dragOffset, cameraPoints, lookAtTargets, onPointsChange, onLookAtTargetsChange, screenToWorld, isEditorEnabled, projectToScreen, projectLookAtToScreen, showLookAtTargets, hoveredDotIndex, hoveredLookAtIndex])
+  }, [isDragging, selectedDotIndex, selectedLookAtIndex, dragOffset, cameraPoints, lookAtTargets, updateCameraPoint, updateLookAtTarget, screenToWorld, isEditorEnabled, projectToScreen, projectLookAtToScreen, showLookAtTargets, hoveredDotIndex, hoveredLookAtIndex])
 
   const handleMouseUp = useCallback((e?: React.MouseEvent) => {
     // Prevent event bubbling to avoid triggering underlying hotspot events
@@ -635,17 +808,29 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
       e.stopPropagation()
     }
     
+    // Restore bird view if it was active before drag
+    if (isBirdView && (window as any).__tempDisableBirdView) {
+      console.log('🔄 [DRAG END] Restoring bird view state');
+      ;(window as any).__isBirdView = true
+      delete (window as any).__tempDisableBirdView
+    }
+    
     setIsDragging(false)
     setSelectedDotIndex(null)
     setSelectedLookAtIndex(null)
-    // Re-enable camera resume after drag ends
-    ;(window as any).__suppressCameraResume = false
-  }, [])
+    
+    // Re-enable camera resume and animation loop after a delay
+    // This ensures the manual camera position/lookAt is visible before animation resumes
+    setTimeout(() => {
+      ;(window as any).__suppressCameraResume = false
+      ;(window as any).__pauseAnimationLoop = false
+      console.log('🔄 [DRAG END] Animation loop resumed after delay');
+    }, 500); // 500ms delay to let user see the changes
+  }, [isBirdView])
 
   // Redraw when camera points change or editor is enabled
   useEffect(() => {
     if (isEditorEnabled && cameraPoints && cameraPoints.length > 0) {
-      // console.log('🎨 [CameraPathEditor3D] Editor enabled with camera points, triggering drawScene')
       drawScene()
     }
   }, [drawScene, isEditorEnabled, cameraPoints])
@@ -681,13 +866,61 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
       console.log('🎯 [CameraPathEditor3D] Event dispatched successfully:', dispatched);
     }
     
-    onBirdViewToggle();
-  }, [isBirdView, onBirdViewToggle]);
+    toggleBirdView();
+  }, [isBirdView, toggleBirdView]);
 
   return (
-    <div className="fixed top-0 left-0 z-[100] w-full h-full pointer-events-none">
-      {/* Consolidated Menu Buttons - Left aligned, vertical middle viewport - Compact Design */}
-      <div className="fixed top-1/2 left-1 sm:left-2 transform -translate-y-1/2 z-[51] flex flex-col gap-1 origin-left pointer-events-auto">
+    <div className="relative w-full min-h-[600px] pointer-events-none">
+      {/* Consolidated Menu Buttons - Left aligned, top aligned - Compact Design */}
+      <div className="relative top-0 left-0 z-[51] flex flex-col gap-1 origin-left pointer-events-auto mb-2">
+        
+        {/* 0. Camera Type Toggle Row (UI only) */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleCameraType();
+            }}
+            className={`w-8 h-8 p-2 rounded-md transition-all duration-200 flex items-center justify-center flex-shrink-0 ${
+              cameraType === 'orbital'
+                ? 'bg-green-600 text-white border border-green-500 shadow-md hover:bg-green-700 hover:shadow-lg'
+                : 'bg-blue-600 text-white border border-blue-500 shadow-md hover:bg-blue-700 hover:shadow-lg'
+            }`}
+            title={cameraType === 'orbital' ? t('switchToPath') : t('switchToOrbital')}
+          >
+            {cameraType === 'orbital' ? <Orbit size={16} /> : <Route size={16} />}
+          </button>
+          
+          {/* Orbital Height Slider - Only visible in orbital mode */}
+          {cameraType === 'orbital' && (
+            <div 
+              className={`flex items-center gap-2 backdrop-blur-md border rounded-md px-2 py-1 ${
+                resolvedTheme === 'light'
+                  ? 'bg-white/90 border-gray-200/50'
+                  : 'bg-gray-800/90 border-gray-600'
+              }`}
+              style={{ width: '150px' }}
+            >
+              <Slider
+                min={0}
+                max={100}
+                step={1}
+                value={[orbitalHeight]}
+                onValueChange={(values) => setOrbitalHeight(values[0])}
+                className="flex-1"
+              />
+              <span 
+                className={`text-xs font-mono flex-shrink-0 ${
+                  resolvedTheme === 'light' ? 'text-gray-900' : 'text-white'
+                }`} 
+                style={{ width: '28px' }}
+              >
+                {orbitalHeight}
+              </span>
+            </div>
+          )}
+        </div>
         
         {/* 1. Bird View Row */}
         <div className="flex items-center gap-1">
@@ -696,9 +929,9 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
             className={`w-8 h-8 p-2 rounded-md transition-all duration-200 flex items-center justify-center ${
               isBirdView
                 ? 'bg-purple-500 text-white border border-purple-400 shadow-md hover:bg-purple-600 hover:shadow-lg'
-                : 'bg-gray-800/90 text-gray-300 border border-gray-600/60 hover:bg-gray-700/90 shadow-sm'
+                : 'bg-white/90 dark:bg-gray-900/90 text-gray-600 dark:text-gray-300 border border-gray-200/50 dark:border-gray-600/50 hover:bg-gray-100 dark:hover:bg-gray-800/90 shadow-sm'
             }`}
-            title={isBirdView ? 'Switch to Camera View' : 'Switch to Bird View'}
+            title={isBirdView ? t('switchToCameraView') : t('switchToBirdView')}
           >
             <Bird size={16} />
           </button>
@@ -707,14 +940,14 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                setIsBirdViewLocked(prev => !prev);
+                toggleBirdViewLock();
               }}
               className={`w-8 h-8 p-2 rounded-md transition-all duration-200 flex items-center justify-center ${
                 isBirdViewLocked
                   ? 'bg-purple-700 text-white border border-purple-500 shadow-md hover:bg-purple-800 hover:shadow-lg'
-                  : 'bg-gray-800/90 text-gray-300 border border-gray-600/60 hover:bg-gray-700/90 shadow-sm'
+                  : 'bg-white/90 dark:bg-gray-900/90 text-gray-600 dark:text-gray-300 border border-gray-200/50 dark:border-gray-600/50 hover:bg-gray-100 dark:hover:bg-gray-800/90 shadow-sm'
               }`}
-              title={isBirdViewLocked ? 'Unlock Bird View' : 'Lock Bird View'}
+              title={isBirdViewLocked ? t('unlockBirdView') : t('lockBirdView')}
             >
               {isBirdViewLocked ? (
                 <Lock size={16} />
@@ -731,16 +964,31 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              onToggleEditor();
+              toggleEditor();
             }}
             className={`w-8 h-8 p-2 rounded-md transition-all duration-200 flex items-center justify-center ${
               isEditorEnabled
                 ? 'bg-purple-500 text-white border border-purple-400 shadow-md hover:bg-purple-600 hover:shadow-lg'
-                : 'bg-gray-800/90 text-gray-300 border border-gray-600/60 hover:bg-gray-700/90 shadow-sm'
+                : 'bg-white/90 dark:bg-gray-900/90 text-gray-600 dark:text-gray-300 border border-gray-200/50 dark:border-gray-600/50 hover:bg-gray-100 dark:hover:bg-gray-800/90 shadow-sm'
             }`}
-            title={isEditorEnabled ? 'Disable Editor' : 'Enable Editor'}
+            title={isEditorEnabled ? t('disableEditor') : t('enableEditor')}
           >
-            <Tangent size={16} />
+            <Waypoints size={16} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              togglePathVisuals();
+            }}
+            className={`w-8 h-8 p-2 rounded-md transition-all duration-200 flex items-center justify-center ${
+              showPathVisuals
+                ? 'bg-purple-500 text-white border border-purple-400 shadow-md hover:bg-purple-600 hover:shadow-lg'
+                : 'bg-white/90 dark:bg-gray-900/90 text-gray-600 dark:text-gray-300 border border-gray-200/50 dark:border-gray-600/50 hover:bg-gray-100 dark:hover:bg-gray-800/90 shadow-sm'
+            }`}
+            title={showPathVisuals ? 'Hide Path Visuals in Camera View' : 'Show Path Visuals in Camera View'}
+          >
+            {showPathVisuals ? <Route size={16} /> : <RouteOff size={16} />}
           </button>
           {isEditorEnabled && (
             <>
@@ -749,14 +997,14 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
                   e.preventDefault();
                   e.stopPropagation();
                   console.log('🎯 LookAt button clicked, current state:', showLookAtTargets);
-                  setShowLookAtTargets(!showLookAtTargets);
+                  toggleLookAtTargets();
                 }}
                 className={`w-8 h-8 p-2 rounded-md transition-all duration-200 flex items-center justify-center ${
                   showLookAtTargets
                     ? 'bg-purple-500 text-white border border-purple-400 shadow-md hover:bg-purple-600 hover:shadow-lg'
-                    : 'bg-gray-800/90 text-gray-300 border border-gray-600/60 hover:bg-gray-700/90 shadow-sm'
+                    : 'bg-white/90 dark:bg-gray-900/90 text-gray-600 dark:text-gray-300 border border-gray-200/50 dark:border-gray-600/50 hover:bg-gray-100 dark:hover:bg-gray-800/90 shadow-sm'
                 }`}
-                title={showLookAtTargets ? 'Hide LookAt Targets' : 'Show LookAt Targets'}
+                title={showLookAtTargets ? t('hideLookAtTargets') : t('showLookAtTargets')}
               >
                 <Eye size={16} />
               </button>
@@ -771,9 +1019,9 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
                 className={`w-8 h-8 p-2 rounded-md transition-all duration-200 flex items-center justify-center ${
                   selectedHeightIndex !== null
                     ? 'bg-purple-500 text-white border border-purple-400 shadow-md hover:bg-purple-600 hover:shadow-lg'
-                    : 'bg-gray-800/90 text-gray-300 border border-gray-600/60 hover:bg-gray-700/90 shadow-sm'
+                    : 'bg-white/90 dark:bg-gray-900/90 text-gray-600 dark:text-gray-300 border border-gray-200/50 dark:border-gray-600/50 hover:bg-gray-100 dark:hover:bg-gray-800/90 shadow-sm'
                 }`}
-                title="Edit Height (Select a point first)"
+                title={t('editHeight')}
                 disabled={selectedDotIndex === null}
               >
                 <Ruler size={16} />
@@ -791,7 +1039,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
       {selectedHeightIndex !== null && (
         <div className="fixed top-1/2 left-4 transform -translate-y-1/2 translate-y-20 bg-gray-800 border-2 border-gray-600 rounded-lg p-4 pointer-events-auto z-[60] shadow-lg transform transition-all    duration-100 ease-out scale-100">
           <div className="text-white text-sm font-medium mb-2">
-            Point {selectedHeightIndex} Height
+            {t('pointHeight', { index: selectedHeightIndex })}
           </div>
           <div className="flex items-center space-x-2">
             <input
@@ -817,7 +1065,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
             onClick={() => setSelectedHeightIndex(null)}
             className="mt-2 w-full px-2 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded transition-colors"
           >
-            Close
+            {t('close')}
           </button>
         </div>
       )}
@@ -842,16 +1090,13 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
         )}
         <canvas
           ref={canvasRef}
-          width={1600}
-          height={1200}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
           className="absolute top-0 left-0 pointer-events-auto"
           style={{ 
-            backgroundColor: 'rgba(0, 0, 0, 0.1)',
-            imageRendering: 'auto',
-            width: '1600px',
-            height: '1200px',
-            maxWidth: '100%',
-            maxHeight: '100%'
+            aspectRatio: '4/3',
+            maxHeight: '100%',
+            imageRendering: 'auto'  
           }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}

@@ -31,6 +31,18 @@ export class SceneConfigService {
     }
   }
 
+  // Method to clear cache for current user (useful after creating new configs)
+  clearUserCache() {
+    if (this.currentUser?.id) {
+      const userId = this.currentUser.id
+      this.userConfigsCache.delete(userId)
+      this.defaultConfigCache.delete(userId)
+      this.pendingUserConfigs.delete(userId)
+      this.pendingDefaultConfig.delete(userId)
+      console.log('🔄 [SceneConfigService] Cache cleared for user:', userId)
+    }
+  }
+
   async getUserConfigs(): Promise<UserSceneConfig[]> {
     if (!this.currentUser) {
       throw new Error('User not authenticated')
@@ -47,6 +59,8 @@ export class SceneConfigService {
     if (pending) return pending
 
     const promise = (async () => {
+      console.log('🔍 [SceneConfigService] Fetching configs for user:', userId)
+      
       // First, try to get the user's own configs
       const { data, error } = await supabase
         .from('scene_design_configs')
@@ -54,11 +68,14 @@ export class SceneConfigService {
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
 
+      console.log('🔍 [SceneConfigService] Query result - data:', data, 'error:', error)
+
       if (error) {
         throw new Error(error.message)
       }
 
       const userConfigs = data || []
+      console.log('🔍 [SceneConfigService] User configs found:', userConfigs.length)
       
       // If user has their own configs, return them
       if (userConfigs.length > 0) {
@@ -324,13 +341,31 @@ export class SceneConfigService {
       return activePath;
     }
 
-    // Use database data
+    // First, check ALL follow_paths for this config (for debugging)
+    const { data: allPaths } = await supabase
+      .from('scene_follow_paths')
+      .select('id, path_name, is_active, path_order, created_at')
+      .eq('scene_design_config_id', sceneDesignConfigId)
+      .order('created_at', { ascending: false })
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 [SceneConfigService] Total follow_paths for config:', allPaths?.length || 0)
+      if (allPaths && allPaths.length > 0) {
+        allPaths.forEach((p, i) => {
+          console.log(`   ${i + 1}. "${p.path_name}" (active: ${p.is_active}, order: ${p.path_order || 'null'})`)
+        })
+      } else {
+        console.warn('⚠️ [SceneConfigService] NO follow_paths found for config:', sceneDesignConfigId)
+      }
+    }
+    
+    // Use database data - get the most recent active path (prioritize newest)
     const { data, error } = await supabase
       .from('scene_follow_paths')
-      .select('id, scene_design_config_id, path_name, camera_points, look_at_targets, is_active')
+      .select('id, scene_design_config_id, path_name, camera_points, look_at_targets, is_active, created_at')
       .eq('scene_design_config_id', sceneDesignConfigId)
       .eq('is_active', true)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false })  // Newest first (Default Orbital Path)
       .limit(1)
       .maybeSingle()
 
@@ -342,7 +377,22 @@ export class SceneConfigService {
     }
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('📊 [SceneConfigService] Database active follow path result:', data ? `Found path "${data.path_name}" with ${data.camera_points?.length || 0} points` : 'No active path found');
+      if (data) {
+        const waypoints = (data.camera_points as any[])?.length || 0
+        const lookAts = (data.look_at_targets as any[])?.length || 0
+        
+        console.log('✅ [SceneConfigService] Active path: "' + data.path_name + '"')
+        console.log('✅ [SceneConfigService] Camera waypoints:', waypoints)
+        console.log('✅ [SceneConfigService] LookAt targets:', lookAts)
+        
+        if (waypoints > 0 && data.camera_points) {
+          const firstPoint = (data.camera_points as any[])[0]
+          console.log('🎯 [SceneConfigService] First waypoint:', firstPoint)
+          console.log('🎯 [SceneConfigService] Orbital height:', firstPoint.y)
+        }
+      } else {
+        console.warn('⚠️ [SceneConfigService] No active path found for config:', sceneDesignConfigId)
+      }
     }
 
     return data || null
@@ -597,14 +647,16 @@ export class SceneConfigService {
         return null
       }
 
-      // Get the architect's default config
-      // Filter by the specific architect's user_id OR architect_id
+      // Get the most recent scene_design_config for this client from this architect
+      // The relationship is stored IN scene_design_configs (architect_id + client_id columns)
       const { data: architectConfig, error: architectConfigError } = await supabase
         .from('scene_design_configs')
         .select('*')
-        .or(`user_id.eq.${architectData.architect_id},architect_id.eq.${architectData.architect_id}`)
-        .eq('is_default', true)
-        .maybeSingle()
+        .eq('client_id', userId)
+        .eq('architect_id', architectData.architect_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()  // Use maybeSingle() instead of single() to handle no results gracefully
 
       console.log('🔍 [SceneConfigService] Architect config query result:', architectConfig)
       console.log('🔍 [SceneConfigService] Architect config query error:', architectConfigError)
@@ -615,7 +667,7 @@ export class SceneConfigService {
       }
 
       if (architectConfig) {
-        console.log('✅ [SceneConfigService] Loaded architect config for end_user:', architectConfig.id)
+        console.log('✅ [SceneConfigService] Loaded most recent architect config for end_user:', architectConfig.id)
         return architectConfig as UserSceneConfig
       }
 

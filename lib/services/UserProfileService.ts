@@ -63,14 +63,12 @@ export class UserProfileService {
       // Check cache first
       const cached = this.profileCache.get(userId)
       if (cached) {
-        console.log('🔍 [UserProfileService] Using cached profile for user:', userId)
         return cached
       }
 
       // Check if request is already pending
       const pending = this.pendingRequests.get(userId)
       if (pending) {
-        console.log('🔍 [UserProfileService] Waiting for pending request for user:', userId)
         return pending
       }
 
@@ -94,41 +92,49 @@ export class UserProfileService {
   }
 
   /**
-   * Fetch user profile from database
+   * Fetch user profile from database with retry logic
    */
-  private async fetchUserProfile(userId: string): Promise<UserProfile | null> {
-    console.log('🔍 [UserProfileService] Fetching profile from database for user:', userId)
+  private async fetchUserProfile(userId: string, retries = 3): Promise<UserProfile | null> {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const { data, error } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('user_id', userId)
+            .single()
 
-    try {
-      const { data, error } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('user_id', userId)
-          .single()
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // No profile found - this could be due to RLS or missing profile
-          console.log('⚠️ [UserProfileService] No profile found or access denied for user:', userId)
-          console.log('🔍 [UserProfileService] Error details:', error)
-          return null
+        if (error) {
+          if (error.code === 'PGRST116') {
+            // No profile found - this could be due to RLS or missing profile
+            return null
+          }
+          
+          // If it's a connection error and we have retries left, retry
+          if (attempt < retries && (error.message?.includes('timeout') || error.message?.includes('connection'))) {
+            const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000) // Exponential backoff, max 5s
+            console.warn(`⚠️ [UserProfileService] Database error on attempt ${attempt}/${retries}, retrying in ${delay}ms...`)
+            await new Promise(resolve => setTimeout(resolve, delay))
+            continue
+          }
+          
+          console.error('❌ [UserProfileService] Database error:', error)
+          throw error
         }
-        console.error('❌ [UserProfileService] Database error:', error)
-        throw error
+
+        return data as UserProfile
+      } catch (error) {
+        if (attempt < retries) {
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000)
+          console.warn(`⚠️ [UserProfileService] Unexpected error on attempt ${attempt}/${retries}, retrying in ${delay}ms...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+          continue
+        }
+        console.error('❌ [UserProfileService] Unexpected error in fetchUserProfile after all retries:', error)
+        return null
       }
-
-      console.log('✅ [UserProfileService] Profile loaded:', {
-        id: data.id,
-        role: data.role,
-        name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
-        email: userId
-      })
-
-      return data as UserProfile
-    } catch (error) {
-      console.error('❌ [UserProfileService] Unexpected error in fetchUserProfile:', error)
-      return null
     }
+
+    return null
   }
 
   /**

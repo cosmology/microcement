@@ -14,7 +14,9 @@ export default function HeroSection() {
   // Headline: use explicit headers instead of splitting
   const header1 = t('header1') // e.g., "Transform"
   const header2 = t('header2') // e.g., "Spaces"
-  const animatedLines = [t('line2'), t('line3'), t('line4')]
+  
+  // Memoize to prevent creating new array on every render
+  const animatedLines = useMemo(() => [t('line2'), t('line3'), t('line4')], [t])
 
   // Animation state
   const [mainIn, setMainIn] = useState(false)
@@ -81,13 +83,13 @@ export default function HeroSection() {
       clearTimeout(outTimeout)
       clearTimeout(nextTimeout)
     }
-  }, [currentLine, showAnimated])
+  }, [currentLine, showAnimated, animatedLines.length])
 
   // Helper to split line into letters
   const splitLetters = useCallback((line: string) => line.toUpperCase().split("").map((char, i) => ({ char, i })), [])
 
-  // Get theme colors
-  const themeColors = getThemeColors()
+  // Get theme colors - memoize to prevent creating new object on every render
+  const themeColors = useMemo(() => getThemeColors(), [])
 
   return (
     <section

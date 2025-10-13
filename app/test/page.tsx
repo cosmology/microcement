@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
-const ScrollScene = dynamic(() => import("../components/ScrollScene"), { ssr: false });
+const SceneEditor = dynamic(() => import("../components/SceneEditor"), { ssr: false });
 
 export default function TestPage() {
   const [isClient, setIsClient] = useState(false);
@@ -17,7 +17,7 @@ export default function TestPage() {
 
   return (
     <div style={{ width: "100vw", height: "100vh", background: "#222" }}>
-      <ScrollScene />
+      <SceneEditor />
       <div style={{ position: "absolute", top: 20, right: 20, color: "white", zIndex: 100 }}>
         <h2>ScrollScene Test (Vanilla Three.js)</h2>
         <p>You should see floating particles and a central hub.</p>

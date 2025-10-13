@@ -33,6 +33,10 @@ export default function RootLayout({
           {/* <ContentProgress /> */}
           {children}
         </ThemeProvider>
+        {/* Portal root for gallery modal - renders outside all other containers */}
+        <div id="gallery-modal-root"></div>
+        {/* Portal root for loader overlay - renders outside all other containers */}
+        <div id="loader-modal-root"></div>
       </body>
     </html>
   )

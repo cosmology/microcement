@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { Settings } from "lucide-react";
 import SwiperGallery, { GalleryImage } from './SwiperGallery';
+import LoaderOverlay from './LoaderOverlay';
 import { isMobile, getThemeColors, cssColorToHex } from '../../lib/utils';
 import { ModelLoader, SCENE_CONFIG, getCameraPathData, getHotspotSettings, getUserSceneConfig } from '@/lib/services';
-import { useUserRole } from '@/hooks/useUserRole';
 import { SceneConfigService } from '@/lib/services/SceneConfigService';
-import { supabase } from '@/lib/supabase';
-import CameraPathEditor3D from './CameraPathEditor3D';
+import { useCameraStore } from '@/lib/stores/cameraStore';
+import { DEFAULT_ORBITAL_CONFIG } from '@/lib/config/defaultOrbitalPath';
 
 
 interface ScrollSceneProps {
@@ -19,47 +18,374 @@ interface ScrollSceneProps {
   onIntroComplete?: () => void;
   onIntroStart?: () => void;
   onDebugUpdate?: (data: any) => void;
-  user?: any; // Add user prop
+  user?: any;
+  userRole?: 'admin' | 'architect' | 'end_user' | 'guest';
 }
 
-export default function ScrollScene({ 
+export default function SceneEditor({ 
   sceneStage = 0, 
   currentSection = 'hero',
   onIntroComplete,
   onIntroStart,
   onDebugUpdate,
-  user
+  user,
+  userRole  // Get role from props instead of calling useUserRole again
 }: ScrollSceneProps) {
-  const { role: authRole, user: authUser, loading: roleLoading } = useUserRole();
+  const authRole = userRole || 'guest';
+  const authUser = user;
+  
+  // Subscribe to Zustand stores
+  const {
+    cameraType: storeCameraType,
+    orbitalHeight: storeOrbitalHeight,
+    isBirdView: storeBirdView,
+    isBirdViewLocked: storeBirdViewLocked,
+    isEditorEnabled: storeEditorEnabled,
+    showLookAtTargets: storeShowLookAtTargets,
+    selectedHeightIndex: storeSelectedHeightIndex,
+    cameraPoints: storeCameraPoints,
+    lookAtTargets: storeLookAtTargets,
+    clearSceneRequested,
+    rotateModelRequested,
+    rotationAngle,
+    setIsBirdView: setStoreBirdView,
+    setCameraPoints: setStoreCameraPoints,
+    setLookAtTargets: setStoreLookAtTargets,
+    setCameraRef: setStoreCameraRef,
+    setRendererRef: setStoreRendererRef,
+    setSceneRef: setStoreSceneRef,
+    clearClearSceneRequest,
+    clearRotateModelRequest,
+  } = useCameraStore()
+  
   const [hasUserConfig, setHasUserConfig] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [userSceneConfig, setUserSceneConfig] = useState<any>(null);
-  const [isBirdView, setIsBirdView] = useState(false);
   
-  // Debug state changes
-  useEffect(() => {
-    console.log('🎯 [ScrollScene] isBirdView state changed to:', isBirdView);
-  }, [isBirdView]);
-  const isBirdViewRef = useRef(false);
-  const [isEditorEnabled, setIsEditorEnabled] = useState(false);
+  // Store original architect path for toggling
+  const originalArchitectPathRef = useRef<{
+    cameraPoints: Array<{x: number, y: number, z: number}>,
+    lookAtTargets: Array<{x: number, y: number, z: number}>
+  } | null>(null);
+  
+  // Use store state instead of local state
+  const [isBirdView, setIsBirdView] = useState(storeBirdView);
+  const isBirdViewRef = useRef(storeBirdView);
+  const [isEditorEnabled, setIsEditorEnabled] = useState(storeEditorEnabled);
   const [wasBirdViewActiveBeforeScroll, setWasBirdViewActiveBeforeScroll] = useState(false);
   const [isManualEditMode, setIsManualEditMode] = useState(false); // Track manual editing
+  
+  // Watch camera type and orbital height - swap waypoint data
+  useEffect(() => {
+    if (storeCameraType === 'orbital') {
+      console.log('🌀 [Camera Type] → ORBITAL - Loading circular waypoints at height:', storeOrbitalHeight);
+      
+      // Generate circular waypoints at current orbital height
+      const circularWaypoints = DEFAULT_ORBITAL_CONFIG.CAMERA_POINTS.map((p: any) => ({
+        x: p.x,
+        y: storeOrbitalHeight,  // Use height from slider
+        z: p.z
+      }));
+      
+      setStoreCameraPoints(circularWaypoints);
+      setStoreLookAtTargets(DEFAULT_ORBITAL_CONFIG.LOOK_AT_TARGETS);
+      console.log('🌀 [Camera Type] Loaded', DEFAULT_ORBITAL_CONFIG.WAYPOINT_COUNT, 'circular waypoints at height', storeOrbitalHeight);
+      
+      // Regenerate curve with new circular waypoints
+      // Note: gsapCameraPoints is a const derived from store, it will update on next render
+      const newPoints = circularWaypoints.map((p: any) => new THREE.Vector3(p.x, p.y, p.z));
+      const newLookAtPoints = DEFAULT_ORBITAL_CONFIG.LOOK_AT_TARGETS.map((p: any) => new THREE.Vector3(p.x, p.y, p.z));
+      
+      gsapLookAtTargetsRef.current = newLookAtPoints;
+      const newCurve = new THREE.CatmullRomCurve3(newPoints, false, 'catmullrom', 0.1);
+      gsapCurveRef.current = newCurve;
+      gsapLookCurveRef.current = new THREE.CatmullRomCurve3(newLookAtPoints, false, 'catmullrom', 0.1);
+      
+      // Update path visuals in 3D scene
+      console.log('🎨 [Camera Type → Orbital] Updating path visuals with circular path');
+      addPathVisuals(newCurve);
+      
+      // Force immediate camera update in 3D scene
+      if (cameraRef.current && rendererRef.current && sceneRef.current) {
+        const firstPoint = new THREE.Vector3(circularWaypoints[0].x, circularWaypoints[0].y, circularWaypoints[0].z);
+        cameraRef.current.position.copy(firstPoint);
+        cameraRef.current.lookAt(0, 10, 0);
+        cameraRef.current.updateMatrixWorld();
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+        console.log('🌀 [Camera Type] Scene camera updated to first orbital waypoint');
+      }
+    } else if (storeCameraType === 'path' && originalArchitectPathRef.current) {
+      console.log('📍 [Camera Type] → PATH - Restoring architect waypoints');
+      setStoreCameraPoints(originalArchitectPathRef.current.cameraPoints);
+      setStoreLookAtTargets(originalArchitectPathRef.current.lookAtTargets);
+      console.log('📍 [Camera Type] Restored', originalArchitectPathRef.current.cameraPoints.length, 'custom waypoints');
+      
+      // Regenerate curve with architect's custom waypoints
+      // Note: gsapCameraPoints is a const derived from store, it will update on next render
+      const newPoints = originalArchitectPathRef.current.cameraPoints.map((p: any) => new THREE.Vector3(p.x, p.y, p.z));
+      const newLookAtPoints = originalArchitectPathRef.current.lookAtTargets.map((p: any) => new THREE.Vector3(p.x, p.y, p.z));
+      
+      gsapLookAtTargetsRef.current = newLookAtPoints;
+      const newCurve = new THREE.CatmullRomCurve3(newPoints, false, 'catmullrom', 0.1);
+      gsapCurveRef.current = newCurve;
+      gsapLookCurveRef.current = new THREE.CatmullRomCurve3(newLookAtPoints, false, 'catmullrom', 0.1);
+      
+      // Update path visuals in 3D scene
+      console.log('🎨 [Camera Type → Path] Updating path visuals with custom path');
+      addPathVisuals(newCurve);
+      
+      // Force immediate camera update in 3D scene
+      if (cameraRef.current && rendererRef.current && sceneRef.current && originalArchitectPathRef.current.cameraPoints.length > 0) {
+        const firstPoint = originalArchitectPathRef.current.cameraPoints[0];
+        const firstLookAt = originalArchitectPathRef.current.lookAtTargets[0];
+        cameraRef.current.position.set(firstPoint.x, firstPoint.y, firstPoint.z);
+        cameraRef.current.lookAt(firstLookAt.x, firstLookAt.y, firstLookAt.z);
+        cameraRef.current.updateMatrixWorld();
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+        console.log('📍 [Camera Type] Scene camera updated to first custom waypoint');
+      }
+    }
+  }, [storeCameraType, storeOrbitalHeight, setStoreCameraPoints, setStoreLookAtTargets]);
+  
+  // Sync bird view from store and trigger animation
+  useEffect(() => {
+    console.log('🎯 [SceneEditor] Store bird view changed to:', storeBirdView, 'current local:', isBirdView)
+    
+    // Only trigger animation if state actually changed
+    if (storeBirdView !== isBirdView) {
+      console.log('🎯 [SceneEditor] Bird view state mismatch - triggering animation')
+      
+      // Check if locked
+      if (!storeBirdView && storeBirdViewLocked) {
+        console.log('🔒 [SceneEditor] Bird view is locked - ignoring switch to camera view');
+        return;
+      }
+      
+      if (storeBirdView) {
+        // Going TO bird view - trigger animation
+        console.log('🎯 [SceneEditor] Animating TO bird view');
+        animateToBirdView()
+      } else {
+        // Going FROM bird view - trigger return animation  
+        console.log('🎯 [SceneEditor] Animating FROM bird view to camera path');
+        animateFromBirdView()
+      }
+    }
+  }, [storeBirdView])
+  
+  // Sync editor state from store
+  useEffect(() => {
+    console.log('✏️ [SceneEditor] Store editor enabled changed to:', storeEditorEnabled, 'current local:', isEditorEnabled)
+    if (storeEditorEnabled !== isEditorEnabled) {
+      setIsEditorEnabled(storeEditorEnabled)
+      console.log('✏️ [SceneEditor] Updated local editor state to:', storeEditorEnabled)
+      
+      // Update window global for backwards compatibility
+      ;(window as any).__isEditorEnabled = storeEditorEnabled
+    }
+  }, [storeEditorEnabled, isEditorEnabled])
+  
+  // Subscribe to clear scene requests from store
+  useEffect(() => {
+    if (clearSceneRequested) {
+      console.log('🗑️ [SceneEditor] Clear scene requested from store')
+      clearCurrentModel()
+      
+      // Force immediate scene update after clearing
+      if (rendererRef.current && sceneRef.current && cameraRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current)
+        console.log('✅ [SceneEditor] Scene rendered after clear')
+      }
+      
+      clearClearSceneRequest()
+    }
+  }, [clearSceneRequested, clearClearSceneRequest])
+  
+  // Subscribe to rotate model requests from store
+  useEffect(() => {
+    if (rotateModelRequested) {
+      console.log('🔄 [SceneEditor] Rotate model requested from store, angle:', rotationAngle)
+      if (!sceneRef.current) {
+        console.warn('🔄 [SceneEditor] Scene not ready')
+        clearRotateModelRequest()
+        return
+      }
+      
+      // Find the loaded model
+      const model = sceneRef.current.getObjectByName('floorPlan')
+      if (model) {
+        const currentRotation = model.rotation.y
+        const targetRotation = currentRotation + rotationAngle
+        
+        console.log('🔄 [SceneEditor] Animating rotation from', (currentRotation * 180 / Math.PI).toFixed(2), 'to', (targetRotation * 180 / Math.PI).toFixed(2), 'degrees')
+        
+        // Animate rotation with GSAP
+        gsap.to(model.rotation, {
+          y: targetRotation,
+          duration: 0.5,
+          ease: 'power2.inOut',
+          onComplete: () => {
+            console.log('🔄 [SceneEditor] Rotation complete. New rotation Y:', model.rotation.y.toFixed(3), 'radians', '(', (model.rotation.y * 180 / Math.PI).toFixed(2), 'degrees)')
+            clearRotateModelRequest()
+          }
+        })
+      } else {
+        console.warn('🔄 [SceneEditor] No model found to rotate')
+        console.log('🔄 [SceneEditor] Scene children:', sceneRef.current.children.map((c: any) => ({ name: c.name, type: c.type })))
+        clearRotateModelRequest()
+      }
+    }
+  }, [rotateModelRequested, rotationAngle, clearRotateModelRequest])
+  
   const [hotspotSettings, setHotspotSettings] = useState<any>({
     focalDistances: {},
     categories: {},
     colors: { HOVER: 0xb2d926 }
   });
   const [cameraPathData, setCameraPathData] = useState<any>(null);
+  
+  // Animation functions for bird view
+  const animateToBirdView = useCallback(() => {
+    console.log('🦅 [SceneEditor] animateToBirdView called')
+    if (!cameraRef.current) {
+      console.log('❌ [SceneEditor] cameraRef.current is null, cannot animate to bird view')
+      return
+    }
+    
+    // Set state immediately
+    setIsBirdView(true)
+    isBirdViewRef.current = true
+    ;(window as any).__isBirdView = true
+    ;(window as any).__birdViewPersistent = true
+    
+    // Save current position for return
+    if (introCompletedRef.current) {
+      cameraStateRef.current.savedSplineProgress = parseFloat(pathProgressRef.current.t.toFixed(6))
+      if (gsapCurveRef.current) {
+        const exactSplinePosition = gsapCurveRef.current.getPointAt(cameraStateRef.current.savedSplineProgress)
+        cameraStateRef.current.exactSplinePosition = exactSplinePosition.clone()
+      } else {
+        cameraStateRef.current.exactSplinePosition = cameraRef.current.position.clone()
+      }
+      
+      // Save lookAt target
+      const currentLookDir = new THREE.Vector3()
+      cameraRef.current.getWorldDirection(currentLookDir)
+      const currentLookAtTarget = cameraRef.current.position.clone().add(currentLookDir.multiplyScalar(10))
+      cameraStateRef.current.savedLookAtTarget = currentLookAtTarget.clone()
+    }
+    
+    // Animate to bird view position
+    console.log('🎯 [SceneEditor] Starting animation to bird view position:', INTRO_START_POS)
+    isAnimatingToBirdView.current = true
+    isAnimatingRef.current = true
+    
+    gsap.to(cameraRef.current.position, {
+      x: INTRO_START_POS.x,
+      y: INTRO_START_POS.y,
+      z: INTRO_START_POS.z,
+      duration: 1.5,
+      ease: "power2.inOut",
+      onUpdate: () => {
+        if (cameraRef.current && rendererRef.current && sceneRef.current) {
+          cameraRef.current.lookAt(0, 0, 0)
+          rendererRef.current.render(sceneRef.current, cameraRef.current)
+        }
+      },
+      onComplete: () => {
+        console.log('🦅 [SceneEditor] Bird view animation completed')
+        isAnimatingToBirdView.current = false
+        isAnimatingRef.current = false
+        isTestingCameraRef.current = false
+        
+        // Ensure state is synced
+        setIsBirdView(true)
+        isBirdViewRef.current = true
+        ;(window as any).__isBirdView = true
+        
+        // Sync to store
+        if (storeBirdView !== true) {
+          setStoreBirdView(true)
+        }
+      }
+    })
+  }, [storeBirdView, setStoreBirdView])  // Refs don't need to be in dependencies
+  
+  const animateFromBirdView = useCallback(() => {
+    console.log('📷 [SceneEditor] animateFromBirdView called')
+    if (!cameraRef.current) return
+    
+    // Resolve target position
+    const targetPos = (cameraStateRef.current.exactSplinePosition?.clone())
+      || (gsapCurveRef.current ? gsapCurveRef.current.getPointAt(cameraStateRef.current.savedSplineProgress) : null)
+      || cameraStateRef.current.mainPathPosition.clone()
+    const targetLookAt = (cameraStateRef.current.savedLookAtTarget?.clone()) 
+      || (cubePos.current ? cubePos.current.clone() : new THREE.Vector3(0, 0, 0))
+    
+    console.log('🎯 [SceneEditor] Animating to target position:', targetPos)
+    isAnimatingFromBirdView.current = true
+    
+    gsap.to(cameraRef.current.position, {
+      x: targetPos.x,
+      y: targetPos.y,
+      z: targetPos.z,
+      duration: 1.5,
+      ease: "power2.inOut",
+      onUpdate: () => {
+        if (cameraRef.current && rendererRef.current && sceneRef.current) {
+          cameraRef.current.lookAt(targetLookAt)
+          rendererRef.current.render(sceneRef.current, cameraRef.current)
+        }
+      },
+      onComplete: () => {
+        console.log('📷 [SceneEditor] Return to camera path animation completed')
+        isAnimatingFromBirdView.current = false
+        isTestingCameraRef.current = false
+        
+        // Update state
+        setIsBirdView(false)
+        isBirdViewRef.current = false
+        ;(window as any).__isBirdView = false
+        ;(window as any).__birdViewPersistent = false
+        
+        // Sync to store
+        if (storeBirdView !== false) {
+          setStoreBirdView(false)
+        }
+        
+        // Resume camera on path
+        if (introCompletedRef.current && !isFocusedOnHotspotRef.current) {
+          updateCameraAlongCurve(cameraRef.current!, cameraStateRef.current.savedSplineProgress || pathProgressRef.current.t)
+          if (rendererRef.current && sceneRef.current) {
+            rendererRef.current.render(sceneRef.current, cameraRef.current!)
+          }
+        }
+        cameraStateRef.current.isOnMainPath = true
+      }
+    })
+  }, [storeBirdView, setStoreBirdView])  // Refs don't need to be in dependencies
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
         setLoadingConfig(true);
-        console.log('🔄 Loading scene settings from Supabase...');
         
         const userId = user?.id;
+        console.log('🔄 Loading scene settings from Supabase...');
+        console.log('🔍 ScrollScene: User ID:', userId, 'Role:', authRole);
+        
+        // CRITICAL: NO auto-load for any logged-in user
+        // If userId exists, user is logged in (don't rely on authRole due to race condition)
+        // All logged-in users start with blank scene and select models explicitly
+        if (userId) {
+          console.log('🚫 [SceneEditor] User logged in (ID:', userId, ') - skipping auto-load of settings');
+          console.log('🚫 [SceneEditor] Role:', authRole, '- Scene blank until explicit model selection');
+          setHasUserConfig(false);
+          setLoadingConfig(false);
+          return;
+        }
+        
         console.log('🔍 ScrollScene: User object:', user);
-        console.log('🔍 ScrollScene: User ID:', userId);
         console.log('🔍 ScrollScene: User email:', user?.email);
         
         const [hotspot, camera, sceneConfig] = await Promise.all([
@@ -76,6 +402,19 @@ export default function ScrollScene({
         if (!isManualEditMode) {
           console.log('🔄 Loading camera path data from database');
           setCameraPathData(camera);
+          
+          // Store original architect path for toggling
+          if (camera?.cameraPoints && camera?.lookAtTargets) {
+            originalArchitectPathRef.current = {
+              cameraPoints: camera.cameraPoints,
+              lookAtTargets: camera.lookAtTargets
+            };
+            
+            // Sync to Zustand store
+            setStoreCameraPoints(camera.cameraPoints)
+            setStoreLookAtTargets(camera.lookAtTargets)
+            console.log('💾 [SceneEditor] Saved original architect path:', camera.cameraPoints.length, 'waypoints');
+          }
         } else {
           console.log('⚠️ Skipping camera path load - user is in manual edit mode');
         }
@@ -109,11 +448,21 @@ export default function ScrollScene({
     };
 
     loadSettings();
-  }, [user, isManualEditMode]);
+  }, [user, isManualEditMode, authRole]);
+
+  // Track if this is the first config load (don't auto-load on first login)
+  const isFirstConfigLoad = useRef(true);
 
   // Load model when scene configuration is available
   useEffect(() => {
     if (userSceneConfig && sceneRef.current && !loadingConfig) {
+      // Skip auto-load on first config load - let user choose which model to load
+      if (isFirstConfigLoad.current) {
+        console.log('🔄 Scene config loaded (first time), skipping auto-load - waiting for user selection');
+        isFirstConfigLoad.current = false;
+        return;
+      }
+      
       console.log('🔄 Scene config loaded, reloading model...');
       // Clear existing model
       if (sceneRef.current) {
@@ -140,9 +489,18 @@ export default function ScrollScene({
     }
 
     try {
+      // Clear existing model first
+      const existingModel = sceneRef.current.getObjectByName('floorPlan');
+      if (existingModel) {
+        sceneRef.current.remove(existingModel);
+        console.log('🗑️ Removed existing model before loading new one');
+      }
+
       // Show loader immediately
-      createLoaderOverlay();
-      updateLoaderOverlay(0, 0, null);
+      setShowLoader(true);
+      setLoaderPercent(0);
+      setLoaderLoadedMB(0);
+      setLoaderTotalMB(null);
 
       const modelLoader = ModelLoader.getInstance();
       const currentConfig = userSceneConfig || SCENE_CONFIG;
@@ -163,14 +521,16 @@ export default function ScrollScene({
         enableContourEdges: true,
         enableShadows: true,
         onProgress: (progress, loaded, total) => {
-          updateLoaderOverlay(progress, loaded, total);
+          setLoaderPercent(progress);
+          setLoaderLoadedMB(loaded / 1024 / 1024);
+          setLoaderTotalMB(total ? total / 1024 / 1024 : null);
         },
         onComplete: () => {
-          hideLoaderOverlay();
+          setShowLoader(false);
         },
         onError: (error) => {
           console.error('ModelLoader error:', error);
-          hideLoaderOverlay();
+          setShowLoader(false);
           createFloorPlanPlaceholder();
         }
       });
@@ -201,6 +561,13 @@ export default function ScrollScene({
       });
 
       sceneRef.current.add(model);
+      
+      // Log final model position and rotation
+      console.log('📐 MODEL LOADED - Position and Rotation:');
+      console.log('  Model Position (X, Y, Z):', model.position.x.toFixed(3), model.position.y.toFixed(3), model.position.z.toFixed(3));
+      console.log('  Model Rotation (X, Y, Z):', model.rotation.x.toFixed(3), model.rotation.y.toFixed(3), model.rotation.z.toFixed(3));
+      console.log('  Model Rotation Y (degrees):', (model.rotation.y * 180 / Math.PI).toFixed(2));
+      console.log('  Model Scale:', model.scale.x.toFixed(3));
 
       // Fit camera so the model is visible
       if (cameraRef.current) {
@@ -246,10 +613,21 @@ export default function ScrollScene({
         
         startIntroAnimation(cameraRef.current, rendererRef.current, sceneRef.current);
       }
+      
+      // Re-add path visuals after loading model
+      if (gsapCurveRef.current && introCompletedRef.current) {
+        console.log('🎨 [loadModelWithService] Re-adding path visuals after model load');
+        addPathVisuals(gsapCurveRef.current);
+        
+        // Force render to show path visuals
+        if (rendererRef.current && cameraRef.current) {
+          rendererRef.current.render(sceneRef.current, cameraRef.current);
+        }
+      }
 
     } catch (error) {
       console.error('Error loading model:', error);
-      hideLoaderOverlay();
+      setShowLoader(false);
       createFloorPlanPlaceholder();
     }
   };
@@ -276,6 +654,59 @@ export default function ScrollScene({
     sceneRef.current.add(placeholder);
     console.log('Floor plan placeholder created at position:', placeholder.position);
     console.log('Placeholder added to scene');
+  };
+
+  // Clear current model from scene - shared function to avoid duplication
+  const clearCurrentModel = () => {
+    if (!sceneRef.current) {
+      console.warn('🗑️ [ScrollScene] Scene not ready for clearing model');
+      return;
+    }
+
+    console.log('🗑️ [ScrollScene] Clearing current model from scene');
+    console.log('🗑️ [ScrollScene] Current scene children:', sceneRef.current.children.length);
+    
+    // Remove ALL models from the scene (not just 'floorPlan')
+    // This ensures we don't have stacking models
+    const modelsToRemove: THREE.Object3D[] = [];
+    
+    sceneRef.current.children.forEach((child) => {
+      // Remove any object that looks like a loaded model
+      // Skip lights, helpers, cameras, and debug markers
+      if (
+        child.type === 'Group' || 
+        child.type === 'Scene' ||
+        child.name === 'floorPlan' ||
+        (child.type === 'Mesh' && !child.name.includes('debug_') && !child.name.includes('pulse_'))
+      ) {
+        // Check if this is likely a loaded model (has children or is named floorPlan)
+        if (child.name === 'floorPlan' || (child as any).children?.length > 0) {
+          modelsToRemove.push(child);
+          console.log('🗑️ [ScrollScene] Marking for removal:', child.name, 'type:', child.type, 'children:', (child as any).children?.length);
+        }
+      }
+    });
+    
+    // Remove all marked models
+    modelsToRemove.forEach((model) => {
+      sceneRef.current?.remove(model);
+      console.log('🗑️ [ScrollScene] Removed model:', model.name);
+    });
+    
+    console.log('🗑️ [ScrollScene] Removed', modelsToRemove.length, 'models from scene');
+    console.log('🗑️ [ScrollScene] Remaining scene children:', sceneRef.current.children.length);
+    
+    // Clear clickable objects
+    clickableObjectsRef.current = [];
+    
+    // Clear pulse markers
+    cleanupPulseMarkers();
+    
+    // Remove path visuals (red line and waypoint spheres)
+    removePathVisuals();
+    console.log('🗑️ [ScrollScene] Path visuals removed');
+    
+    console.log('🗑️ [ScrollScene] Scene cleared successfully');
   };
 
   // Handle follow path selection and reload camera data
@@ -320,9 +751,11 @@ export default function ScrollScene({
       }
     };
 
+    console.log('🎧 [EVENT LISTENER] Registered: scene-reload-camera');
     window.addEventListener('scene-reload-camera', handleSceneReloadCamera);
 
     return () => {
+      console.log('🔌 [EVENT LISTENER] Removed: scene-reload-camera');
       window.removeEventListener('scene-reload-camera', handleSceneReloadCamera);
     };
   }, []);
@@ -369,17 +802,27 @@ export default function ScrollScene({
       });
     };
 
+    console.log('🎧 [EVENT LISTENER] Registered: camera-goto-waypoint');
     window.addEventListener('camera-goto-waypoint', handleGotoWaypoint);
-    return () => window.removeEventListener('camera-goto-waypoint', handleGotoWaypoint);
+    return () => {
+      console.log('🔌 [EVENT LISTENER] Removed: camera-goto-waypoint');
+      window.removeEventListener('camera-goto-waypoint', handleGotoWaypoint);
+    };
   }, []);
 
   // Toggle flags
-  const WITH_INTRO = true; // Toggle to control intro vs orbital
+  const WITH_INTRO = true; // Toggle to control intro animation
   const WITH_HELPERS = true; // Toggle to show coordinate helpers (floor grid, axes)
-  const WITH_ORBITAL = false; // Toggle to enable orbital animation
   const SHOW_CUBE = false; // Toggle to show/hide the green debug cube
+  // Camera type now controlled by storeCameraType (orbital uses circular waypoints, path uses scroll)
   const [showDebug, setShowDebug] = useState(false); // Toggle to show/hide debug panel
   const [showPosition, setShowPosition] = useState(false); // Toggle to show/hide position panel
+  
+  // Loader overlay state (React component instead of DOM manipulation)
+  const [showLoader, setShowLoader] = useState(false);
+  const [loaderPercent, setLoaderPercent] = useState(0);
+  const [loaderLoadedMB, setLoaderLoadedMB] = useState(0);
+  const [loaderTotalMB, setLoaderTotalMB] = useState<number | null>(null);
 
   // Camera path editor state
   const [activePathId, setActivePathId] = useState('main-camera-path');
@@ -400,9 +843,25 @@ export default function ScrollScene({
   };
   const SHOW_DEBUG = getShowDebugFromURL(); // Master flag to show/hide debug controls
   // Optional debug visuals for the camera path
-  const SHOW_CAMERA_PATH = true;
-  const SHOW_WAYPOINTS = true;
+  // Get path visibility from Zustand store (can be toggled)
+  const showPathVisuals = useCameraStore(state => state.showPathVisuals);
+  const SHOW_CAMERA_PATH = showPathVisuals;
+  const SHOW_WAYPOINTS = showPathVisuals;
   const SHOW_LOOKUP_TARGETS = true;
+  
+  // Update path visuals when showPathVisuals changes
+  useEffect(() => {
+    if (gsapCurveRef.current) {
+      console.log('🔄 [showPathVisuals changed] Updating path visuals, showPathVisuals:', showPathVisuals);
+      addPathVisuals(gsapCurveRef.current);
+      
+      // Force render to show the changes
+      if (rendererRef.current && sceneRef.current && cameraRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+        console.log('✅ [showPathVisuals changed] Scene re-rendered with path visuals');
+      }
+    }
+  }, [showPathVisuals]);
   
   // Hotspot highlight colors
   const HOTSPOT_HIGHLIGHT_COLOR = 0x00ff00; // Bright green for model hotspots
@@ -468,10 +927,25 @@ export default function ScrollScene({
   
   // Animation configuration
   // const INTRO_START_POS = new THREE.Vector3(0, 50, 3); // Start perfectly above the cube center - using the one defined above
-  const INTRO_END_POS = new THREE.Vector3(50, ORBITAL_HEIGHT, 0); // End at proper radius for centered scene
-  const ORBITAL_START_POS = new THREE.Vector3(50, ORBITAL_HEIGHT, 0); // Explicit orbital start position
-  const ANIMATION_STEPS = 100;
-  const ANIMATION_STEP_INTERVAL = 17; // 17ms per step = ~1.7 seconds total
+  // Intro ends at first orbital waypoint (45 degrees northeast)
+  // Use storeOrbitalHeight for Y coordinate to match the actual orbital path
+  const INTRO_END_POS = new THREE.Vector3(35.36, storeOrbitalHeight, 35.36); // 45° - matches first orbital waypoint
+  const ORBITAL_START_POS = new THREE.Vector3(35.36, storeOrbitalHeight, 35.36); // Same as intro end
+  
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 🎬 INTRO ANIMATION SPEED CONTROLS
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // Total Duration = ANIMATION_STEPS × ANIMATION_STEP_INTERVAL
+  // 
+  // Examples:
+  //   - 100 steps × 17ms = 1700ms = 1.7 seconds (current)
+  //   - 50 steps × 17ms = 850ms = 0.85 seconds (2x faster)
+  //   - 40 steps × 17ms = 680ms = 0.68 seconds (2.5x faster)
+  //
+  // To speed up 2x: Change ANIMATION_STEPS from 100 to 50
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const ANIMATION_STEPS = 50;         // Number of animation frames (lower = faster)
+  const ANIMATION_STEP_INTERVAL = 17;  // Milliseconds per frame (~60fps at 17ms)
   
   // Colors - Dynamic based on theme (Three.js specific)
   const getThreeJSThemeColors = () => {
@@ -529,23 +1003,19 @@ export default function ScrollScene({
     };
     // Initialize and then update on pointer movement
     computeCurrentLookAt();
+    console.log('🎧 [EVENT LISTENER] Registered: mousemove (computeCurrentLookAt)');
+    console.log('🎧 [EVENT LISTENER] Registered: touchmove (computeCurrentLookAt)');
     window.addEventListener('mousemove', computeCurrentLookAt, { passive: true });
     window.addEventListener('touchmove', computeCurrentLookAt, { passive: true });
     return () => {
+      console.log('🔌 [EVENT LISTENER] Removed: mousemove/touchmove (computeCurrentLookAt)');
       window.removeEventListener('mousemove', computeCurrentLookAt as EventListener);
       window.removeEventListener('touchmove', computeCurrentLookAt as EventListener);
     };
   }, [showPosition]);
-  const loaderOverlayRef = useRef<HTMLDivElement | null>(null);
-  const loaderBarRef = useRef<HTMLDivElement | null>(null);
-  const loaderTextRef = useRef<HTMLElement | null>(null);
-  const loaderInfoRef = useRef<HTMLDivElement | null>(null);
-  const loaderLastPercentRef = useRef<number>(0);
-  const loaderStyleRef = useRef<HTMLStyleElement | null>(null);
+  // Keep these for progress tracking
   const loaderTotalBytesRef = useRef<number | null>(null);
   const loaderLoadedBytesRef = useRef<number>(0);
-  const loaderStartedRef = useRef<boolean>(false);
-  const loaderResizeHandlerRef = useRef<(() => void) | null>(null);
 
   const bytesToMB = (bytes: number) => bytes / 1024 / 1024;
   
@@ -606,9 +1076,9 @@ export default function ScrollScene({
   
   
   // GSAP-driven scroll path (preview path points and targets)
-  // Get camera path data from configuration
-  const gsapCameraPoints = cameraPathData?.cameraPoints || [];
-  const gsapLookAtTargets = cameraPathData?.lookAtTargets || [];
+  // ✨ ZUSTAND APPROACH: Use live data from store, fallback to database config
+  const gsapCameraPoints = storeCameraPoints.length > 0 ? storeCameraPoints.map(p => new THREE.Vector3(p.x, p.y, p.z)) : (cameraPathData?.cameraPoints || []);
+  const gsapLookAtTargets = storeLookAtTargets.length > 0 ? storeLookAtTargets.map(p => new THREE.Vector3(p.x, p.y, p.z)) : (cameraPathData?.lookAtTargets || []);
   const gsapCurveRef = useRef<THREE.CatmullRomCurve3 | null>(null);
   const gsapLookAtTargetsRef = useRef<THREE.Vector3[]>(gsapLookAtTargets);
   const gsapLookCurveRef = useRef<THREE.CatmullRomCurve3 | null>(null);
@@ -618,10 +1088,8 @@ export default function ScrollScene({
   // Create curves when we have valid data
   useEffect(() => {
     // Don't recreate curves during manual editing to prevent camera jumps
-    if (isManualEditMode) {
-      console.log('🎯 [ScrollScene] Skipping curve recreation during manual edit mode');
-      return;
-    }
+    const suppressResume = (window as any)?.__suppressCameraResume === true;
+    if (isManualEditMode || suppressResume) return;
     
     if (gsapCameraPoints && gsapCameraPoints.length > 0) {
       try {
@@ -647,35 +1115,59 @@ export default function ScrollScene({
     }
   }, [gsapCameraPoints, gsapLookAtTargets, isManualEditMode]);
 
-  // Update path visuals when camera points change
+  // Update path visuals when camera points change (throttled)
+  const updateVisualsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastPointsHashRef = useRef<string>('');
+  
   useEffect(() => {
-    if (isManualEditMode && gsapCameraPoints && gsapCameraPoints.length > 0) {
-      console.log('🎨 [ScrollScene] Updating path visuals due to camera points change in manual edit mode');
-      
-      // Create a new curve for visuals only (without affecting camera position)
-      try {
-        const visualCurve = new THREE.CatmullRomCurve3(gsapCameraPoints, false, 'catmullrom', 0.1);
-        
-        // Force complete path visual update
-        removePathVisuals();
-        addPathVisuals(visualCurve);
-        
-        // Force multiple renders to ensure visual update
-        if (rendererRef.current && cameraRef.current && sceneRef.current) {
-          rendererRef.current.render(sceneRef.current, cameraRef.current);
-          
-          // Additional render after a short delay to ensure update
-          setTimeout(() => {
-            if (rendererRef.current && cameraRef.current && sceneRef.current) {
-              rendererRef.current.render(sceneRef.current, cameraRef.current);
-            }
-          }, 10);
-        }
-      } catch (error) {
-        console.error('❌ Failed to create visual curve:', error);
-      }
+    // MEMORY LEAK FIX: Only update if points actually changed
+    // Create hash of points to detect real changes
+    const pointsHash = storeCameraPoints.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)}`).join('|');
+    
+    if (pointsHash === lastPointsHashRef.current) {
+      console.log('⏭️ [SceneEditor] Skipping path visual update - points unchanged');
+      return;
     }
-  }, [gsapCameraPoints, isManualEditMode]); // Only when in manual edit mode
+    
+    lastPointsHashRef.current = pointsHash;
+    
+    // Clear previous timeout to debounce rapid updates
+    if (updateVisualsTimeoutRef.current) {
+      clearTimeout(updateVisualsTimeoutRef.current);
+    }
+    
+    // Update visuals when store data changes (including during drag for real-time feedback)
+    const isDragging = (window as any)?.__suppressCameraResume === true;
+    
+    if (gsapCameraPoints && gsapCameraPoints.length > 0 && introCompletedRef.current) {
+      console.log('🔄 [SceneEditor] Path visual update scheduled - points changed', { isDragging });
+      
+      // Use different debounce timing: immediate during drag, delayed otherwise
+      const debounceTime = isDragging ? 0 : 300;
+      
+      // Debounce visual updates to prevent excessive re-renders
+      updateVisualsTimeoutRef.current = setTimeout(() => {
+        console.log('🎨 [SceneEditor] Executing path visual update');
+        try {
+          const visualCurve = new THREE.CatmullRomCurve3(gsapCameraPoints, false, 'catmullrom', 0.1);
+          removePathVisuals();
+          addPathVisuals(visualCurve);
+          
+          if (rendererRef.current && cameraRef.current && sceneRef.current) {
+            rendererRef.current.render(sceneRef.current, cameraRef.current);
+          }
+        } catch (error) {
+          console.error('❌ Failed to create visual curve:', error);
+        }
+      }, debounceTime);
+    }
+    
+    return () => {
+      if (updateVisualsTimeoutRef.current) {
+        clearTimeout(updateVisualsTimeoutRef.current);
+      }
+    };
+  }, [storeCameraPoints, storeLookAtTargets]); // CRITICAL: Only depend on store data, not derived gsap arrays
 
   const updateCameraAlongCurve = (camera: THREE.PerspectiveCamera, t: number) => {
     if (!gsapCurveRef.current) {
@@ -699,6 +1191,7 @@ export default function ScrollScene({
       if (!point || typeof point.x !== 'number') {
         return;
       }
+      
     camera.position.copy(point);
 
     // Smooth look-at using either a look-targets curve or the path tangent as fallback
@@ -712,6 +1205,7 @@ export default function ScrollScene({
       // keep look height close to current to avoid pitching too much
       lookTarget.y = point.y;
     }
+    
     camera.lookAt(lookTarget);
     // Update debug with live camera position during scroll-driven path
     if (setDebugInfo) {
@@ -801,6 +1295,11 @@ export default function ScrollScene({
     const keyHandler = () => trackEvent('keydown');
 
     // Add event listeners for tracking
+    console.log('🎧 [EVENT LISTENER] Registered: wheel (scroll tracking)');
+    console.log('🎧 [EVENT LISTENER] Registered: touchstart/touchmove/touchend (scroll tracking)');
+    console.log('🎧 [EVENT LISTENER] Registered: scroll (scroll tracking)');
+    console.log('🎧 [EVENT LISTENER] Registered: click (scroll tracking)');
+    console.log('🎧 [EVENT LISTENER] Registered: keydown (scroll tracking)');
     window.addEventListener('wheel', wheelHandler, { passive: true });
     window.addEventListener('touchstart', touchStartHandler, { passive: true });
     window.addEventListener('touchmove', touchMoveHandler, { passive: true });
@@ -810,6 +1309,7 @@ export default function ScrollScene({
     window.addEventListener('keydown', keyHandler, { passive: true });
 
     return () => {
+      console.log('🔌 [EVENT LISTENER] Removed: scroll tracking listeners (7 total)');
       window.removeEventListener('wheel', wheelHandler);
       window.removeEventListener('touchstart', touchStartHandler);
       window.removeEventListener('touchmove', touchMoveHandler);
@@ -1042,6 +1542,13 @@ export default function ScrollScene({
       delete (window as any).__originalBodyTouchAction;
       delete (window as any).__originalHtmlOverflow;
       delete (window as any).__originalHtmlTouchAction;
+    }
+    
+    // CRITICAL: Trigger event listener re-registration by dispatching a custom event
+    // This ensures hotspot highlighting works immediately after gallery closes
+    console.log('  🎯 Dispatching gallery-closed event to re-enable hotspot listeners');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gallery-closed'));
     }
     
     console.log('✅ Scene events restored - scrolling and hotspots should work normally');
@@ -1341,6 +1848,11 @@ export default function ScrollScene({
 
   const addPathVisuals = (curve: THREE.CatmullRomCurve3) => {
     if (!sceneRef.current) return;
+    
+    // MEMORY LEAK PREVENTION: Only log when actually adding visuals
+    const trace = new Error().stack?.split('\n')[2] || 'unknown'
+    console.log('🎨 [addPathVisuals] Called from:', trace.trim());
+    console.log('🎨 [addPathVisuals] Adding path visuals, SHOW_CAMERA_PATH:', SHOW_CAMERA_PATH, 'SHOW_WAYPOINTS:', SHOW_WAYPOINTS);
     removePathVisuals();
     if (SHOW_CAMERA_PATH) {
       const pts = curve.getPoints(300);
@@ -1350,6 +1862,7 @@ export default function ScrollScene({
       line.renderOrder = 999;
       sceneRef.current.add(line);
       pathLineRef.current = line;
+      console.log('🎨 [addPathVisuals] Camera path line added to scene');
     }
     if (SHOW_WAYPOINTS) {
       const group = new THREE.Group();
@@ -1362,6 +1875,7 @@ export default function ScrollScene({
       });
       sceneRef.current.add(group);
       waypointGroupRef.current = group;
+      console.log('🎨 [addPathVisuals] Waypoint spheres added to scene:', gsapCameraPoints.length, 'points');
     }
   };
 
@@ -1935,8 +2449,12 @@ export default function ScrollScene({
       }));
     };
     
+    console.log('🎧 [EVENT LISTENER] Registered: mousemove (handleMouseMove for hotspots)');
     window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    return () => {
+      console.log('🔌 [EVENT LISTENER] Removed: mousemove (handleMouseMove)');
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
   }, [hoverTooltip.visible]);
   
 
@@ -2734,8 +3252,10 @@ export default function ScrollScene({
     const loadFloorPlanModel = async () => {
       try {
         // Show loader immediately
-        createLoaderOverlay();
-        updateLoaderOverlay(0, 0, null);
+        setShowLoader(true);
+        setLoaderPercent(0);
+        setLoaderLoadedMB(0);
+        setLoaderTotalMB(null);
 
         const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
         const gltfLoader = new GLTFLoader();
@@ -2749,7 +3269,7 @@ export default function ScrollScene({
             const total = parseInt(len, 10);
             if (!Number.isNaN(total) && total > 0) {
               loaderTotalBytesRef.current = total;
-              updateLoaderOverlay(0, 0, total);
+              setLoaderTotalMB(total / 1024 / 1024);
             }
           }
         } catch (e) {
@@ -3042,14 +3562,16 @@ export default function ScrollScene({
 
                   const total = loaderTotalBytesRef.current;
                   const loaded = loaderLoadedBytesRef.current || (data?.byteLength ?? 0);
-                  updateLoaderOverlay(100, loaded, total ?? loaded);
+                  setLoaderPercent(100);
+                  setLoaderLoadedMB(loaded / 1024 / 1024);
+                  setLoaderTotalMB(total ? total / 1024 / 1024 : loaded / 1024 / 1024);
                 } finally {
-                  hideLoaderOverlay();
+                  setShowLoader(false);
                 }
               },
               (err: any) => {
                 console.error('GLTF parse error:', err);
-                hideLoaderOverlay();
+                setShowLoader(false);
                 createFloorPlanPlaceholder();
               }
             );
@@ -3062,26 +3584,27 @@ export default function ScrollScene({
               loaderTotalBytesRef.current = total;
               loaderLoadedBytesRef.current = loaded;
               const pct = (loaded / total) * 100;
-              updateLoaderOverlay(pct, loaded, total);
+              setLoaderPercent(pct);
+              setLoaderLoadedMB(loaded / 1024 / 1024);
+              setLoaderTotalMB(total / 1024 / 1024);
             } else {
-              // Unknown total: show MB and keep mid-width bar
+              // Unknown total: show MB loaded
               loaderLoadedBytesRef.current = loaded;
-              if (loaderBarRef.current) loaderBarRef.current.style.width = `${Math.round(window.innerWidth * 0.5)}px`;
-              if (loaderTextRef.current) loaderTextRef.current.textContent = 'Loading...';
+              setLoaderPercent(50); // Mid-progress for indeterminate
+              setLoaderLoadedMB(loaded / 1024 / 1024);
+              setLoaderTotalMB(null);
             }
           },
           (err: any) => {
             console.error('FileLoader error:', err);
-            hideLoaderOverlay();
+            setShowLoader(false);
             createFloorPlanPlaceholder();
           }
         );
       } catch (error) {
         console.error('Error importing GLTFLoader:', error);
         // Fallback to placeholder if loader fails
-        createLoaderOverlay();
-        updateLoaderOverlay(100, loaderLoadedBytesRef.current, loaderTotalBytesRef.current);
-        setTimeout(hideLoaderOverlay, 500);
+        setShowLoader(false);
         createFloorPlanPlaceholder();
       }
     };
@@ -3193,6 +3716,10 @@ export default function ScrollScene({
     if (introStartedRef.current) return;
     introStartedRef.current = true;
     
+    // Update intro end position to use current orbital height
+    introAnimRef.current.toPos = new THREE.Vector3(35.36, storeOrbitalHeight, 35.36);
+    console.log('🎬 [Intro] Updated end position to orbital height:', storeOrbitalHeight);
+    
     // Create debug spheres for intro animation when showDebug is true
     if (showDebug && scene) {
       console.log('🎯 CREATING INTRO DEBUG SPHERES...');
@@ -3256,7 +3783,7 @@ export default function ScrollScene({
         
         // Rotate around Y-axis (green axis) during intro
         camera.up.set(0, 1, 0); // Standard up vector to prevent tilting
-        camera.lookAt(cubePos.current);
+        camera.lookAt(0, 10, 0);  // Look at model center height (matches orbital)
         
         camera.updateProjectionMatrix();
         camera.updateMatrixWorld();
@@ -3282,12 +3809,14 @@ export default function ScrollScene({
         step++;
         introTimeoutRef.current = window.setTimeout(animateStep, ANIMATION_STEP_INTERVAL);
       } else {
-        // Ensure camera is exactly at INTRO_END_POS
+        // Ensure camera is exactly at INTRO_END_POS with correct FOV
         camera.position.copy(INTRO_END_POS);
-        camera.lookAt(cubePos.current);
+        camera.lookAt(0, 10, 0);  // ✅ FIX: Match orbital lookAt height (not ground level)
+        camera.fov = CAMERA_FOV;  // Ensure FOV matches orbital camera
         camera.updateProjectionMatrix();
         camera.updateMatrixWorld();
         renderer.render(scene, camera);
+        
         // Final intro camera position into debug
         if (setDebugInfo) {
           setDebugInfo((prev: any) => ({
@@ -3322,22 +3851,18 @@ export default function ScrollScene({
         introCompletedRef.current = true;
         hasIntroRef.current = true;
         onIntroComplete?.(); // Call intro complete callback
-        console.log('Intro completed');
+        introCompletedRef.current = true; // Mark intro as completed
+        console.log('✅ Intro completed - Orbital camera starting');
         
         // CRITICAL: Update journeyStartPosition to reflect where intro actually ended
         // This ensures the panel shows the correct main path position
         if (cameraStateRef.current) {
           cameraStateRef.current.journeyStartPosition.copy(INTRO_END_POS);
           cameraStateRef.current.mainPathPosition.copy(INTRO_END_POS);
-          console.log('🎯 UPDATED journeyStartPosition after intro completion:', {
-            journeyStartPosition: cameraStateRef.current.journeyStartPosition,
-            mainPathPosition: cameraStateRef.current.mainPathPosition,
-            INTRO_END_POS: INTRO_END_POS
-          });
         }
 
         // Initialize GSAP curve to start at first camera path point
-        if (!WITH_ORBITAL && cameraRef.current && rendererRef.current && sceneRef.current) {
+        if (cameraRef.current && rendererRef.current && sceneRef.current) {
           // Only create curve if we have valid camera points
           if (gsapCameraPoints && gsapCameraPoints.length > 0) {
             // Use the camera points directly without prepending current position
@@ -3345,6 +3870,17 @@ export default function ScrollScene({
             
             // Set camera to the first point of the path
             const firstPoint = gsapCameraPoints[0];
+            console.log('🌀 [Orbital Start] First waypoint position:', {
+              x: firstPoint.x.toFixed(2),
+              y: firstPoint.y.toFixed(2),
+              z: firstPoint.z.toFixed(2)
+            });
+            console.log('🌀 [Orbital Start] INTRO_END_POS:', {
+              x: INTRO_END_POS.x.toFixed(2),
+              y: INTRO_END_POS.y.toFixed(2),
+              z: INTRO_END_POS.z.toFixed(2)
+            });
+            console.log('🌀 [Orbital Start] Store orbital height:', storeOrbitalHeight);
             camera.position.copy(firstPoint);
           } else {
             return; // Skip intro if no valid path
@@ -3356,6 +3892,7 @@ export default function ScrollScene({
           gsapPathInitializedRef.current = true;
           pathProgressRef.current.t = 0;
           // Add visible path in the scene
+          console.log('🎨 [Intro Complete] Calling addPathVisuals with curve:', gsapCurveRef.current);
           addPathVisuals(gsapCurveRef.current);
           // Render first frame of path immediately
           updateCameraAlongCurve(cameraRef.current, 0);
@@ -3373,38 +3910,19 @@ export default function ScrollScene({
     // Set start time on first call
     if (startTimeRef.current === null) {
       startTimeRef.current = Date.now();
-      console.log('🚨 STILL IMAGE RENDER DETECTED - Animation starting');
     }
     
-    // Get scroll information
+    // TIME-BASED orbital animation (infinite rotation, ignore scroll)
+    const elapsedTime = (Date.now() - startTimeRef.current) * 0.001;
+    const angle = (elapsedTime * ORBITAL_SPEED);
+    const radius = 50; // Distance from center
+    
+    // Update scroll progress for marker descriptions (but don't use it for camera)
     const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
     const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
     const progress = scrollHeight > 0 ? scrollTop / scrollHeight : 0;
     const progressPercent = progress * 100;
-    
-    // Update scroll progress for marker descriptions
     setScrollProgress(progress);
-    
-    // Calculate orbital position based on scroll when intro is complete
-    let angle, radius;
-    if (introCompletedRef.current && WITH_INTRO) {
-      // Scroll-based orbital animation
-      // Start from the exact intro end position (0 degrees for X=50, Z=0)
-      const introEndAngle = 0; // Since INTRO_END_POS is (50, 25, 0), angle is 0
-      // Start from intro end angle and add scroll progress
-      angle = introEndAngle + (progress * Math.PI * 2);
-      const introEndRadius = 50; // Distance from center
-      radius = introEndRadius;
-    } else {
-      // Time-based orbital animation (for non-intro mode or during intro)
-      const elapsedTime = (Date.now() - startTimeRef.current) * 0.001;
-      // Start from the exact intro end position (0 degrees for X=50, Z=0)
-      const introEndAngle = 0; // Since INTRO_END_POS is (50, 25, 0), angle is 0
-      // Start from intro end angle and add time-based movement
-      angle = introEndAngle + (elapsedTime * ORBITAL_SPEED);
-      const introEndRadius = 50; // Distance from center
-      radius = introEndRadius;
-    }
     
     // Calculate orbital position
     const orbitalX = Math.cos(angle) * radius;
@@ -3430,7 +3948,7 @@ export default function ScrollScene({
       scrollHeight,
       progress,
       progressPercent,
-      scrollPercentage: scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0,
+      scrollPercentage: progressPercent,
       windowHeight: window.innerHeight,
       windowWidth: window.innerWidth,
       currentSection
@@ -3451,138 +3969,10 @@ export default function ScrollScene({
     renderer.render(scene, camera);
   };
 
-  // Loader overlay helpers
-  const createLoaderOverlay = () => {
-    if (typeof window === 'undefined') return;
-    if (loaderOverlayRef.current) return;
-    
-    // Don't show loader if preloader is still active
-    const preloader = document.querySelector('[data-preloader]');
-    if (preloader) {
-      console.log('[LoaderOverlay] Preloader still active, skipping loader creation');
-      return;
-    }
-
-    // Additional check: don't show loader if preloader has just completed
-    const preloaderCompleted = sessionStorage.getItem('preloader-completed');
-    if (preloaderCompleted) {
-      console.log('[LoaderOverlay] Preloader recently completed, skipping loader creation');
-      return;
-    }
-
-    // Inject keyframes once for indeterminate animation
-    if (!loaderStyleRef.current) {
-      const styleEl = document.createElement('style');
-      styleEl.textContent = `@keyframes loaderIndeterminate{0%{background-position:0 0}100%{background-position:200% 0}}`;
-      document.head.appendChild(styleEl);
-      loaderStyleRef.current = styleEl;
-    }
-
-    const overlay = document.createElement('div');
-    overlay.style.position = 'fixed';
-    overlay.style.top = '0';
-    overlay.style.left = '0';
-    overlay.style.width = '100%';
-    overlay.style.height = '12px';
-    overlay.style.background = 'rgba(0,0,0,0.5)';
-    overlay.style.zIndex = '2147483647';
-    overlay.style.boxShadow = '0 2px 8px rgba(0,0,0,0.35)';
-    overlay.style.pointerEvents = 'none';
-
-    const bar = document.createElement('div');
-    bar.style.height = '100%';
-    bar.style.width = '0%';
-    bar.style.background = 'linear-gradient(90deg,#22c55e,#06b6d4,#3b82f6)';
-    bar.style.backgroundSize = '200% 100%';
-    bar.style.transition = 'width 120ms ease-out';
-
-    overlay.appendChild(bar);
-
-    const pct = document.createElement('h1');
-    pct.style.position = 'fixed';
-    pct.style.top = '56px'; // move further below the bar
-    pct.style.left = '50%';
-    pct.style.transform = 'translateX(-50%)';
-    pct.style.padding = '8px 14px';
-    pct.style.borderRadius = '10px';
-    pct.style.fontFamily = 'monospace';
-    pct.style.fontSize = '24px';
-    pct.style.fontWeight = '700';
-    pct.style.letterSpacing = '0.5px';
-    pct.style.color = '#fff';
-    pct.style.background = 'rgba(0,0,0,0.7)';
-    pct.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
-    pct.style.pointerEvents = 'none';
-    pct.textContent = '0%';
-
-    // Separate info div mirroring loader numbers
-    const infoDiv = document.createElement('div');
-    infoDiv.style.position = 'fixed';
-    infoDiv.style.top = '96px';
-    infoDiv.style.left = '50%';
-    infoDiv.style.transform = 'translateX(-50%)';
-    infoDiv.style.padding = '6px 12px';
-    infoDiv.style.borderRadius = '8px';
-    infoDiv.style.fontFamily = 'monospace';
-    infoDiv.style.fontSize = '14px';
-    infoDiv.style.color = '#fff';
-    infoDiv.style.background = 'rgba(0,0,0,0.6)';
-    infoDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.25)';
-    infoDiv.style.pointerEvents = 'none';
-    infoDiv.style.zIndex = '2147483647';
-    infoDiv.textContent = 'Percent: 0% | Loaded: N/A | Total: N/A';
-
-    document.body.appendChild(overlay);
-    document.body.appendChild(pct);
-    document.body.appendChild(infoDiv);
-
-    loaderOverlayRef.current = overlay;
-    loaderBarRef.current = bar;
-    loaderTextRef.current = pct;
-    loaderInfoRef.current = infoDiv;
-    loaderLastPercentRef.current = 0;
-
-    // Keep bar width in sync with window width
-    loaderResizeHandlerRef.current = () => {
-      const percent = loaderLastPercentRef.current || 0;
-      if (loaderBarRef.current) {
-        const px = Math.max(0, (window.innerWidth * percent) / 100);
-        loaderBarRef.current.style.width = `${px}px`;
-      }
-    };
-    window.addEventListener('resize', loaderResizeHandlerRef.current);
-
-    console.log('[LoaderOverlay] mounted');
-  };
-
-  const updateLoaderOverlay = (percent: number, loadedBytes?: number, totalBytes?: number | null) => {
-    if (!loaderOverlayRef.current || !loaderBarRef.current || !loaderTextRef.current) return;
-    const clamped = Math.max(0, Math.min(100, percent));
-    loaderLastPercentRef.current = clamped;
-    // determinate mode
-    loaderBarRef.current.style.animation = '';
-    // Width in pixels relative to window width, for precise sync
-    const px = Math.max(0, (window.innerWidth * clamped) / 100);
-    loaderBarRef.current.style.width = `${px}px`;
-
-    // Simple loading text without percentages or totals
-    const fullText = clamped < 100 ? 'Loading...' : 'Complete';
-    loaderTextRef.current.textContent = fullText;
-    if (loaderInfoRef.current) loaderInfoRef.current.textContent = fullText;
-
-    // Also reflect in debug panel if available
-    if (setDebugInfo) {
-      setDebugInfo((prev: any) => ({
-        ...(prev || {}),
-        loaderPercent: clamped,
-        loaderLoadedMB: typeof loadedBytes === 'number' ? bytesToMB(loadedBytes) : undefined,
-        loaderTotalMB: typeof totalBytes === 'number' && totalBytes > 0 ? bytesToMB(totalBytes) : undefined,
-      }));
-    }
-  };
+  // Old DOM-based loader functions - REMOVED
+  // Now using React state and LoaderOverlay component instead
 
   const updateLoaderOverlayProgress = (evt: ProgressEvent<EventTarget>) => {
-    if (!loaderOverlayRef.current || !loaderBarRef.current || !loaderTextRef.current) return;
     const totalKnown = !!loaderTotalBytesRef.current && loaderTotalBytesRef.current > 0;
 
     if ((evt as ProgressEvent).lengthComputable && (evt as ProgressEvent).total > 0) {
@@ -3591,47 +3981,28 @@ export default function ScrollScene({
       loaderLoadedBytesRef.current = loaded;
       loaderTotalBytesRef.current = total;
       const percent = (loaded / total) * 100;
-      loaderLastPercentRef.current = percent;
-      updateLoaderOverlay(percent, loaded, total);
+      setLoaderPercent(percent);
+      setLoaderLoadedMB(loaded / 1024 / 1024);
+      setLoaderTotalMB(total / 1024 / 1024);
     } else if (totalKnown) {
       // Use known total even if event is not lengthComputable
       const loaded = typeof (evt as ProgressEvent).loaded === 'number' ? (evt as ProgressEvent).loaded : loaderLoadedBytesRef.current;
       loaderLoadedBytesRef.current = loaded;
       const total = loaderTotalBytesRef.current as number;
       const percent = Math.min(99, (loaded / total) * 100);
-      loaderLastPercentRef.current = percent;
-      updateLoaderOverlay(percent, loaded, total);
+      setLoaderPercent(percent);
+      setLoaderLoadedMB(loaded / 1024 / 1024);
+      setLoaderTotalMB(total / 1024 / 1024);
     } else {
-      // indeterminate mode: animate bar and show MB loaded
-      loaderBarRef.current.style.animation = 'loaderIndeterminate 1.2s linear infinite';
-      loaderBarRef.current.style.width = '50%';
+      // indeterminate mode: show MB loaded
       const loaded = (evt as ProgressEvent).loaded || 0;
       loaderLoadedBytesRef.current = loaded;
-      const loadedMB = bytesToMB(loaded);
-      loaderTextRef.current.textContent = 'Loading...';
+      setLoaderPercent(50); // Mid-progress for indeterminate
+      setLoaderLoadedMB(loaded / 1024 / 1024);
+      setLoaderTotalMB(null);
     }
   };
 
-  const hideLoaderOverlay = () => {
-    if (loaderOverlayRef.current) {
-      loaderOverlayRef.current.remove();
-      loaderOverlayRef.current = null;
-    }
-    if (loaderTextRef.current) {
-      loaderTextRef.current.remove();
-      loaderTextRef.current = null;
-    }
-    if (loaderInfoRef.current) {
-      loaderInfoRef.current.remove();
-      loaderInfoRef.current = null;
-    }
-    if (loaderResizeHandlerRef.current) {
-      window.removeEventListener('resize', loaderResizeHandlerRef.current);
-      loaderResizeHandlerRef.current = null;
-    }
-    loaderBarRef.current = null;
-    loaderLastPercentRef.current = 0;
-  };
 
   // Theme change listener
   useEffect(() => {
@@ -3710,18 +4081,32 @@ export default function ScrollScene({
     return () => observer.disconnect();
   }, []);
 
-  // Expose camera, renderer, and scene to window for CameraPathEditor3D
+  // Expose camera, renderer, and scene refs to Zustand store and window
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    // Set Zustand store refs (primary method for CameraPathEditor3D)
     if (cameraRef.current) {
-      (window as any).scrollSceneCamera = cameraRef.current;
+      setStoreCameraRef(cameraRef.current)
     }
     if (rendererRef.current) {
-      (window as any).scrollSceneRenderer = rendererRef.current;
+      setStoreRendererRef(rendererRef.current)
     }
     if (sceneRef.current) {
-      (window as any).scrollSceneScene = sceneRef.current;
+      setStoreSceneRef(sceneRef.current)
     }
-  }, []);
+    
+    // Also set window globals for backward compatibility
+    if (cameraRef.current) {
+      (window as any).sceneEditorCamera = cameraRef.current
+    }
+    if (rendererRef.current) {
+      (window as any).sceneEditorRenderer = rendererRef.current
+    }
+    if (sceneRef.current) {
+      (window as any).sceneEditorScene = sceneRef.current
+    }
+  }, [setStoreCameraRef, setStoreRendererRef, setStoreSceneRef]);
 
   // Expose bird view state globally for DockedNavigation
   useEffect(() => {
@@ -3730,6 +4115,16 @@ export default function ScrollScene({
 
   // Main animation loop
   const animate = (camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer, scene: THREE.Scene) => {
+    // CRITICAL: Skip camera updates during waypoint dragging but keep loop running
+    const pauseLoop = (window as any)?.__pauseAnimationLoop === true;
+    if (pauseLoop) {
+      // Keep loop running but skip all camera position updates
+      // Only render current state
+      renderer.render(scene, camera);
+      animationIdRef.current = requestAnimationFrame(() => animate(camera, renderer, scene));
+      return;
+    }
+    
     // Append renderer to DOM on first frame to prevent static render
     if (!renderer.domElement.parentNode) {
       mountRef.current?.appendChild(renderer.domElement);
@@ -3814,12 +4209,7 @@ export default function ScrollScene({
     
     // Only run orbital/GSAP animations when NOT focused on hotspots AND not animating AND not in bird view
     if (!isAnimatingRef.current && !isFocusedOnHotspotRef.current && !isInBirdView && !isTestingCameraRef.current && !isAnimatingToBirdView.current && !isAnimatingFromBirdView.current) {
-      if (WITH_ORBITAL && (introCompletedRef.current || !WITH_INTRO)) {
-        animateOrbital(camera, renderer, scene);
-        // Update main path position when following orbital path
-        cameraStateRef.current.mainPathPosition.copy(camera.position);
-        cameraStateRef.current.isOnMainPath = true;
-      } else if (introCompletedRef.current) {
+      if (introCompletedRef.current || !WITH_INTRO) {
         // Handle bird view rendering first (before scroll path)
         const birdViewLocked = (window as any)?.__birdViewLocked === true;
         if (isInBirdView || isTestingCameraRef.current) {
@@ -3835,13 +4225,25 @@ export default function ScrollScene({
           return;
         }
         
-        // Render GSAP scroll path when orbital is disabled and not in bird view
-        // If bird view is locked or we are dragging editor points, skip updating the camera
+        // Camera animation based on camera type
         const suppressResume = (window as any)?.__suppressCameraResume === true;
         if (!birdViewLocked && !suppressResume) {
+          if (storeCameraType === 'orbital') {
+            // ORBITAL MODE: Auto-increment progress for continuous rotation
+            const autoSpeed = 0.001; // Speed of rotation (higher = faster)
+            pathProgressRef.current.t = (pathProgressRef.current.t + autoSpeed) % 1.0;
+          } else {
+            // PATH MODE: Use actual scroll position
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+            pathProgressRef.current.t = scrollHeight > 0 ? scrollTop / scrollHeight : 0;
+          }
+          
+          // Use same curve system for both modes
           updateCameraAlongCurve(camera, pathProgressRef.current.t);
         }
-        // Update main path position when following GSAP path
+        
+        // Update main path position
         cameraStateRef.current.mainPathPosition.copy(camera.position);
         cameraStateRef.current.isOnMainPath = true;
         
@@ -4008,32 +4410,11 @@ export default function ScrollScene({
             if (cameraStateRef.current.isOnMainPath) {
               cameraStateRef.current.journeyStartPosition.copy(cameraRef.current.position);
             }
-
-            // Throttled debug log of camera path and lookAt targets
-            const now = Date.now();
-            if (now - (lastPathLogTsRef.current || 0) > 200) {
-              lastPathLogTsRef.current = now;
-              try {
-                const pts = (cameraPathData?.cameraPoints || []).map((v: THREE.Vector3) => ({
-                  x: Number(v.x.toFixed(3)),
-                  y: Number(v.y.toFixed(3)),
-                  z: Number(v.z.toFixed(3)),
-                }));
-                const looks = (cameraPathData?.lookAtTargets || []).map((v: THREE.Vector3) => ({
-                  x: Number(v.x.toFixed(3)),
-                  y: Number(v.y.toFixed(3)),
-                  z: Number(v.z.toFixed(3)),
-                }));
-              } catch (e) {
-                // no-op
-              }
-            }
           }
         },
       });
       if (setDebugInfo) {
         const scrollPercentage = sh > 0 ? (st / sh) * 100 : 0;
-        // console.log('🎯 Scroll Debug:', { st, sh, scrollPercentage, t, progressPercent: t * 100 });
         setDebugInfo((prev: any) => ({ 
           ...(prev || {}), 
           progress: t, 
@@ -4045,30 +4426,43 @@ export default function ScrollScene({
       }
     };
     window.addEventListener('scroll', onScroll, { passive: true } as any);
-    onScroll();
-    return () => window.removeEventListener('scroll', onScroll as any);
+    onScroll(); // Call once to capture initial state
+    
+    return () => {
+      window.removeEventListener('scroll', onScroll as any);
+    };
   }, [isBirdView]);
 
-  // Restore Bird View after scroll ends
+  // Scroll detection (NO auto-switching - button controls camera type only)
   useEffect(() => {
     let scrollTimeout: NodeJS.Timeout;
     
-    const handleScrollEnd = () => {
+    const handleScroll = () => {
+      // Set scrolling flag
+      (window as any).__isScrolling = true;
+      
+      // Clear previous timeout
       clearTimeout(scrollTimeout);
+      
+      // Set timeout to detect scroll end
       scrollTimeout = setTimeout(() => {
+        // Clear scrolling flag
+        (window as any).__isScrolling = false;
+        
+        // Restore Bird View if it was active before scroll
         if (wasBirdViewActiveBeforeScroll) {
-          console.log('🎯 [ScrollScene] Scroll ended - restoring Bird View');
           setIsBirdView(true);
           setWasBirdViewActiveBeforeScroll(false);
         }
       }, 150); // Wait 150ms after scroll stops
     };
 
-    window.addEventListener('scroll', handleScrollEnd, { passive: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
     
     return () => {
       clearTimeout(scrollTimeout);
-      window.removeEventListener('scroll', handleScrollEnd);
+      window.removeEventListener('scroll', handleScroll);
+      (window as any).__isScrolling = false;
     };
   }, [wasBirdViewActiveBeforeScroll]);
 
@@ -4147,24 +4541,22 @@ export default function ScrollScene({
                 }
               },
               onComplete: () => {
-                console.log('🎯 [ScrollScene] Bird view animation completed');
+                console.log('🎯 [SceneEditor] Bird view animation completed');
                 isAnimatingToBirdView.current = false;
-                isAnimatingRef.current = false; // Clear animation flag
+                isAnimatingRef.current = false;
                 isTestingCameraRef.current = false;
-                // Ensure bird view state persists
-                console.log('🎯 [ScrollScene] Setting isBirdView to true for persistence');
+                
+                // Sync state to store (in case it was triggered from legacy code)
+                if (storeBirdView !== true) {
+                  setStoreBirdView(true)
+                  console.log('🎯 [SceneEditor] Synced bird view state to store: true')
+                }
+                
+                // Update local state for persistence
                 setIsBirdView(true);
                 isBirdViewRef.current = true;
-                // Also set global window variable for immediate access
                 (window as any).__isBirdView = true;
-                console.log('🎯 [ScrollScene] Bird view state set to true for persistence');
-                
-                // Verify the state was set correctly
-                setTimeout(() => {
-                  console.log('🎯 [ScrollScene] Verification - isBirdView state after 100ms:', isBirdView);
-                  console.log('🎯 [ScrollScene] Verification - isBirdViewRef.current after 100ms:', isBirdViewRef.current);
-                  console.log('🎯 [ScrollScene] Verification - window.__isBirdView after 100ms:', (window as any).__isBirdView);
-                }, 100);
+                console.log('🎯 [SceneEditor] Bird view state set to true for persistence');
               }
             });
             console.log('🎯 [ScrollScene] GSAP tween created:', tween);
@@ -4179,9 +4571,8 @@ export default function ScrollScene({
         console.log('🎯 [ScrollScene] Request to return to follow-path - checking persistence');
         
         // If bird view is locked, prevent switching back to camera view
-        const birdViewLocked = (window as any)?.__birdViewLocked === true;
-        if (birdViewLocked) {
-          console.log('🔒 [ScrollScene] Bird view locked - skipping return to follow-path');
+        if (storeBirdViewLocked) {
+          console.log('🔒 [SceneEditor] Bird view locked - skipping return to follow-path');
           return;
         }
         
@@ -4215,17 +4606,22 @@ export default function ScrollScene({
                 }
               },
               onComplete: () => {
-                console.log('🎯 [ScrollScene] Return to follow-path animation completed');
+                console.log('🎯 [SceneEditor] Return to follow-path animation completed');
                 isAnimatingFromBirdView.current = false;
                 isTestingCameraRef.current = false;
-                // IMPORTANT: Set bird view state to false after return animation completes
-                console.log('🎯 [ScrollScene] Setting isBirdView to false after return animation');
+                
+                // Sync state to store
+                if (storeBirdView !== false) {
+                  setStoreBirdView(false)
+                  console.log('🎯 [SceneEditor] Synced bird view state to store: false')
+                }
+                
+                // Update local state
                 setIsBirdView(false);
                 isBirdViewRef.current = false;
-                // Also clear global window variable
                 (window as any).__isBirdView = false;
-                // Clear persistent flag when returning to camera view
                 (window as any).__birdViewPersistent = false;
+                
                 // Ensure camera resumes along the spline at saved t
                 if (introCompletedRef.current && cameraRef.current && sceneRef.current && rendererRef.current) {
                   if (!isFocusedOnHotspotRef.current) {
@@ -4244,67 +4640,6 @@ export default function ScrollScene({
       }
     };
 
-    const handleTestCameraAnimation = () => {
-      if (!cameraRef.current) return;
-      
-      isTestingCameraRef.current = true;
-      
-      // Store current position
-      const currentPos = cameraRef.current.position.clone();
-      const currentLookAt = new THREE.Vector3();
-      cameraRef.current.getWorldDirection(currentLookAt);
-      currentLookAt.add(currentPos);
-      
-      // Animate to test position
-      gsap.to(cameraRef.current.position, {
-        x: 10,
-        y: 60,
-        z: 5,
-        duration: 2,
-        ease: "power2.inOut",
-        onUpdate: () => {
-          if (cameraRef.current) {
-            // Interpolate lookAt target
-            const progress = gsap.getProperty(cameraRef.current.position, "x") as number;
-            const normalizedProgress = (progress - currentPos.x) / (10 - currentPos.x);
-            const lookAtX = currentLookAt.x + (0 - currentLookAt.x) * normalizedProgress;
-            const lookAtY = currentLookAt.y + (0 - currentLookAt.y) * normalizedProgress;
-            const lookAtZ = currentLookAt.z + (0 - currentLookAt.z) * normalizedProgress;
-            cameraRef.current.lookAt(lookAtX, lookAtY, lookAtZ);
-          }
-        },
-        onComplete: () => {
-          // Return to original position after 2 seconds
-          setTimeout(() => {
-            if (cameraRef.current) {
-              gsap.to(cameraRef.current.position, {
-              x: currentPos.x,
-              y: currentPos.y,
-              z: currentPos.z,
-              duration: 2,
-              ease: "power2.inOut",
-              onUpdate: () => {
-                if (cameraRef.current) {
-                  cameraRef.current.lookAt(currentLookAt);
-                }
-              },
-              onComplete: () => {
-                isTestingCameraRef.current = false;
-                // Reset to current scroll position
-                setTimeout(() => {
-                  if (cameraRef.current && sceneRef.current && rendererRef.current) {
-                    updateCameraAlongCurve(cameraRef.current, pathProgressRef.current.t);
-                    rendererRef.current.render(sceneRef.current, cameraRef.current);
-                  }
-                }, 100);
-              }
-            });
-            }
-          }, 2000);
-        }
-      });
-    };
-
     const loadCollaborativeSceneConfig = async (sceneConfigId: string) => {
       try {
         console.log('🤝 [ScrollScene] Loading collaborative scene config:', sceneConfigId);
@@ -4314,6 +4649,15 @@ export default function ScrollScene({
           console.log('🤝 [ScrollScene] Scene config already loaded, skipping reload');
           return;
         }
+        
+        // Clear existing model before loading new config
+        clearCurrentModel();
+        
+        // Show loader immediately (FIX for hang at 0%)
+        setShowLoader(true);
+        setLoaderPercent(0);
+        setLoaderLoadedMB(0);
+        setLoaderTotalMB(null);
         
         // Get the scene config directly by ID using the service
         const sceneConfigService = SceneConfigService.getInstance();
@@ -4342,22 +4686,49 @@ export default function ScrollScene({
             DEFAULT_MODEL_PATH: (config as any).model_path
           };
           
+          // CRITICAL: Reset first load flag so the model actually loads
+          isFirstConfigLoad.current = false;
+          
           // Update the scene config with the transformed config
           setUserSceneConfig(transformedConfig as any);
           
-          // Update camera path data
+          // Update camera path data and sync to Zustand
           setCameraPathData({
             cameraPoints: followPath.camera_points || [],
             lookAtTargets: followPath.look_at_targets || []
           });
           
-          console.log('🤝 [ScrollScene] Collaborative model loaded successfully');
-          console.log('🤝 [ScrollScene] Config:', config.config_name);
-          console.log('🤝 [ScrollScene] Model path:', (config as any).model_path);
-          console.log('🤝 [ScrollScene] Camera points:', followPath.camera_points?.length || 0);
-          console.log('🤝 [ScrollScene] LookAt targets:', followPath.look_at_targets?.length || 0);
+          // Store original architect path for toggling
+          originalArchitectPathRef.current = {
+            cameraPoints: followPath.camera_points || [],
+            lookAtTargets: followPath.look_at_targets || []
+          };
+          
+          // CRITICAL: Sync to Zustand store immediately
+          setStoreCameraPoints(followPath.camera_points || [])
+          setStoreLookAtTargets(followPath.look_at_targets || [])
+          console.log('💾 [SceneEditor] Saved architect path for toggle:', followPath.camera_points?.length, 'waypoints');
+          
+          console.log('✅ [ScrollScene] Collaborative model loaded successfully!');
+          console.log('✅ [ScrollScene] Config:', config.config_name);
+          console.log('✅ [ScrollScene] Model path:', (config as any).model_path);
+          console.log('✅ [ScrollScene] Using path:', followPath.path_name);
+          console.log('✅ [ScrollScene] Camera waypoints:', followPath.camera_points?.length || 0);
+          console.log('✅ [ScrollScene] LookAt targets:', followPath.look_at_targets?.length || 0);
+          console.log('✅ [ScrollScene] Orbital height from config:', config.orbital_height);
+          console.log('✅ [ScrollScene] Synced to Zustand store');
+          
+          // Verify the orbital configuration
+          if (followPath.camera_points && followPath.camera_points.length > 0) {
+            const firstPoint = followPath.camera_points[0]
+            console.log('🎯 [ScrollScene] First waypoint position:', firstPoint)
+            console.log('🎯 [ScrollScene] Camera will orbit at height:', firstPoint.y)
+          }
+          
+          console.log('🎯 [ScrollScene] ========== MODEL LOAD COMPLETE ==========');
+          console.log('🎯 [ScrollScene] Model should now load and start orbital animation');
         } else {
-          console.error('🤝 [ScrollScene] Missing follow path or model path:', {
+          console.error('❌ [ScrollScene] Missing follow path or model path:', {
             hasFollowPath: !!followPath,
             modelPath: (config as any).model_path
           });
@@ -4367,37 +4738,235 @@ export default function ScrollScene({
       }
     };
 
+    const loadUploadedModel = async (modelPath: string, projectName?: string) => {
+      try {
+        console.log('📤 [ScrollScene] Loading uploaded model:', modelPath);
+        
+        if (!sceneRef.current) {
+          console.warn('📤 [ScrollScene] Scene not ready for model loading');
+          return;
+        }
+        
+        // Reset first load flag so future config updates work normally
+        isFirstConfigLoad.current = false;
+
+        // Clear existing model first
+        clearCurrentModel();
+
+        // Show loader immediately
+        setShowLoader(true);
+        setLoaderPercent(0);
+        setLoaderLoadedMB(0);
+        setLoaderTotalMB(null);
+
+        const modelLoader = ModelLoader.getInstance();
+        
+        console.log('📤 [ScrollScene] Model loading details:');
+        console.log('  - Model Path:', modelPath);
+        console.log('  - Project Name:', projectName || 'Unknown');
+        
+        const result = await modelLoader.loadModel({
+          modelPath,
+          targetSize: SCENE_CONFIG.TARGET_SIZE,
+          rotationY: SCENE_CONFIG.ROTATION_Y,
+          scaleMultiplier: SCENE_CONFIG.SCALE_MULTIPLIER,
+          enableContourEdges: true,
+          forceReload: true,  // Always reload uploaded models to detect hotspots
+          enableShadows: true,
+          onProgress: (progress, loaded, total) => {
+            setLoaderPercent(progress);
+            setLoaderLoadedMB(loaded / 1024 / 1024);
+            setLoaderTotalMB(total ? total / 1024 / 1024 : null);
+          },
+          onComplete: () => {
+            setShowLoader(false);
+          },
+          onError: (error) => {
+            console.error('📤 [ScrollScene] ModelLoader error:', error);
+            setShowLoader(false);
+            createFloorPlanPlaceholder();
+          }
+        });
+
+        const { model, clickableObjects, boundingSphere } = result;
+        
+        // Add model to scene
+        if (sceneRef.current && model) {
+          sceneRef.current.add(model);
+          console.log('📤 [ScrollScene] Model added to scene');
+        }
+        
+        // Store hotspots for interaction
+        clickableObjectsRef.current = clickableObjects;
+        
+        console.log('📤 [ScrollScene] Uploaded model loaded successfully:', {
+          modelPath,
+          projectName,
+          hotspotsFound: clickableObjects.length
+        });
+        
+        // Re-add path visuals after loading new model
+        if (gsapCurveRef.current) {
+          console.log('🎨 [loadUploadedModel] Re-adding path visuals after model load');
+          addPathVisuals(gsapCurveRef.current);
+          
+          // Force render to show path visuals and model
+          if (rendererRef.current && cameraRef.current) {
+            rendererRef.current.render(sceneRef.current, cameraRef.current);
+          }
+        }
+        
+      } catch (error) {
+        console.error('📤 [ScrollScene] Error loading uploaded model:', error);
+        setShowLoader(false);
+      }
+    };
+
     const handleLoadCollaborativeModel = (event: CustomEvent) => {
-      console.log('🤝 [ScrollScene] Load collaborative model event received:', event.detail);
-      const { sceneConfigId, clientId } = event.detail;
+      console.log('🤝 [ScrollScene] ========== LOAD COLLABORATIVE MODEL EVENT ==========');
+      console.log('🤝 [ScrollScene] Event detail:', event.detail);
+      
+      const { sceneConfigId, clientId, enableCameraControls } = event.detail;
       
       if (!sceneConfigId) {
-        console.error('🤝 [ScrollScene] No scene config ID provided in event');
+        console.error('❌ [ScrollScene] No scene config ID provided in event');
         return;
       }
       
+      console.log('🤝 [ScrollScene] Loading scene config:', sceneConfigId);
+      console.log('🤝 [ScrollScene] Client ID:', clientId);
+      console.log('🤝 [ScrollScene] Enable controls:', enableCameraControls);
+      
       // Load the scene configuration by ID
       loadCollaborativeSceneConfig(sceneConfigId);
+      
+      // Enable camera controls if requested (for architect editing)
+      if (enableCameraControls) {
+        console.log('🎛️ [ScrollScene] Enabling camera controls for architect');
+        
+        // Enable editor mode in Zustand store (this will enable CameraPathEditor3D)
+        const { setIsEditorEnabled } = useCameraStore.getState();
+        setIsEditorEnabled(true);
+        
+        console.log('✅ [ScrollScene] Camera controls enabled');
+      } else {
+        console.log('👁️ [ScrollScene] View-only mode (no camera controls)');
+      }
+      
+      console.log('🤝 [ScrollScene] ========== EVENT PROCESSING COMPLETE ==========');
     };
 
-    console.log('🎯 [ScrollScene] Adding bird-view-animation event listener');
-    console.log('🎯 [ScrollScene] Current isBirdView state:', isBirdView);
-    console.log('🎯 [ScrollScene] Window object available:', typeof window);
-    console.log('🎯 [ScrollScene] addEventListener available:', typeof window.addEventListener);
+    const handleLoadUploadedModel = (event: CustomEvent) => {
+      console.log('📤 [ScrollScene] ========== LOAD UPLOADED MODEL EVENT ==========');
+      console.log('📤 [ScrollScene] Event detail:', event.detail);
+      
+      const { modelPath, projectName, assetId, rawModelOnly } = event.detail;
+      
+      if (!modelPath) {
+        console.error('❌ [ScrollScene] No model path provided in event');
+        return;
+      }
+      
+      if (rawModelOnly) {
+        console.log('📦 [ScrollScene] RAW MODEL MODE - Loading without architect customizations');
+        console.log('📦 [ScrollScene] Model path:', modelPath);
+        console.log('📦 [ScrollScene] No hotspots, no custom paths, just the uploaded file');
+      } else {
+        console.log('🎨 [ScrollScene] FULL MODE - Loading with all customizations');
+      }
+      
+      // Load the uploaded model directly
+      loadUploadedModel(modelPath, projectName);
+      
+      console.log('📤 [ScrollScene] ========== EVENT PROCESSING COMPLETE ==========');
+    };
+
+    
+    const handleReloadCurrentModel = (event: any) => {
+      console.log('🔄 [ScrollScene] Reload current model event received:', event.detail);
+      // Trigger a reload of the model using the current scene configuration
+      if (userSceneConfig) {
+        console.log('🔄 [ScrollScene] Reloading model with current config:', userSceneConfig.config_name);
+        loadModelWithService();
+      } else {
+        console.warn('🔄 [ScrollScene] No user scene config available for reload');
+      }
+    };
+
+    console.log('🎧 [EVENT LISTENER] Registered: bird-view-animation');
+    console.log('🎧 [EVENT LISTENER] Registered: load-collaborative-model');
+    console.log('🎧 [EVENT LISTENER] Registered: load-uploaded-model');
+    console.log('🎧 [EVENT LISTENER] Registered: reload-current-model');
+    console.log('✅ [ZUSTAND] editor-toggle, look-at-toggle, height-panel-toggle, clear-scene, rotate-model now use Zustand store');
     
     window.addEventListener('bird-view-animation', handleBirdViewAnimation as EventListener);
-    window.addEventListener('test-camera-animation', handleTestCameraAnimation);
     window.addEventListener('load-collaborative-model', handleLoadCollaborativeModel);
-    
-    console.log('🎯 [ScrollScene] Event listeners added successfully');
+    window.addEventListener('load-uploaded-model', handleLoadUploadedModel);
+    window.addEventListener('reload-current-model', handleReloadCurrentModel);
     
     return () => {
-      console.log('🎯 [ScrollScene] Removing bird-view-animation event listener');
+      console.log('🔌 [EVENT LISTENER] Removed: 4 custom event listeners');
       window.removeEventListener('bird-view-animation', handleBirdViewAnimation as EventListener);
-      window.removeEventListener('test-camera-animation', handleTestCameraAnimation);
       window.removeEventListener('load-collaborative-model', handleLoadCollaborativeModel);
+      window.removeEventListener('load-uploaded-model', handleLoadUploadedModel);
+      window.removeEventListener('reload-current-model', handleReloadCurrentModel);
     };
   }, []); // Empty dependency array to run only once
+  
+  // ✅ ZUSTAND SUBSCRIPTIONS: Replace event listeners with Zustand store subscriptions
+  // Subscribe to clearSceneRequested
+  useEffect(() => {
+    if (clearSceneRequested) {
+      console.log('🗑️ [ZUSTAND] Clear scene requested');
+      clearCurrentModel();
+      clearClearSceneRequest();
+    }
+  }, [clearSceneRequested, clearClearSceneRequest]);
+  
+  // Subscribe to rotateModelRequested
+  useEffect(() => {
+    if (rotateModelRequested) {
+      console.log('🔄 [ZUSTAND] Rotate model requested, angle:', rotationAngle);
+      
+      if (!sceneRef.current) {
+        console.warn('🔄 [ZUSTAND] Scene not ready');
+        clearRotateModelRequest();
+        return;
+      }
+      
+      const angle = rotationAngle;
+      
+      // Find the loaded model
+      const model = sceneRef.current.getObjectByName('floorPlan');
+      if (model) {
+        const currentRotation = model.rotation.y;
+        const targetRotation = currentRotation + angle;
+        
+        console.log('🔄 [ZUSTAND] Animating rotation from', (currentRotation * 180 / Math.PI).toFixed(2), 'to', (targetRotation * 180 / Math.PI).toFixed(2), 'degrees');
+        
+        // Animate rotation with GSAP
+        gsap.to(model.rotation, {
+          y: targetRotation,
+          duration: 0.5,
+          ease: 'power2.inOut',
+          onUpdate: () => {
+            // Force render during animation
+            if (rendererRef.current && cameraRef.current && sceneRef.current) {
+              rendererRef.current.render(sceneRef.current, cameraRef.current);
+            }
+          },
+          onComplete: () => {
+            console.log('🔄 [ZUSTAND] Rotation complete. New rotation Y:', model.rotation.y.toFixed(3), 'radians', '(', (model.rotation.y * 180 / Math.PI).toFixed(2), 'degrees)');
+            clearRotateModelRequest();
+          }
+        });
+      } else {
+        console.warn('🔄 [ZUSTAND] No model found to rotate');
+        console.log('🔄 [ZUSTAND] Scene children:', sceneRef.current.children.map(c => ({ name: c.name, type: c.type })));
+        clearRotateModelRequest();
+      }
+    }
+  }, [rotateModelRequested, rotationAngle, clearRotateModelRequest])
 
   // Mouse event handlers for hotspot interaction
   useEffect(() => {
@@ -4603,8 +5172,14 @@ export default function ScrollScene({
             "Hotspot_geo_kitchen_countertop": "Kitchen Countertops",
             "Hotspot_geo_coffee_table": "Furniture",
             "Hotspot_geo_island": "Kitchen Islands",
+            "Hotspot_balcony_wall": "Balcony Wall",
             "Hotspot_geo_backsplash": "Kitchen Backsplashes",
-            "Hotspot_geo_bathroom_walls": "Bathroom Walls"
+            "Hotspot_geo_bathroom_walls": "Bathroom Walls",
+            "Hotspot_geo_bathroom_wall_1": "Bathroom Wall 1",
+            "Hotspot_geo_bathroom_wall_2": "Bathroom Wall 2",
+            "Hotspot_geo_bathroom_wall_3": "Bathroom Wall 3",
+            "Hotspot_geo_bathroom_wall_4": "Bathroom Wall 4",
+            "Hotspot_tv_wall": "TV Accent Wall"
           };
           
           const allCategories = { ...fallbackCategories, ...HOTSPOT_CATEGORIES };
@@ -4808,13 +5383,31 @@ export default function ScrollScene({
     (window as any).__originalMouseMoveListener = throttledMouseMove;
     (window as any).__originalClickListener = handleClick;
     
+    console.log('🎧 [EVENT LISTENER] Registered: mousemove (throttledMouseMove for raycasting)');
+    console.log('🎧 [EVENT LISTENER] Registered: click (handleClick for hotspots)');
     window.addEventListener('mousemove', throttledMouseMove);
     window.addEventListener('click', handleClick);
 
-    // Cleanup
-    return () => {
+    // Listen for gallery-closed event to re-enable listeners
+    const handleGalleryClosed = () => {
+      console.log('🎯 [GALLERY CLOSED] Re-registering hotspot event listeners');
+      // Remove existing listeners
       window.removeEventListener('mousemove', throttledMouseMove);
       window.removeEventListener('click', handleClick);
+      // Re-register immediately
+      window.addEventListener('mousemove', throttledMouseMove);
+      window.addEventListener('click', handleClick);
+      console.log('  ✅ Hotspot listeners re-registered');
+    };
+    
+    window.addEventListener('gallery-closed', handleGalleryClosed);
+
+    // Cleanup
+    return () => {
+      console.log('🔌 [EVENT LISTENER] Removed: mousemove/click (raycasting + hotspots)');
+      window.removeEventListener('mousemove', throttledMouseMove);
+      window.removeEventListener('click', handleClick);
+      window.removeEventListener('gallery-closed', handleGalleryClosed);
       // Clean up stored references
       delete (window as any).__originalMouseMoveListener;
       delete (window as any).__originalClickListener;
@@ -5781,93 +6374,16 @@ export default function ScrollScene({
         </div>
       )}
 
-      {((authRole === 'admin' || authRole === 'architect')) && (
-      <CameraPathEditor3D
-        cameraPoints={cameraPathData?.cameraPoints ? cameraPathData.cameraPoints.map((point: THREE.Vector3) => ({
-          x: point.x,
-          y: point.y,
-          z: point.z
-        })) : []}
-        lookAtTargets={cameraPathData?.lookAtTargets && cameraPathData.lookAtTargets.length > 0 ? cameraPathData.lookAtTargets.map((target: THREE.Vector3) => ({
-          x: target.x,
-          y: target.y,
-          z: target.z
-        })) : (() => {
-          // Generate default 9 lookAt targets in a circle with 100px radius
-          const defaultTargets: Array<{ x: number; y: number; z: number }> = [];
-          const numPoints = 9;
-          const radius = 100 / 4; // Divide by scale factor (4) to convert px to world units
-          for (let i = 0; i < numPoints; i++) {
-            const angle = (i / numPoints) * Math.PI * 2;
-            defaultTargets.push({
-              x: Math.cos(angle) * radius,
-              y: 0,
-              z: Math.sin(angle) * radius
-            });
-          }
-          return defaultTargets;
-        })()}
-        activePathId={activePathId}
-        isBirdView={isBirdView}
-        isEditorEnabled={isEditorEnabled}
-        onPointsChange={(newPoints) => {
-          const vector3Points = newPoints.map(point => new THREE.Vector3(point.x, point.y, point.z));
-          
-          // Set manual edit mode to prevent backend from overriding edits
-          setIsManualEditMode(true);
-          
-          setCameraPathData(prev => ({
-            ...prev,
-            cameraPoints: vector3Points
-          }));
-          
-          // Immediately rebuild the movement curve and update the camera along current progress
-          try {
-            if (vector3Points && vector3Points.length > 1) {
-              gsapCurveRef.current = new THREE.CatmullRomCurve3(vector3Points, false, 'catmullrom', 0.1);
-            } else {
-              gsapCurveRef.current = null;
-            }
-
-            // Only update camera position if bird view is NOT locked
-            const birdViewLocked = (window as any)?.__birdViewLocked === true;
-            if (cameraRef.current && rendererRef.current && sceneRef.current && gsapCurveRef.current && !birdViewLocked) {
-              // Re-apply camera along the current path progress to reflect height changes immediately
-              updateCameraAlongCurve(cameraRef.current, pathProgressRef.current.t);
-              rendererRef.current.render(sceneRef.current, cameraRef.current);
-            }
-          } catch (e) {
-            console.error('❌ Failed to rebuild movement curve after points change:', e);
-          }
-        }}
-        onLookAtTargetsChange={(newTargets) => {
-          const vector3Targets = newTargets.map(target => new THREE.Vector3(target.x, target.y, target.z));
-          setCameraPathData(prev => ({
-            ...prev,
-            lookAtTargets: vector3Targets
-          }));
-          // Immediately rebuild look-at curve and update camera to reflect changes live
-          try {
-            gsapLookAtTargetsRef.current = vector3Targets;
-            if (vector3Targets && vector3Targets.length > 1) {
-              gsapLookCurveRef.current = new THREE.CatmullRomCurve3(vector3Targets, false, 'catmullrom', 0.1);
-            } else {
-              gsapLookCurveRef.current = null;
-            }
-            // Only update camera position if bird view is NOT locked
-            const birdViewLocked = (window as any)?.__birdViewLocked === true;
-            if (cameraRef.current && rendererRef.current && sceneRef.current && gsapCurveRef.current && !birdViewLocked) {
-              // Re-apply camera along current path progress using the new look-at curve
-              updateCameraAlongCurve(cameraRef.current, pathProgressRef.current.t);
-              rendererRef.current.render(sceneRef.current, cameraRef.current);
-            }
-          } catch (e) {
-            console.error('❌ Failed to rebuild look-at curve after targets change:', e);
-          }
-        }}
-        onBirdViewToggle={() => {}} // Let the custom event handle the state change
-        onToggleEditor={() => setIsEditorEnabled(!isEditorEnabled)}
-      />)}
+      {/* CameraPathEditor3D now integrated into DockedNavigation panel */}
+      
+      {/* Loader Overlay Portal - Shows real loading progress */}
+      {showLoader && (
+        <LoaderOverlay 
+          percent={loaderPercent} 
+          loadedMB={loaderLoadedMB} 
+          totalMB={loaderTotalMB} 
+        />
+      )}
     </>
   );
 } 

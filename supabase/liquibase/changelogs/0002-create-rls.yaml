@@ -84,7 +84,17 @@ databaseChangeLog:
               DROP POLICY IF EXISTS scene_configs_read_own ON public.scene_design_configs;
               CREATE POLICY scene_configs_read_own ON public.scene_design_configs
                 FOR SELECT TO authenticated
-                USING (user_id = auth.uid() OR client_id = auth.uid() OR architect_id = auth.uid());
+                USING (
+                  user_id = auth.uid() 
+                  OR client_id = auth.uid() 
+                  OR architect_id = auth.uid()
+                  OR EXISTS (
+                    SELECT 1 FROM architect_clients ac
+                    WHERE ac.architect_id = scene_design_configs.architect_id
+                    AND ac.client_id = auth.uid()
+                    AND ac.status = ''active''::public.project_status
+                  )
+                );
 
               DROP POLICY IF EXISTS scene_configs_insert_own ON public.scene_design_configs;
               CREATE POLICY scene_configs_insert_own ON public.scene_design_configs

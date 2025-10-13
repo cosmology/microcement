@@ -15,6 +15,7 @@ export interface ModelLoadOptions {
   scaleMultiplier?: number;
   enableContourEdges?: boolean;
   enableShadows?: boolean;
+  forceReload?: boolean;  // Skip cache and reload model
   onProgress?: (progress: number, loaded: number, total: number) => void;
   onComplete?: () => void;
   onError?: (error: Error) => void;
@@ -68,27 +69,45 @@ export class ModelLoader {
    * Load a 3D model from the specified path
    */
   public async loadModel(options: ModelLoadOptions): Promise<ModelLoadResult> {
-    const {
-      modelPath,
-      targetSize = 30,
-      rotationY = Math.PI / 2,
+    const { 
+      modelPath, 
+      targetSize = 30, 
+      rotationY = Math.PI / 2, 
       scaleMultiplier = 2,
       enableContourEdges = true,
       enableShadows = true,
+      forceReload = false,
       onProgress,
       onComplete,
       onError
     } = options;
 
-    // Check if model is already loaded
-    if (this.loadedModels.has(modelPath)) {
-      console.log(`Model ${modelPath} already loaded, returning cached version`);
-      return this.loadedModels.get(modelPath)!;
+    // Check if model is already loaded (skip if forceReload is true)
+    if (!forceReload && this.loadedModels.has(modelPath)) {
+      const cached = this.loadedModels.get(modelPath)!;
+      console.log(`🔄 Model ${modelPath} already loaded, returning cached version`);
+      console.log(`📦 Cached model has ${cached.clickableObjects.length} hotspots:`, 
+        cached.clickableObjects.map(obj => obj.name));
+      return cached;
+    }
+    
+    if (forceReload && this.loadedModels.has(modelPath)) {
+      console.log(`🔃 Force reload requested, clearing cache for: ${modelPath}`);
+      this.loadedModels.delete(modelPath);
     }
 
     try {
       const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+      const { DRACOLoader } = await import('three/examples/jsm/loaders/DRACOLoader.js');
+      
       const gltfLoader = new GLTFLoader();
+      
+      // Setup Draco decoder for compressed models
+      const dracoLoader = new DRACOLoader();
+      dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+      dracoLoader.setDecoderConfig({ type: 'js' });
+      gltfLoader.setDRACOLoader(dracoLoader);
+      
       const modelUrl = `${modelPath}?cb=${Date.now()}`;
 
       // Get total bytes for progress tracking
@@ -114,7 +133,11 @@ export class ModelLoader {
             gltfLoader.parse(
               data,
               '',
-              resolve,
+              (parsedGltf) => {
+                // Cleanup Draco loader after parsing
+                dracoLoader.dispose();
+                resolve(parsedGltf);
+              },
               reject
             );
           },
@@ -125,7 +148,11 @@ export class ModelLoader {
               onProgress(progress, loaded, totalBytes);
             }
           },
-          reject
+          (error) => {
+            // Cleanup Draco loader on error
+            dracoLoader.dispose();
+            reject(error);
+          }
         );
       });
 
@@ -204,15 +231,33 @@ export class ModelLoader {
   private processHotspots(model: THREE.Object3D, enableContourEdges: boolean): THREE.Object3D[] {
     const clickableObjects: THREE.Object3D[] = [];
     
-    console.log('Starting hotspot collection AFTER transformations...');
+    console.log('🔍 ========== HOTSPOT DETECTION START ==========');
+    console.log('Model name:', model.name);
+    console.log('Model children count:', model.children.length);
+    console.log('Model transformations:', {
+      position: model.position,
+      rotation: model.rotation,
+      scale: model.scale
+    });
     
     // Traverse the transformed model
+    let totalObjects = 0;
+    let meshCount = 0;
+    let hotspotsFound = 0;
+    
     model.traverse((child: any) => {
+      totalObjects++;
+      
+      if (child.isMesh) {
+        meshCount++;
+      }
+
+      
       // Propagate hotspot identity down the hierarchy
       if (child && child.isMesh) {
         let ancestor: THREE.Object3D | null = child.parent;
         while (ancestor) {
-          if (ancestor.name && ancestor.name.includes('Hotspot')) {
+          if (ancestor.name && ancestor.name.toUpperCase().includes('HOTSPOT')) {
             child.userData = child.userData || {};
             if (!child.userData.hotspotName) {
               child.userData.hotspotName = ancestor.name;
@@ -224,9 +269,20 @@ export class ModelLoader {
         }
       }
 
-      // Process hotspot objects
-      if (child.name.includes("Hotspot")) {
-        console.log('Found transformed hotspot:', child.name, 'type:', child.type);
+      // Process hotspot objects (case-insensitive)
+      if (child.name.toUpperCase().includes("HOTSPOT")) {
+        hotspotsFound++;
+        console.log(`🎯 HOTSPOT #${hotspotsFound} FOUND:`, {
+          name: child.name,
+          type: child.type,
+          position: child.position,
+          worldPosition: child.getWorldPosition(new THREE.Vector3()),
+          visible: child.visible,
+          parent: child.parent?.name || 'no parent',
+          isMesh: child.isMesh,
+          hasGeometry: child.geometry ? true : false,
+          hasMaterial: child.material ? true : false
+        });
         clickableObjects.push(child);
         
         // Ensure the hotspot has a material
@@ -274,7 +330,14 @@ export class ModelLoader {
       }
     });
 
-    console.log('Total transformed hotspots collected:', clickableObjects.length);
+    console.log('📊 ========== HOTSPOT DETECTION SUMMARY ==========');
+    console.log('Total objects traversed:', totalObjects);
+    console.log('Total meshes found:', meshCount);
+    console.log('Total hotspots found:', hotspotsFound);
+    console.log('Clickable objects collected:', clickableObjects.length);
+    console.log('Hotspot names:', clickableObjects.map(obj => obj.name));
+    console.log('========================================');
+    
     return clickableObjects;
   }
 

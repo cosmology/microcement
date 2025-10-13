@@ -1,12 +1,20 @@
 'use client'
 
-import { useState } from 'react'
-import { Upload, FolderOpen, Settings, Users, Camera } from 'lucide-react'
-import { UserRole, useUserRole } from '@/hooks/useUserRole'
+import React from 'react'
+import { Upload, FileStack, Settings, Users, Trash2, RotateCw, PanelLeftClose, Boxes, Camera } from 'lucide-react'
+import { UserRole } from '@/hooks/useUserRole'
 import { useTranslations } from 'next-intl'
+import { useDockedNavigationStore } from '@/lib/stores/dockedNavigationStore'
+import { useCameraStore } from '@/lib/stores/cameraStore'
 import ModelsList from './ModelsList'
 import { ArchitectModelsList } from './ArchitectModelsList'
+import ProjectBriefModal from './ProjectBriefModal'
+import UploadsList from './UploadsList'
+import CameraPathEditor3D from './CameraPathEditor3D'
 
+// UI Constants
+const SUBPANEL_WIDTH = 'w-[21rem]' // 800px uniform width for all subpanels
+6
 interface DockedNavigationProps {
   role: UserRole
 }
@@ -18,30 +26,126 @@ interface NavItem {
   onClick?: () => void
 }
 
-export default function DockedNavigation({ role }: DockedNavigationProps) {
-  const [isCollapsed, setIsCollapsed] = useState(true)
-  const [showModelsList, setShowModelsList] = useState(false)
+export default function DockedNavigation({ role, userWithRole }: DockedNavigationProps & { userWithRole?: any }) {
   const t = useTranslations('Dock')
-  const { user: userWithRole } = useUserRole()
+  
+  // Track header height for pushing panels down
+  const [headerHeight, setHeaderHeight] = React.useState(44)
+  
+  // Zustand stores
+  const {
+    isCollapsed,
+    showModelsList,
+    showUploadModal,
+    showUploads: showMyUploads,
+    showCameraControls,
+    setIsCollapsed,
+    setShowUploadModal,
+    setShowModelsList,
+    setShowUploads,
+    setShowCameraControls,
+    openModelsList,
+    openUploads,
+    openUploadModal,
+    openCameraControls,
+  } = useDockedNavigationStore()
+  
+  // Camera store (for editor state and model utilities)
+  const { isEditorEnabled, requestClearScene, requestRotateModel } = useCameraStore()
+
+  // Monitor header visibility - panels stick to top when header is hidden
+  React.useEffect(() => {
+    const updateHeaderHeight = () => {
+      const header = document.getElementById('main-navigation')
+      if (header) {
+        const rect = header.getBoundingClientRect()
+        const headerStyles = window.getComputedStyle(header)
+        const isHeaderHidden = headerStyles.display === 'none' || 
+                               headerStyles.visibility === 'hidden' ||
+                               headerStyles.opacity === '0' ||
+                               rect.bottom <= 0
+        
+        // If header is hidden or scrolled out of view, panels start at top (0)
+        // Otherwise, panels start below header (rect.bottom)
+        const newHeight = isHeaderHidden ? 0 : Math.max(0, rect.bottom)
+        setHeaderHeight(newHeight)
+      }
+    }
+    
+    // Update on mount
+    updateHeaderHeight()
+    
+    // Update on resize and scroll
+    window.addEventListener('resize', updateHeaderHeight)
+    window.addEventListener('scroll', updateHeaderHeight, { passive: true })
+    
+    // Use MutationObserver to detect header visibility changes
+    const header = document.getElementById('main-navigation')
+    if (header) {
+      const observer = new MutationObserver(updateHeaderHeight)
+      observer.observe(header, { 
+        attributes: true, 
+        attributeFilter: ['style', 'class'],
+        childList: true,
+        subtree: true
+      })
+      
+      // Use IntersectionObserver for visibility detection
+      const intersectionObserver = new IntersectionObserver(
+        () => updateHeaderHeight(),
+        { threshold: [0, 0.1, 0.5, 1] }
+      )
+      intersectionObserver.observe(header)
+      
+      return () => {
+        observer.disconnect()
+        intersectionObserver.disconnect()
+        window.removeEventListener('resize', updateHeaderHeight)
+        window.removeEventListener('scroll', updateHeaderHeight)
+      }
+    }
+    
+    return () => {
+      window.removeEventListener('resize', updateHeaderHeight)
+      window.removeEventListener('scroll', updateHeaderHeight)
+    }
+  }, [])
+
+  // Listen for open-upload events from ModelsList (will be replaced with store later)
+  React.useEffect(() => {
+    const handleOpenUpload = () => {
+      openUploadModal()
+    }
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('open-upload', handleOpenUpload)
+      return () => window.removeEventListener('open-upload', handleOpenUpload)
+    }
+  }, [openUploadModal])
 
   const navItems = (): NavItem[] => {
     switch (role) {
       case 'admin':
         return [
-          { icon: Upload, label: 'Upload Models', href: '#upload' },
-          { icon: FolderOpen, label: 'All Models', href: '#models' },
-          { icon: Users, label: 'User Management', href: '#users' },
-          { icon: Settings, label: 'System Settings', href: '#settings' }
+          { icon: Camera, label: 'cameraControls', href: '#camera', onClick: () => { openCameraControls(); setIsCollapsed(true); } },
+          { icon: Boxes, label: 'clientModels', href: '#models', onClick: openModelsList },
+          { icon: FileStack, label: 'uploads', href: '#uploads', onClick: openUploads },
+          { icon: Upload, label: 'uploadModels', href: '#upload', onClick: openUploadModal },
+          { icon: Users, label: 'userManagement', href: '#users' },
+          { icon: Settings, label: 'systemSettings', href: '#settings' }
         ]
       case 'architect':
         return [
-          { icon: FolderOpen, label: 'My Models', href: '#my-models', onClick: () => setShowModelsList(!showModelsList) },
-          { icon: Upload, label: 'Upload Model', href: '#upload' }
+          { icon: Camera, label: 'cameraControls', href: '#camera', onClick: () => { openCameraControls(); setIsCollapsed(true); } },
+          { icon: Boxes, label: 'clientModels', href: '#my-models', onClick: openModelsList },
+          { icon: FileStack, label: 'uploads', href: '#uploads', onClick: openUploads },
+          { icon: Upload, label: 'uploadModel', href: '#upload', onClick: openUploadModal }
         ]
       case 'end_user':
         return [
-          { icon: Upload, label: 'Upload Project', href: '#upload' },
-          { icon: FolderOpen, label: 'My Models', href: '#models', onClick: () => setShowModelsList(!showModelsList) }
+          { icon: Boxes, label: 'myModels', href: '#models', onClick: openModelsList },
+          { icon: FileStack, label: 'uploads', href: '#uploads', onClick: openUploads },
+          { icon: Upload, label: 'uploadProject', href: '#upload', onClick: openUploadModal }
         ]
       default:
         return []
@@ -50,126 +154,69 @@ export default function DockedNavigation({ role }: DockedNavigationProps) {
 
   if (role === 'guest') return null
 
-  // CameraPathEditor3D action dispatchers
-  const toggleBirdView = (e: React.MouseEvent) => {
+  // Model utility handlers
+  const handleClearScene = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (typeof window !== 'undefined') {
-      // Get current bird view state from ScrollScene
-      const currentBirdView = (window as any).__isBirdView || false
-      window.dispatchEvent(new CustomEvent('bird-view-animation', { detail: { isBirdView: !currentBirdView } }))
-    }
+    console.log('🗑️ [DockedNavigation] Clear scene clicked')
+    requestClearScene()
   }
-  const toggleEditor = (e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    window.dispatchEvent(new CustomEvent('editor-toggle'))
-  }
-  const toggleLookAtTargets = (e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    window.dispatchEvent(new CustomEvent('look-at-toggle'))
-  }
-  const toggleHeightPanel = (e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    window.dispatchEvent(new CustomEvent('height-panel-toggle'))
-  }
-  const toggleBirdLock = (e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    if (typeof window !== 'undefined') {
-      ;(window as any).__birdViewLocked = !(window as any).__birdViewLocked
-      window.dispatchEvent(new CustomEvent('bird-view-lock', { detail: { locked: (window as any).__birdViewLocked } }))
-    }
+  
+  const handleRotateModel = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    console.log('🔄 [DockedNavigation] Rotate model clicked')
+    requestRotateModel(Math.PI / 2)
   }
 
   return (
-    <div
-      className={`fixed left-0 top-0 h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transition-all    duration-100 z-[100] ${
-        isCollapsed ? 'w-12' : 'w-48'
-      }`}
-      onMouseEnter={() => setIsCollapsed(false)}
-      onMouseLeave={() => setIsCollapsed(true)}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700" style={{height: '44px'}}>
-        {!isCollapsed && (
-          <div className="font-semibold text-gray-900 dark:text-white text-xs whitespace-nowrap overflow-hidden">
-            {role === 'admin' && t('adminPanel')}
-            {role === 'architect' && t('architectPortal')}
-            {role === 'end_user' && t('myProjects')}
-          </div>
-        )}
-      </div>
+    <>
+      <div
+        className={`fixed left-0 top-0 h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transition-all    duration-100 z-[100] ${
+          isCollapsed ? 'w-12' : 'w-48'
+        }`}
+        onMouseEnter={() => setIsCollapsed(false)}
+        onMouseLeave={() => setIsCollapsed(true)}
+      >
+        {/* Header */}
+        <div className="flex items-center px-4 border-b border-gray-200 dark:border-gray-700" style={{height: '44px'}}>
+          {!isCollapsed && (
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+              {role === 'admin' && t('adminPanel')}
+              {role === 'architect' && t('architectPortal')}
+              {role === 'end_user' && t('myProjects')}
+            </h2>
+          )}
+        </div>
 
-      {/* Navigation Items */}
-      <nav>
+        {/* Navigation Items */}
+        <nav>
         <ul className="flex w-full min-w-0 flex-col gap-1">
           <div className="relative flex w-full min-w-0 flex-col p-2 gap-0.5">
-            {/* Camera Controls Section - Only show for architect and admin roles */}
+            {/* Model Utilities Section - Only show for architect and admin roles */}
             {role !== 'end_user' && (
               <>
-                {/* Camera Controls Header */}
-                <li className="group/menu-item relative border-b border-gray-300 dark:border-gray-600 pb-2 mb-1">
-                  <div className="flex items-center gap-2 py-2 px-1.5 hover:bg-purple-100 dark:hover:bg-purple-900 rounded-md">
+                {/* Rotate Model */}
+                <li className="group/menu-item relative">
+                  <a onClick={handleRotateModel} className="flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer group">
                     <div className="flex items-center justify-center shrink-0">
-                      <Camera className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                      <RotateCw className="w-[19px] h-[19px] text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight transition-colors" />
                     </div>
-                    <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap transition-[opacity,transform] duration-150`}>
-                      {t('cameraControls')}
-                    </span>
-                  </div>
-                </li>
-
-                {/* Camera-related control icons (5 total) - all at same level when collapsed */}
-                {/* Bird View */}
-                <li className="group/menu-item relative">
-                  <a onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleBirdView(e); }} className="flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer">
-                    <div className={`flex items-center justify-center shrink-0 transition-all duration-150 ${isCollapsed ? 'ml-0' : 'ml-2'}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-bird text-foreground dark:text-gray-200"><path d="M16 7h.01"/><path d="M3 7c9 0 9 10 18 10"/><path d="M3 7c3 3 3 6 3 10"/><path d="M7 17c6-3 6-6 11-6"/><path d="M5 7l-2 2"/></svg>
-                    </div>
-                    <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs whitespace-nowrap transition-[opacity,transform] duration-100`}>{t('birdView')}</span>
+                    <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs whitespace-nowrap transition-[opacity,transform] duration-100 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight`}>{t('rotateModel')}</span>
                   </a>
                 </li>
 
-                {/* Lock Bird View */}
+                {/* Clear Scene */}
                 <li className="group/menu-item relative">
-                  <a onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleBirdLock(e); }} className="flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer">
-                    <div className={`flex items-center justify-center shrink-0 transition-all duration-150 ${isCollapsed ? 'ml-0' : 'ml-2'}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock text-foreground dark:text-gray-200"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <a onClick={handleClearScene} className="flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer group">
+                    <div className="flex items-center justify-center shrink-0">
+                      <Trash2 className="w-[19px] h-[19px] text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight transition-colors" />
                     </div>
-                    <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs whitespace-nowrap transition-[opacity,transform] duration-100`}>{t('lockBirdView')}</span>
+                    <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs whitespace-nowrap transition-[opacity,transform] duration-100 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight`}>{t('clearScene')}</span>
                   </a>
                 </li>
 
-                {/* Editor */}
-                <li className="group/menu-item relative">
-                  <a onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleEditor(e); }} className="flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer">
-                    <div className={`flex items-center justify-center shrink-0 transition-all duration-150 ${isCollapsed ? 'ml-0' : 'ml-2'}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-tangent text-foreground dark:text-gray-200"><circle cx="12" cy="12" r="4"/><path d="M22 12h-4"/><path d="M6 12H2"/></svg>
-                    </div>
-                    <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs whitespace-nowrap transition-[opacity,transform] duration-100`}>{t('editor')}</span>
-                  </a>
-                </li>
-
-                {/* LookAt Targets */}
-                <li className="group/menu-item relative">
-                  <a onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleLookAtTargets(e); }} className="flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer">
-                    <div className={`flex items-center justify-center shrink-0 transition-all duration-150 ${isCollapsed ? 'ml-0' : 'ml-6'}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-eye text-foreground dark:text-gray-200"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    </div>
-                    <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs whitespace-nowrap transition-[opacity,transform] duration-100`}>{t('lookAtTargets')}</span>
-                  </a>
-                </li>
-
-                {/* Height Panel */}
-                <li className="group/menu-item relative">
-                  <a onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleHeightPanel(e); }} className="flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer">
-                    <div className={`flex items-center justify-center shrink-0 transition-all duration-150 ${isCollapsed ? 'ml-0' : 'ml-6'}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-ruler text-foreground dark:text-gray-200"><path d="M4.5 19.5l15-15"/><path d="M12 8l1-1"/><path d="M9 11l1-1"/><path d="M7 13l1-1"/><path d="M4 16l1-1"/><path d="M14 6l1-1"/></svg>
-                    </div>
-                    <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs whitespace-nowrap transition-[opacity,transform] duration-100`}>{t('heightPanel')}</span>
-                  </a>
-                </li>
-
-                {/* Separator after Height Panel - always visible */}
+                {/* Separator after utilities */}
                 <div className="shrink-0 bg-gray-200 dark:bg-gray-700 h-px w-[calc(100%-1rem)] mx-auto my-1" />
               </>
             )}
@@ -187,12 +234,12 @@ export default function DockedNavigation({ role }: DockedNavigationProps) {
                         item.onClick()
                       }
                     }}
-                    className="peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 text-left outline-none transition-[width,height,padding] hover:bg-gray-100 dark:hover:bg-gray-800 h-8"
+                    className="peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 text-left outline-none transition-[width,height,padding] hover:bg-gray-100 dark:hover:bg-gray-800 h-8 group"
                   >
                     <div className="flex items-center justify-center shrink-0">
-                      <Icon className="w-[19px] h-[19px] text-foreground dark:text-gray-200" />
+                      <Icon className="w-[19px] h-[19px] text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight transition-colors" />
                     </div>
-                    <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs whitespace-nowrap transition-[opacity,transform]    duration-100`}>{t(item.label)}</span>
+                    <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs whitespace-nowrap transition-[opacity,transform] duration-100 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight`}>{t(item.label)}</span>
                   </a>
                 </li>
               )
@@ -201,9 +248,37 @@ export default function DockedNavigation({ role }: DockedNavigationProps) {
         </ul>
       </nav>
 
+        {/* Role Badge */}
+        <div
+          className={`absolute bottom-4 left-4 right-4 transition-[opacity,transform]    duration-100 ${
+            isCollapsed ? 'opacity-0 translate-x-[-8px] pointer-events-none' : 'opacity-100 translate-x-0'
+          }`}
+        >
+          <div className="px-3 py-2 rounded-lg text-xs font-medium text-center bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+            {role.replace('_', ' ').toUpperCase()}
+          </div>
+        </div>
+      </div>
+
       {/* Models List for end_user */}
       {role === 'end_user' && showModelsList && userWithRole && (
-        <div className="absolute left-full top-0 w-80 h-full bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-lg z-50">
+        <div 
+          className={`fixed left-12 ${SUBPANEL_WIDTH} bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-l border-r border-t border-b border-gray-200/50 dark:border-gray-700/50 shadow-lg z-[90] overflow-y-auto transition-all duration-200 ease-out`}
+          style={{ 
+            top: `${headerHeight}px`,
+            height: `calc(100vh - ${headerHeight}px)`
+          }}
+        >
+          <div className="sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-4 z-10 flex items-center justify-between" style={{height: '44px'}}>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">{t('myModels')}</h2>
+            <button
+              onClick={() => setShowModelsList(false)}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+              aria-label="Close panel"
+            >
+              <PanelLeftClose className="w-5 h-5 text-gray-400 dark:text-gray-600" />
+            </button>
+          </div>
           <ModelsList 
             userId={userWithRole.id} 
             onModelSelected={() => setShowModelsList(false)}
@@ -211,31 +286,88 @@ export default function DockedNavigation({ role }: DockedNavigationProps) {
         </div>
       )}
 
-      {/* Models List for architect */}
-      {role === 'architect' && showModelsList && userWithRole && (
-        <div className="absolute left-full top-0 w-80 h-full bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-lg z-50 overflow-y-auto">
-          <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 p-4 z-10">
-            <h2 className="text-lg font-semibold text-foreground">{t('myModels', { default: 'My Models' })}</h2>
-            <p className="text-xs text-muted-foreground mt-1">{t('clientProjectsSubtitle', { default: 'Client projects and models' })}</p>
+      {/* Models List for architect and admin */}
+      {(role === 'architect' || role === 'admin') && showModelsList && userWithRole && (
+        <div 
+          className={`fixed left-12 ${SUBPANEL_WIDTH} bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-l border-r border-t border-b border-gray-200/50 dark:border-gray-700/50 shadow-lg z-[90] overflow-y-auto transition-all duration-200 ease-out`}
+          style={{ 
+            top: `${headerHeight}px`,
+            height: `calc(100vh - ${headerHeight}px)`
+          }}
+        >
+          <div className="sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-4 z-10 flex items-center justify-between" style={{height: '44px'}}>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">{t('clientModels', { default: 'Client Models' })}</h2>
+            <button
+              onClick={() => setShowModelsList(false)}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors flex-shrink-0"
+              aria-label="Close panel"
+            >
+              <PanelLeftClose className="w-5 h-5 text-gray-400 dark:text-gray-600" />
+            </button>
           </div>
-          <ArchitectModelsList architectId={userWithRole.id} />
+          <ArchitectModelsList 
+            architectId={userWithRole.id}
+            role={role}
+            onModelSelected={() => setShowModelsList(false)}
+          />
         </div>
       )}
 
-      {/* Role Badge */}
-      <div
-        className={`absolute bottom-4 left-4 right-4 transition-[opacity,transform]    duration-100 ${
-          isCollapsed ? 'opacity-0 translate-x-[-8px] pointer-events-none' : 'opacity-100 translate-x-0'
-        }`}
-      >
-        <div className={`px-3 py-2 rounded-lg text-xs font-medium text-center ${
-          role === 'admin' ? 'bg-purple-100 text-red-800 dark:bg-purple-900 dark:text-red-200' :
-          role === 'architect' ? 'bg-purple-100 text-blue-800 dark:bg-purple-800 dark:text-blue-200' :
-          'bg-purple-100 text-gray-800 dark:bg-purple-800 dark:text-gray-200'
-        }`}>
-          {role.replace('_', ' ').toUpperCase()}
+      {/* Upload Modal */}
+      <ProjectBriefModal 
+        open={showUploadModal} 
+        onOpenChange={setShowUploadModal}
+        user={userWithRole}
+        role={role}
+      />
+
+      {/* Uploads panel (admin/architect/end_user) */}
+      {showMyUploads && (
+        <div 
+          className={`fixed left-12 ${SUBPANEL_WIDTH} bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-l border-r border-t border-b border-gray-200/50 dark:border-gray-700/50 shadow-lg z-[90] overflow-y-auto transition-all duration-200 ease-out`}
+          style={{ 
+            top: `${headerHeight}px`,
+            height: `calc(100vh - ${headerHeight}px)`
+          }}
+        >
+          <div className="sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-4 z-10 flex items-center justify-between" style={{height: '44px'}}>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">{t('uploads')}</h2>
+            <button
+              onClick={() => setShowUploads(false)}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+              aria-label="Close panel"
+            >
+              <PanelLeftClose className="w-5 h-5 text-gray-400 dark:text-gray-600" />
+            </button>
+          </div>
+          <UploadsList onAssetSelected={() => setShowUploads(false)} />
         </div>
-      </div>
-    </div>
+      )}
+
+      {/* Camera Controls panel (admin/architect only) */}
+      {showCameraControls && (role === 'admin' || role === 'architect') && (
+        <div 
+          className={`fixed left-12 w-full bg-transparent border-b border-gray-200/50 dark:border-gray-700/50 z-[90] overflow-y-auto transition-all duration-200 ease-out`}
+          style={{ 
+            top: `${headerHeight}px`,
+            height: `calc(100vh - ${headerHeight}px)`
+          }}
+        >
+          <div className="sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-4 z-10 flex items-center justify-between" style={{height: '44px'}}>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">{t('cameraControls')}</h2>
+            <button
+              onClick={() => setShowCameraControls(false)}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+              aria-label="Close panel"
+            >
+              <PanelLeftClose className="w-5 h-5 text-gray-400 dark:text-gray-600 mr-8" />
+            </button>
+          </div>
+          <div className="p-1">
+            <CameraPathEditor3D activePathId="default" />
+          </div>
+        </div>
+      )}
+    </>
   )
 }

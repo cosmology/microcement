@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useMemo, useCallback } from "react"
 import { useTranslations } from 'next-intl';
 import HeroSection from "./HeroSection"
 import Preloader from "./Preloader"
@@ -29,7 +29,8 @@ import TimelineWaypoints from "./TimelineWaypoints";
 import DockedNavigation from "./DockedNavigation";
 import { useUserRole, UserRole } from "@/hooks/useUserRole";
 
-const ScrollScene = dynamic(() => import("./ScrollScene"), { ssr: false });
+// Import SceneEditor directly - uses Zustand stores, no event bridge needed
+const SceneEditor = dynamic(() => import("./SceneEditor"), { ssr: false });
 
 export default function HomeClient() {
   const [mounted, setMounted] = useState(false)
@@ -47,7 +48,6 @@ export default function HomeClient() {
   
   // Get user role information
   const { user: userWithRole, role, profile, loading: userRoleLoading } = useUserRole();
-
 
   // Section refs
   const hero = useRef<HTMLDivElement>(null);
@@ -82,36 +82,95 @@ export default function HomeClient() {
   }, [])
 
   // Check if user has scene configurations
-  useEffect(() => {
+  // Function to check user configs (moved outside useEffect for reuse)
+  const checkUserConfigs = async (forceClearCache = false) => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 HomeClient: User state changed:', user);
+      console.log('🔍 [HomeClient] Checking user configs for:', user?.email, 'Role:', role);
     }
-    const checkUserConfigs = async () => {
-      if (user?.id) {
-        try {
-          const sceneConfigService = SceneConfigService.getInstance();
-          sceneConfigService.setUser(user);
-          const userConfigs = await sceneConfigService.getUserConfigs();
-          setHasUserConfig(userConfigs.length > 0);
-          if (process.env.NODE_ENV === 'development') {
-            console.log('🔍 User configs check:', userConfigs.length > 0 ? 'Has configs' : 'No configs');
-            console.log('🔍 User email:', user.email);
-            console.log('🔍 Configs found:', userConfigs.length);
-          }
-        } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('Failed to check user configs:', error);
-          }
-          setHasUserConfig(false);
+    
+    if (user?.id) {
+      try {
+        // CRITICAL: NO auto-load for any user role
+        // All users (end_user, architect, admin) should start with blank scene
+        // Models should only load when explicitly selected from panels
+        console.log('🚫 [HomeClient] Skipping auto-load - all users start with blank scene');
+        console.log('🚫 [HomeClient] User role:', role, '- Models load only on explicit selection');
+        setHasUserConfig(false); // Force blank scene for everyone
+        setConfigCheckComplete(true);
+        return;
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Failed to check user configs:', error);
         }
-      } else {
-        setHasUserConfig(null);
+        setHasUserConfig(false);
       }
-      setConfigCheckComplete(true);
-    };
+    } else {
+      setHasUserConfig(null);
+    }
+    
+    setConfigCheckComplete(true);
+  };
 
+  // Check user configs when user changes (with proper dependency)
+  const userIdRef = useRef<string | null>(null);
+  const prevRoleRef = useRef<UserRole | null>(null);
+  
+  useEffect(() => {
+    // Prevent infinite loop by only running when user ID or role actually changes
+    const userIdChanged = userIdRef.current !== user?.id;
+    const roleChanged = prevRoleRef.current !== role;
+    
+    if (!userIdChanged && !roleChanged) {
+      return;
+    }
+    
+    userIdRef.current = user?.id || null;
+    prevRoleRef.current = role;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 HomeClient: User ID changed:', user?.id, 'Role:', role);
+    }
     checkUserConfigs();
-  }, [user]);
+  }, [user?.id, role]); // Depend on both user.id and role
+
+  // Listen for user config refresh events (e.g., after upload)
+  useEffect(() => {
+    const handleUserConfigRefresh = async (event: any) => {
+      console.log('🔄 [HomeClient] User config refresh event received, re-checking configs...')
+      await checkUserConfigs(true) // Force clear cache
+      
+      // After configs are refreshed, trigger a delayed check to load the model
+      // This gives React time to re-render with the new hasUserConfig state
+      setTimeout(() => {
+        if (event.detail?.sceneConfigId) {
+          console.log('🔄 [HomeClient] Configs refreshed, waiting for SceneEditor to render...')
+          
+          // Wait for SceneEditor to be rendered and ready
+          const checkAndLoad = setInterval(() => {
+            if ((window as any).sceneEditorCamera && (window as any).sceneEditorRenderer && (window as any).sceneEditorScene) {
+              console.log('🔄 [HomeClient] SceneEditor is ready, dispatching load event...')
+              clearInterval(checkAndLoad)
+              
+              // Dispatch the load event now that SceneEditor is ready
+              window.dispatchEvent(new CustomEvent('reload-current-model', {
+                detail: { sceneConfigId: event.detail.sceneConfigId }
+              }))
+              console.log('🔄 [HomeClient] Reload current model event dispatched')
+            }
+          }, 100)
+          
+          // Timeout after 5 seconds
+          setTimeout(() => clearInterval(checkAndLoad), 5000)
+        }
+      }, 1000) // Wait 1 second for React to re-render
+    }
+
+    window.addEventListener('user-config-refresh', handleUserConfigRefresh)
+    
+    return () => {
+      window.removeEventListener('user-config-refresh', handleUserConfigRefresh)
+    }
+  }, [user]); // Include user dependency to ensure checkUserConfigs has access to current user
 
   // Mobile scroll fallback - ensure scrolling works on mobile devices
   useEffect(() => {
@@ -140,15 +199,18 @@ export default function HomeClient() {
     }
   }, [preloadDone, scrollEnabled])
 
-  // Aggressive scroll restoration - ensure scrolling always works
+  // Aggressive scroll restoration - ensure scrolling always works (but respect gallery mode)
   useEffect(() => {
     if (!preloadDone) return
 
     const forceScrollRestore = () => {
-      // Force enable scrolling every 2 seconds if it's blocked
+      // Force enable scrolling every 2 seconds if it's blocked UNLESS gallery is open
       const interval = setInterval(() => {
-        if (document.body.style.overflow === 'hidden' || document.body.style.touchAction === 'none') {
-          console.log('🔧 Force restoring scroll - CSS was blocked')
+        // Don't restore scroll if gallery is open
+        const isGalleryOpen = (window as any).__galleryMode === true
+        
+        if (!isGalleryOpen && (document.body.style.overflow === 'hidden' || document.body.style.touchAction === 'none')) {
+          console.log('🔧 Force restoring scroll - CSS was blocked (no gallery open)')
           document.body.style.overflow = 'auto'
           document.body.style.touchAction = 'pan-y'
           document.documentElement.style.overflow = 'auto'
@@ -627,7 +689,7 @@ export default function HomeClient() {
 
   const renderGuestContent = () => (
     <>
-      <NavigationSection user={user} onUserChange={setUser} />
+      <NavigationSection user={user} onUserChange={setUser} role={role} loading={userRoleLoading} />
       <main 
         className="relative z-20"
         style={{ 
@@ -676,27 +738,20 @@ export default function HomeClient() {
 
   const renderEndUserContent = () => (
     <>
-      <DockedNavigation role={role} />
-      <div className="ml-64">
-        <NavigationSection user={user} onUserChange={setUser} />
+      <DockedNavigation role={role} userWithRole={userWithRole} />
+      <div className="ml-12 md:ml-48">
+        <NavigationSection user={user} onUserChange={setUser} role={role} loading={userRoleLoading} />
       </div>
       
-      {/* Show NoDesignAvailable for end users with no configs */}
-      {configCheckComplete && hasUserConfig === false && (
-        <NoDesignAvailable 
-          onLoginClick={() => setShowLoginModal(true)} 
-          onSignOutClick={handleSignOut}
-          isLoggedIn={!!user}
-        />
-      )}
-      
-      {/* Show 3D scene only for end users with scene configurations */}
-      {configCheckComplete && hasUserConfig === true && (
+      {/* END USERS: Always render SceneEditor (but don't auto-load models) */}
+      {/* This ensures event listeners are registered for loading selected projects */}
+      {configCheckComplete && (
         <>
-          <ScrollScene 
+          <SceneEditor 
             sceneStage={sceneStage} 
             currentSection={currentSection}
             user={user}
+            userRole={role}
             onIntroComplete={() => {
               setScrollEnabled(true);
               window.dispatchEvent(new CustomEvent('introComplete'));
@@ -726,27 +781,20 @@ export default function HomeClient() {
 
   const renderArchitectContent = () => (
     <>
-      <DockedNavigation role={role} />
-      <div className="ml-64">
-        <NavigationSection user={user} onUserChange={setUser} />
+      <DockedNavigation role={role} userWithRole={userWithRole} />
+      <div className="ml-12 md:ml-48">
+        <NavigationSection user={user} onUserChange={setUser} role={role} loading={userRoleLoading} />
       </div>
       
-      {/* Show NoDesignAvailable if no configs */}
-      {configCheckComplete && hasUserConfig === false && (
-        <NoDesignAvailable 
-          onLoginClick={() => setShowLoginModal(true)} 
-          onSignOutClick={handleSignOut}
-          isLoggedIn={!!user}
-        />
-      )}
-      
-      {/* Show 3D scene with editor for architects/admins */}
-      {configCheckComplete && hasUserConfig === true && (
+      {/* ARCHITECTS: Always render SceneEditor (but don't auto-load own models) */}
+      {/* This ensures event listeners are registered for loading client projects */}
+      {configCheckComplete && (
         <>
-          <ScrollScene 
+          <SceneEditor 
             sceneStage={sceneStage} 
             currentSection={currentSection}
             user={user}
+            userRole={role}
             onIntroComplete={() => {
               setScrollEnabled(true);
               window.dispatchEvent(new CustomEvent('introComplete'));
@@ -775,33 +823,33 @@ export default function HomeClient() {
   )
 
   return (
-    <div className="relative">
-      <AuthHandler onUserChange={setUser} />
-      
-      {/* Preloader */}
-      {!preloadDone && (
-        <Preloader onComplete={() => setPreloadDone(true)} />
-      )}
-      
-      {preloadDone && renderContent()}
-      
-      {/* Login Modal */}
-      {showLoginModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <UserProfile 
-              forceShowAuth={true}
-              onUserChange={(user) => {
-                setUser(user);
-                if (user) {
-                  setShowLoginModal(false);
-                }
-              }} 
-            />
+      <div className="relative">
+        <AuthHandler onUserChange={setUser} />
+        
+        {/* Preloader */}
+        {!preloadDone && (
+          <Preloader onComplete={() => setPreloadDone(true)} />
+        )}
+        
+        {preloadDone && renderContent()}
+        
+        {/* Login Modal */}
+        {showLoginModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full">
+              <UserProfile 
+                forceShowAuth={true}
+                onUserChange={(user) => {
+                  setUser(user);
+                  if (user) {
+                    setShowLoginModal(false);
+                  }
+                }} 
+              />
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
   )
 
   // handleSignOut already defined above
@@ -813,29 +861,40 @@ function NoDesignAvailable({ onLoginClick, onSignOutClick, isLoggedIn }: {
     isLoggedIn: boolean 
 }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
       <div className="text-center max-w-md mx-auto p-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text.white mb-4">
-          {isLoggedIn ? 'No Design Available' : 'Welcome'}
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">
+        {/* Logo - 200px width, centered, toned down like DockedNavigation borders */}
+        <div className="mb-8 flex justify-center">
+          <div className="relative" style={{ width: '200px' }}>
+            <img
+              src="/images/logo-procemento.png"
+              alt="ProCemento Logo"
+              className="w-full h-auto object-contain opacity-30 dark:opacity-20"
+            />
+          </div>
+        </div>
+
+        {/* Main Message - Subtle */}
+        <p className="text-sm mb-8 text-gray-600 dark:text-gray-400 font-light">
           {isLoggedIn 
             ? 'You don\'t have any project designs yet. Contact your architect to get started.'
             : 'Please log in to access your personalized design experience.'
           }
         </p>
+
+        {/* Action Buttons - Match DockedNavigation role badge background */}
         <div className="space-y-3">
           {isLoggedIn ? (
             <button
               onClick={onSignOutClick}
-              className="w-full bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+              className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium py-2 px-6 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors"
             >
               Sign Out
             </button>
           ) : (
             <button
               onClick={onLoginClick}
-              className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium py-2 px-6 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors"
             >
               Log In
             </button>

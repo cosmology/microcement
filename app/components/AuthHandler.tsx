@@ -10,8 +10,10 @@ interface AuthHandlerProps {
 
 export default function AuthHandler({ onUserChange }: AuthHandlerProps) {
   useEffect(() => {
+    console.log('🎧 [EVENT LISTENER] Registered: Supabase auth state change');
+    
     const handleAuthStateChange = async (event: string, session: any) => {
-      console.log('Auth state changed:', event, session?.user?.email)
+      console.log('🔐 [AuthHandler] Auth state changed:', event, session?.user?.email)
       
       // On sign-in, we no longer auto-create default configs. Just notify parent.
       
@@ -23,9 +25,10 @@ export default function AuthHandler({ onUserChange }: AuthHandlerProps) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange)
 
     return () => {
+      console.log('🔌 [EVENT LISTENER] Removed: Supabase auth state change');
       subscription.unsubscribe()
     }
-  }, [onUserChange])
+  }, []) // ✅ CRITICAL FIX: Remove onUserChange from deps to prevent infinite loop
 
   return null // This component doesn't render anything
 }

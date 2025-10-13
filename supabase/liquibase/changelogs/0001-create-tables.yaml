@@ -6,10 +6,27 @@ databaseChangeLog:
       changes:
         - sql:
             sql: |
-              -- 1) Create enum type user_role
+              -- 1) Create enum types
+              -- user_role enum
               DO 'BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = ''user_role'' AND typnamespace = ''public''::regnamespace) THEN
                   CREATE TYPE public.user_role AS ENUM (''admin'', ''architect'', ''end_user'');
+                END IF;
+              END' LANGUAGE plpgsql;
+
+              -- project_status enum for architect_clients workflow
+              DO 'BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = ''project_status'' AND typnamespace = ''public''::regnamespace) THEN
+                  CREATE TYPE public.project_status AS ENUM (
+                    ''pending_upload'',      -- Client needs to select architect and upload model
+                    ''pending_architect'',   -- Model uploaded, waiting for architect to accept/reject
+                    ''in_progress'',         -- Architect working on camera paths and design
+                    ''pending_review'',      -- Sent to client for review/sign-off
+                    ''active'',              -- Client approved, project active
+                    ''on_hold'',             -- Temporarily paused
+                    ''completed'',           -- Project finished
+                    ''cancelled''            -- Project cancelled
+                  );
                 END IF;
               END' LANGUAGE plpgsql;
 
@@ -40,12 +57,13 @@ databaseChangeLog:
 
               CREATE TABLE IF NOT EXISTS public.architect_clients (
                   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                  architect_id UUID NOT NULL REFERENCES public.user_profiles(user_id) ON DELETE CASCADE,
+                  architect_id UUID REFERENCES public.user_profiles(user_id) ON DELETE CASCADE,
                   client_id UUID NOT NULL REFERENCES public.user_profiles(user_id) ON DELETE CASCADE,
                   project_name VARCHAR(255),
                   project_description TEXT,
-                  status VARCHAR(50) DEFAULT 'pending',
+                  status public.project_status DEFAULT 'pending_upload',
                   start_date DATE,
+                  end_date DATE,
                   budget DECIMAL(10, 2),
                   notes TEXT,
                   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

@@ -23,7 +23,7 @@ databaseChangeLog:
                 created_at, updated_at, confirmation_token, email_change, recovery_token,
                 email_change_token_new, email_change_token_current, phone_change_token, reauthentication_token
               )
-              SELECT 'c26f99a3-e036-45e8-ab35-2afb63c6cb8a','00000000-0000-0000-0000-000000000000','authenticated','authenticated','ivanprokic@gmail.com',crypt(coalesce(current_setting('app.seed_admin_password', true), 'changeme'), gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"ivanprokic@gmail.com","email_verified":true,"phone_verified":false,"sub":"c26f99a3-e036-45e8-a b35-2afb63c6cb8a"}',NOW(),NOW(),'','','','','','',''
+              SELECT 'bd9be8f7-5217-43d7-a2ad-d9f2728a14e3','00000000-0000-0000-0000-000000000000','authenticated','authenticated','ivanprokic@gmail.com',crypt(coalesce(current_setting('app.seed_admin_password', true), 'changeme'), gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"ivanprokic@gmail.com","email_verified":true,"phone_verified":false,"sub":"bd9be8f7-5217-43d7-a2ad-d9f2728a14e3"}',NOW(),NOW(),'','','','','','',''
               WHERE NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'ivanprokic@gmail.com');
 
               INSERT INTO auth.users (
@@ -32,7 +32,7 @@ databaseChangeLog:
                 created_at, updated_at, confirmation_token, email_change, recovery_token,
                 email_change_token_new, email_change_token_current, phone_change_token, reauthentication_token
               )
-              SELECT 'f1e2d3c4-b5a6-9780-1234-567890abcdef','00000000-0000-0000-0000-000000000000','authenticated','authenticated','ivanprokic@yahoo.com',crypt(coalesce(current_setting('app.seed_architect_password', true), 'changeme'), gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"ivanprokic@yahoo.com","email_verified":true,"phone_verified":false,"sub":"f1e2d3c4-b5a6-9780-1234-567890abcdef"}',NOW(),NOW(),'','','','','','',''
+              SELECT '225a781d-0944-4c2c-9b7a-bb353175c323','00000000-0000-0000-0000-000000000000','authenticated','authenticated','ivanprokic@yahoo.com',crypt(coalesce(current_setting('app.seed_architect_password', true), 'changeme'), gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"ivanprokic@yahoo.com","email_verified":true,"phone_verified":false,"sub":"225a781d-0944-4c2c-9b7a-bb353175c323"}',NOW(),NOW(),'','','','','','',''
               WHERE NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'ivanprokic@yahoo.com');
 
               INSERT INTO auth.users (
@@ -41,7 +41,7 @@ databaseChangeLog:
                 created_at, updated_at, confirmation_token, email_change, recovery_token,
                 email_change_token_new, email_change_token_current, phone_change_token, reauthentication_token
               )
-              SELECT 'b1c2d3e4-f5a6-7890-1234-567890abcdef','00000000-0000-0000-0000-000000000000','authenticated','authenticated','biljana.h.g@gmail.com',crypt(coalesce(current_setting('app.seed_end_user_password', true), 'changeme'), gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"biljana.h.g@gmail.com","email_verified":true,"phone_verified":false,"sub":"b1c2d3e4-f5a6-7890-1234-567890abcdef"}',NOW(),NOW(),'','','','','','',''
+              SELECT '12c23ebf-446e-4223-a351-737c97bd6e93','00000000-0000-0000-0000-000000000000','authenticated','authenticated','biljana.h.g@gmail.com',crypt(coalesce(current_setting('app.seed_end_user_password', true), 'changeme'), gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"biljana.h.g@gmail.com","email_verified":true,"phone_verified":false,"sub":"12c23ebf-446e-4223-a351-737c97bd6e93"}',NOW(),NOW(),'','','','','','',''
               WHERE NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'biljana.h.g@gmail.com');
 
               INSERT INTO auth.users (
@@ -50,32 +50,46 @@ databaseChangeLog:
                 created_at, updated_at, confirmation_token, email_change, recovery_token,
                 email_change_token_new, email_change_token_current, phone_change_token, reauthentication_token
               )
-              SELECT 'ab71df59-1c1f-42c1-a9cc-8bc787c9e8fa','00000000-0000-0000-0000-000000000000','authenticated','authenticated','emilijaprokic2015@gmail.com',crypt(coalesce(current_setting('app.seed_additional_user_password', true), 'changeme'), gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"emilijaprokic2015@gmail.com","email_verified":true,"phone_verified":false,"sub":"ab71df59-1c1f-42c1-a9cc-8bc787c9e8fa"}',NOW(),NOW(),'','','','','','',''
+              SELECT '5c439016-9865-44af-88bc-478fff32ae36','00000000-0000-0000-0000-000000000000','authenticated','authenticated','emilijaprokic2015@gmail.com',crypt(coalesce(current_setting('app.seed_additional_user_password', true), 'changeme'), gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"emilijaprokic2015@gmail.com","email_verified":true,"phone_verified":false,"sub":"5c439016-9865-44af-88bc-478fff32ae36"}',NOW(),NOW(),'','','','','','',''
               WHERE NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'emilijaprokic2015@gmail.com');
 
               -- Profiles
               INSERT INTO public.user_profiles (user_id, role, first_name, last_name, company, phone, bio, is_active) VALUES
-              ('c26f99a3-e036-45e8-ab35-2afb63c6cb8a','admin','Ivan','Prokic','MicroCement Solutions','+1-555-0100','System administrator and architect with full access to all features and user management.',true)
+              ('bd9be8f7-5217-43d7-a2ad-d9f2728a14e3','admin','Ivan','Prokic','MicroCement Solutions','+1-555-0100','System administrator and architect with full access to all features and user management.',true)
               ON CONFLICT (user_id) DO NOTHING;
 
               INSERT INTO public.user_profiles (user_id, role, first_name, last_name, company, phone, bio, is_active) VALUES
-              ('f1e2d3c4-b5a6-9780-1234-567890abcdef','architect','Ivan','Prokic','Architectural Design Studio','+1-555-0101','Experienced architect specializing in microcement designs and client collaboration.',true)
+              ('225a781d-0944-4c2c-9b7a-bb353175c323','architect','Ivan','Prokic','Architectural Design Studio','+1-555-0101','Experienced architect specializing in microcement designs and client collaboration.',true)
               ON CONFLICT (user_id) DO NOTHING;
 
               INSERT INTO public.user_profiles (user_id, role, first_name, last_name, company, phone, bio, is_active) VALUES
-              ('b1c2d3e4-f5a6-7890-1234-567890abcdef','end_user','Biljana','Gavrilovic','Personal Project','+1-555-0102','Client with no current project configuration.',true)
+              ('12c23ebf-446e-4223-a351-737c97bd6e93','end_user','Biljana','Gavrilovic','Personal Project','+1-555-0102','Client with no current project configuration.',true)
               ON CONFLICT (user_id) DO NOTHING;
 
               INSERT INTO public.user_profiles (user_id, role, first_name, last_name, company, phone, bio, is_active) VALUES
-              ('ab71df59-1c1f-42c1-a9cc-8bc787c9e8fa','end_user','Emilija','Prokic','Personal Project','+1-555-0103','Client collaborating with architect on microcement project.',true)
+              ('5c439016-9865-44af-88bc-478fff32ae36','end_user','Emilija','Prokic','Personal Project','+1-555-0103','Client collaborating with architect on microcement project.',true)
               ON CONFLICT (user_id) DO NOTHING;
 
-              -- Architect-client relationship
-              INSERT INTO public.architect_clients (architect_id, client_id, project_name, project_description, status, start_date, budget, notes) VALUES
-              ('f1e2d3c4-b5a6-9780-1234-567890abcdef','ab71df59-1c1f-42c1-a9cc-8bc787c9e8fa','Collaborative Project','Architect-client collaboration for microcement design review.','active',CURRENT_DATE,15000.00,'Client wants to review and collaborate on microcement designs.')
-              ON CONFLICT (architect_id, client_id) DO NOTHING;
+              -- Architect-client relationships with workflow statuses
+              INSERT INTO public.architect_clients (id, architect_id, client_id, project_name, project_description, status, start_date, budget, notes, created_at, updated_at) VALUES
+              ('582d01b8-4616-4b78-b760-850df2c780a9','bd9be8f7-5217-43d7-a2ad-d9f2728a14e3','225a781d-0944-4c2c-9b7a-bb353175c323','Kitchen & Bathroom Renovation','Complete renovation of kitchen and master bathroom using microcement finishes.','active','2025-10-05',25000.00,'Client prefers modern minimalist design with neutral colors.',NOW(),NOW())
+              ON CONFLICT (id) DO NOTHING;
 
-              -- Scene config (collaborative)
+              INSERT INTO public.architect_clients (id, architect_id, client_id, project_name, project_description, status, start_date, budget, notes, created_at, updated_at) VALUES
+              ('48a708ab-07c0-46cd-99ae-3e5039573eaa','bd9be8f7-5217-43d7-a2ad-d9f2728a14e3','12c23ebf-446e-4223-a351-737c97bd6e93','Future Project','Client is interested in microcement but no specific project yet.','on_hold',NULL,NULL,'Client is exploring options and will decide on project scope later.',NOW(),NOW())
+              ON CONFLICT (id) DO NOTHING;
+
+              INSERT INTO public.architect_clients (id, architect_id, client_id, project_name, project_description, status, start_date, budget, notes, created_at, updated_at) VALUES
+              ('760536c2-c380-4e1c-8fb4-32dcc74474d1','225a781d-0944-4c2c-9b7a-bb353175c323','5c439016-9865-44af-88bc-478fff32ae36','Collaborative Project','Architect-client collaboration for microcement design review.','active','2025-10-05',15000.00,'Client wants to review and collaborate on microcement designs.',NOW(),NOW())
+              ON CONFLICT (id) DO NOTHING;
+
+              -- Pending upload project (external API onboarding - waiting for upload)
+              INSERT INTO public.architect_clients (id, architect_id, client_id, project_name, project_description, status, start_date, budget, notes, created_at, updated_at) VALUES
+              ('2f626f95-89b7-4d31-8cac-73c1ca444836',NULL,'12c23ebf-446e-4223-a351-737c97bd6e93','New Collaboration Request','External onboarding - waiting for model upload and architect assignment.','pending_upload',NULL,NULL,'New client inquiry via external API.',NOW(),NOW())
+              ON CONFLICT (id) DO NOTHING;
+
+              -- Scene configs (all three core configs)
+              -- 1. Architect's ema_showcase
               INSERT INTO public.scene_design_configs (
                 id, user_id, config_name, model_path, camera_fov, camera_near, camera_far,
                 orbital_height, orbital_radius_multiplier, orbital_speed, target_size, scale_multiplier,
@@ -84,13 +98,65 @@ databaseChangeLog:
                 is_default, showcase_areas, project_name, project_description, architect_id, client_id,
                 project_status, budget, timeline_days, priority, tags, notes, created_at, updated_at
               ) VALUES (
-                'da54fc29-0134-40fa-97cd-908def6d9c33','ab71df59-1c1f-42c1-a9cc-8bc787c9e8fa','collaborative_project','/models/ema.glb',75,0.1,1000,35,5.5,0.15,25,1.8,1.2,2500,'{"x":0,"y":15,"z":0}','{"x":-5,"y":6,"z":20}','{"normal":16711680,"hover":16744448,"pulse":16711680}','{"duration":1000,"scale":1.8,"opacity":0.9}','{}','{}','[]','{}',true,'["kitchen","master_bathroom"]','Collaborative Project','Client collaborating with architect on microcement design review.','f1e2d3c4-b5a6-9780-1234-567890abcdef','ab71df59-1c1f-42c1-a9cc-8bc787c9e8fa','in_progress',15000.00,20,2,'["kitchen","bathroom","collaboration","microcement"]','Collaborative project between architect and client for design review.',NOW(),NOW()
+                'd4e5f6a7-b8c9-0123-4567-89abcdef0123','225a781d-0944-4c2c-9b7a-bb353175c323','ema_showcase','/models/ema.glb',75,0.1,1000,35,5.5,0.15,25,1.8,1.2,2500,'{"x":0,"y":15,"z":0}','{"x":-5,"y":6,"z":20}','{"normal":16711680,"hover":16744448,"pulse":16711680}','{"duration":1000,"scale":1.8,"opacity":0.9}','{}','{}','[]','{}',true,'["kitchen","master_bathroom"]','Kitchen & Bathroom Renovation','Focus on kitchen and master bathroom areas for microcement application.','bd9be8f7-5217-43d7-a2ad-d9f2728a14e3','225a781d-0944-4c2c-9b7a-bb353175c323','in_progress',25000.00,30,3,'["kitchen","bathroom","renovation","microcement"]','Client wants to see how microcement will look in their kitchen and master bathroom.',NOW(),NOW()
               ) ON CONFLICT (id) DO NOTHING;
 
-              -- Follow path (collaborative)
+              -- 2. Admin's default config
+              INSERT INTO public.scene_design_configs (
+                id, user_id, config_name, model_path, camera_fov, camera_near, camera_far,
+                orbital_height, orbital_radius_multiplier, orbital_speed, target_size, scale_multiplier,
+                rotation_y, intro_duration, intro_start_pos, intro_end_pos, hotspot_colors, pulse_animation,
+                hotspot_focal_distances, hotspot_categories, look_at_targets, api_hotspot_key_aliases,
+                is_default, showcase_areas, project_name, project_description, architect_id, client_id,
+                project_status, budget, timeline_days, priority, tags, notes, created_at, updated_at
+              ) VALUES (
+                'e5f6a7b8-c9d0-1234-5678-9abcdef01234','bd9be8f7-5217-43d7-a2ad-d9f2728a14e3','admin_default','/models/no-material.glb',75,0.1,1000,35,5.5,0.15,25,1.8,1.2,2500,'{"x":0,"y":15,"z":0}','{"x":-5,"y":6,"z":20}','{"normal":16711680,"hover":16744448,"pulse":16711680}','{"duration":1000,"scale":1.8,"opacity":0.9}','{}','{}','[]','{}',true,'["kitchen","master_bathroom"]','Admin Default Configuration','Default configuration for admin user with full access.','bd9be8f7-5217-43d7-a2ad-d9f2728a14e3','bd9be8f7-5217-43d7-a2ad-d9f2728a14e3','completed',50000.00,45,1,'["admin","default","microcement"]','Admin user default configuration for testing and demonstration.',NOW(),NOW()
+              ) ON CONFLICT (id) DO NOTHING;
+
+              -- 3. Emilija's collaborative project
+              INSERT INTO public.scene_design_configs (
+                id, user_id, config_name, model_path, camera_fov, camera_near, camera_far,
+                orbital_height, orbital_radius_multiplier, orbital_speed, target_size, scale_multiplier,
+                rotation_y, intro_duration, intro_start_pos, intro_end_pos, hotspot_colors, pulse_animation,
+                hotspot_focal_distances, hotspot_categories, look_at_targets, api_hotspot_key_aliases,
+                is_default, showcase_areas, project_name, project_description, architect_id, client_id,
+                project_status, budget, timeline_days, priority, tags, notes, created_at, updated_at
+              ) VALUES (
+                'da54fc29-0134-40fa-97cd-908def6d9c33','5c439016-9865-44af-88bc-478fff32ae36','collaborative_project','/models/ema.glb',75,0.1,1000,35,5.5,0.15,25,1.8,1.2,2500,'{"x":0,"y":15,"z":0}','{"x":-5,"y":6,"z":20}','{"normal":16711680,"hover":16744448,"pulse":16711680}','{"duration":1000,"scale":1.8,"opacity":0.9}','{}','{}','[]','{}',true,'["kitchen","master_bathroom"]','Collaborative Project','Client collaborating with architect on microcement design review.','225a781d-0944-4c2c-9b7a-bb353175c323','5c439016-9865-44af-88bc-478fff32ae36','in_progress',15000.00,20,2,'["kitchen","bathroom","collaboration","microcement"]','Collaborative project between architect and client for design review.',NOW(),NOW()
+              ) ON CONFLICT (id) DO NOTHING;
+
+              -- Follow paths (all three configs)
+              -- 1. Architect's ema_showcase - default path
               INSERT INTO public.scene_follow_paths (id, scene_design_config_id, path_name, path_description, camera_points, look_at_targets, is_active, path_order, created_at, updated_at) VALUES
               (
-                'a8b9c0d1-e2f3-4567-890a-bcdef0123456','da54fc29-0134-40fa-97cd-908def6d9c33','collaborative_path','Collaborative project path for client-architect review',
+                'a1b2c3d4-e5f6-7890-abcd-ef1234567891','d4e5f6a7-b8c9-0123-4567-89abcdef0123','default_path','Default camera path for ema showcase',
+                '[{"x":52.789,"y":5,"z":7.394},{"x":26.431,"y":5,"z":4.865},{"x":7.035,"y":5,"z":-4.16},{"x":1.414,"y":5,"z":1.651},{"x":15.934,"y":5,"z":8.433},{"x":10.723,"y":5,"z":3.854},{"x":3.228,"y":6.5,"z":-0.735},{"x":1.791,"y":6.75,"z":-5.642},{"x":11.761,"y":7,"z":-5.575}]',
+                '[{"x":2.041,"y":0,"z":-12.068},{"x":-14.408,"y":0,"z":-41.196},{"x":-45.014,"y":0,"z":-44.588},{"x":-69.435,"y":0,"z":-57.641},{"x":38.766,"y":0,"z":-3.977},{"x":74.895,"y":0,"z":41.866},{"x":-32.177,"y":0,"z":-47.776},{"x":0.632,"y":0,"z":-33.329},{"x":34.312,"y":0,"z":-22.945}]',
+                true,1,NOW(),NOW()
+              ) ON CONFLICT (id) DO NOTHING;
+
+              -- 2. Architect's ema_showcase - current (edited) path
+              INSERT INTO public.scene_follow_paths (id, scene_design_config_id, path_name, path_description, camera_points, look_at_targets, is_active, path_order, created_at, updated_at) VALUES
+              (
+                '7fb06bd6-82a1-4101-9014-a834a7402059','d4e5f6a7-b8c9-0123-4567-89abcdef0123','current',NULL,
+                '[{"x":58.53970782368944,"y":5,"z":-12.909438860792221},{"x":21.02325199513767,"y":5,"z":-8.535017220449888},{"x":5.714245283018869,"y":6.9,"z":-6.7105352253719985},{"x":4.9989056603773605,"y":5,"z":1.6509999999999962},{"x":24.23588679245283,"y":5,"z":4.312904635937528},{"x":21.666396226415088,"y":5,"z":0.5186847052827659},{"x":10.397811320754712,"y":6.5,"z":0.24597508668153978},{"x":1.8418417128008002,"y":6.75,"z":-4.118252853227986},{"x":-6.188219683354092,"y":7.1,"z":-3.781757048822172}]',
+                '[{"x":1.3224371257484933,"y":0,"z":-12.25503241895261},{"x":18.044830188679242,"y":0,"z":-38.05687972261907},{"x":-53.88192452830189,"y":0,"z":-41.44887972261908},{"x":11.697075471698128,"y":0,"z":-72.74801633489568},{"x":38.766,"y":0,"z":-3.977},{"x":80.49724089635853,"y":0,"z":28.212633416458857},{"x":-32.177,"y":0,"z":-47.776},{"x":0.632,"y":0,"z":-33.329},{"x":-45.20895808383232,"y":0,"z":-40.71307980049873}]',
+                true,NULL,NOW(),NOW()
+              ) ON CONFLICT (id) DO NOTHING;
+
+              -- 3. Admin's default config - default path
+              INSERT INTO public.scene_follow_paths (id, scene_design_config_id, path_name, path_description, camera_points, look_at_targets, is_active, path_order, created_at, updated_at) VALUES
+              (
+                'b2c3d4e5-f6a7-8901-bcde-f12345678902','e5f6a7b8-c9d0-1234-5678-9abcdef01234','default_path','Default camera path for admin showcase',
+                '[{"x":0,"y":15,"z":30},{"x":10,"y":12,"z":20},{"x":20,"y":10,"z":10},{"x":15,"y":8,"z":0},{"x":0,"y":6,"z":-10}]',
+                '[{"x":0,"y":0,"z":0},{"x":0,"y":0,"z":0},{"x":0,"y":0,"z":0},{"x":0,"y":0,"z":0},{"x":0,"y":0,"z":0}]',
+                true,1,NOW(),NOW()
+              ) ON CONFLICT (id) DO NOTHING;
+
+              -- 4. Emilija's collaborative project - default path
+              INSERT INTO public.scene_follow_paths (id, scene_design_config_id, path_name, path_description, camera_points, look_at_targets, is_active, path_order, created_at, updated_at) VALUES
+              (
+                'c3d4e5f6-a7b8-9012-cdef-123456789013','da54fc29-0134-40fa-97cd-908def6d9c33','default_path','Default camera path for collaborative project',
                 '[{"x":52.789,"y":5,"z":7.394},{"x":26.431,"y":5,"z":4.865},{"x":7.035,"y":5,"z":-4.16},{"x":1.414,"y":5,"z":1.651},{"x":15.934,"y":5,"z":8.433},{"x":10.723,"y":5,"z":3.854},{"x":3.228,"y":6.5,"z":-0.735},{"x":1.791,"y":6.75,"z":-5.642},{"x":11.761,"y":7,"z":-5.575}]',
                 '[{"x":2.041,"y":0,"z":-12.068},{"x":-14.408,"y":0,"z":-41.196},{"x":-45.014,"y":0,"z":-44.588},{"x":-69.435,"y":0,"z":-57.641},{"x":38.766,"y":0,"z":-3.977},{"x":74.895,"y":0,"z":41.866},{"x":-32.177,"y":0,"z":-47.776},{"x":0.632,"y":0,"z":-33.329},{"x":34.312,"y":0,"z":-22.945}]',
                 true,1,NOW(),NOW()

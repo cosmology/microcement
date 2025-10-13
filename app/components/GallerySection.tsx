@@ -2,8 +2,10 @@
 
 import { motion } from "framer-motion"
 import { useRef, useEffect, useState, useMemo } from "react"
+import { createPortal } from "react-dom"
 import Image from "next/image"
 import { useTranslations } from 'next-intl';
+import { useThemeStore } from '@/lib/stores/themeStore';
 
 export default function GallerySection() {
   const sectionRef = useRef<HTMLDivElement>(null)
@@ -11,6 +13,7 @@ export default function GallerySection() {
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [selectedImage, setSelectedImage] = useState<any>(null)
   const t = useTranslations('Gallery');
+  const { resolvedTheme } = useThemeStore();
 
   // Use useMemo to prevent recreation of arrays on every render
   const galleryItems = useMemo(() => [
@@ -223,20 +226,28 @@ export default function GallerySection() {
           ))}
         </motion.div>
 
-        {/* Modal for enlarged image */}
-        {selectedImage && (
+        {/* Modal for enlarged image - rendered via Portal */}
+        {selectedImage && typeof document !== 'undefined' && document.getElementById('gallery-modal-root') && createPortal(
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4"
+            className={`fixed inset-0 z-[99999] flex items-center justify-center p-4 ${
+              resolvedTheme === 'light' 
+                ? 'bg-white/95 backdrop-blur-sm' 
+                : 'bg-black/80 backdrop-blur-md'
+            }`}
             onClick={() => setSelectedImage(null)}
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
-              className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl max-h-[90vh] overflow-hidden"
+              className={`rounded-lg max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl ${
+                resolvedTheme === 'light'
+                  ? 'bg-white border border-gray-200'
+                  : 'bg-gray-800 border border-gray-700'
+              }`}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="relative">
@@ -249,7 +260,11 @@ export default function GallerySection() {
                 />
                 <button
                   onClick={() => setSelectedImage(null)}
-                  className="absolute top-4 right-4 bg-white dark:bg-gray-700 bg-opacity-90 hover:bg-opacity-100 rounded-full p-2 transition-all duration-200 text-gray-900 dark:text-white"
+                  className={`absolute top-4 right-4 rounded-full p-2 transition-all duration-200 ${
+                    resolvedTheme === 'light'
+                      ? 'bg-white/90 hover:bg-white text-gray-900 shadow-lg'
+                      : 'bg-gray-700/90 hover:bg-gray-700 text-white'
+                  }`}
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -257,14 +272,23 @@ export default function GallerySection() {
                 </button>
               </div>
               <div className="p-6">
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{selectedImage.title}</h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-4">{selectedImage.description}</p>
-                <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-sm rounded-full">
+                <h3 className={`text-2xl font-bold mb-2 ${
+                  resolvedTheme === 'light' ? 'text-gray-900' : 'text-white'
+                }`}>{selectedImage.title}</h3>
+                <p className={`mb-4 ${
+                  resolvedTheme === 'light' ? 'text-gray-600' : 'text-gray-300'
+                }`}>{selectedImage.description}</p>
+                <span className={`inline-block px-3 py-1 text-sm rounded-full ${
+                  resolvedTheme === 'light'
+                    ? 'bg-gray-100 text-gray-700'
+                    : 'bg-gray-600 text-gray-300'
+                }`}>
                   {selectedImage.category}
                 </span>
               </div>
             </motion.div>
-          </motion.div>
+          </motion.div>,
+          document.getElementById('gallery-modal-root')!
         )}
       </div>
     </section>

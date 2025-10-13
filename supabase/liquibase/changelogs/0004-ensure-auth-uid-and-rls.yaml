@@ -59,23 +59,20 @@ databaseChangeLog:
                 END IF;
               END' LANGUAGE plpgsql;
 
-              DO 'BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname=''public'' AND policyname=''scene_configs_read_own'') THEN
-                  EXECUTE ''CREATE POLICY scene_configs_read_own ON public.scene_design_configs FOR SELECT TO authenticated USING (user_id = auth.uid() OR client_id = auth.uid() OR architect_id = auth.uid())'';
-                END IF;
-              END' LANGUAGE plpgsql;
+              DROP POLICY IF EXISTS scene_configs_read_own ON public.scene_design_configs;
+              CREATE POLICY scene_configs_read_own ON public.scene_design_configs 
+                FOR SELECT TO authenticated 
+                USING (user_id = auth.uid() OR client_id = auth.uid() OR architect_id = auth.uid());
 
-              DO 'BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname=''public'' AND policyname=''scene_configs_insert_own'') THEN
-                  EXECUTE ''CREATE POLICY scene_configs_insert_own ON public.scene_design_configs FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid())'';
-                END IF;
-              END' LANGUAGE plpgsql;
+              DROP POLICY IF EXISTS scene_configs_insert_own ON public.scene_design_configs;
+              CREATE POLICY scene_configs_insert_own ON public.scene_design_configs 
+                FOR INSERT TO authenticated 
+                WITH CHECK (user_id = auth.uid());
 
-              DO 'BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname=''public'' AND policyname=''scene_configs_update_own'') THEN
-                  EXECUTE ''CREATE POLICY scene_configs_update_own ON public.scene_design_configs FOR UPDATE TO authenticated USING (user_id = auth.uid() OR architect_id = auth.uid())'';
-                END IF;
-              END' LANGUAGE plpgsql;
+              DROP POLICY IF EXISTS scene_configs_update_own ON public.scene_design_configs;
+              CREATE POLICY scene_configs_update_own ON public.scene_design_configs 
+                FOR UPDATE TO authenticated 
+                USING (user_id = auth.uid() OR architect_id = auth.uid());
 
               DO 'BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname=''public'' AND policyname=''scene_follow_paths_read'') THEN

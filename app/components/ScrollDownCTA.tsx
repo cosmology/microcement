@@ -75,7 +75,7 @@ export default function ScrollDownCTA({ className = "", onIntroComplete }: Scrol
 
 
   return (
-    <div className={`fixed z-[9999] left-1/2 bottom-4 transform -translate-x-1/2 mb-10 scroll-down-cta ${isFadeIn ? 'fade-in' : ''} ${isFadeOut ? 'fade-out' : ''} ${className}`}>
+    <div className={`fixed z-[1000] left-1/2 bottom-4 transform -translate-x-1/2 mb-10 scroll-down-cta ${isFadeIn ? 'fade-in' : ''} ${isFadeOut ? 'fade-out' : ''} ${className}`}>
       <div className="arrow arrow-first"></div>
       <div className="arrow arrow-second"></div>
     </div>

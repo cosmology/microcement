@@ -1,0 +1,157 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-storage-bucket-and-policies
+      author: microcement-dev
+      changes:
+        - sql:
+            comment: Create private bucket app-uploads if not exists
+            splitStatements: false
+            sql: |
+              -- Create bucket if not exists (Supabase storage.buckets.id is text)
+              INSERT INTO storage.buckets (id, name, public)
+              SELECT 'app-uploads', 'app-uploads', false
+              WHERE NOT EXISTS (
+                SELECT 1 FROM storage.buckets WHERE id = 'app-uploads'
+              );
+
+        - sql:
+            comment: Storage RLS policies for storage.objects (read/write only within user or architect-client prefixes)
+            splitStatements: false
+            sql: |
+              -- Ensure RLS is enabled on storage.objects (Supabase default, but keep explicit)
+              ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+              -- Common predicates
+              -- Prefix convention: uploads/{owner_uid}/{scene_config_id}/...
+              -- Owner can access when first path segment equals auth.uid()
+              -- Architect can access when first path segment is a client id related to the architect in public.architect_clients
+
+              DO $$ BEGIN
+                IF NOT EXISTS (
+                  SELECT 1 FROM pg_policies WHERE schemaname='storage' AND tablename='objects' AND policyname='objects_select_own_or_architect'
+                ) THEN
+                  EXECUTE '
+                    CREATE POLICY objects_select_own_or_architect ON storage.objects
+                    FOR SELECT TO authenticated
+                    USING (
+                      bucket_id = ''app-uploads'' AND (
+                        split_part(name, ''/'', 1) = auth.uid()::text OR
+                        EXISTS (
+                          SELECT 1 FROM public.architect_clients ac
+                          WHERE ac.architect_id = auth.uid()
+                            AND ac.client_id::text = split_part(storage.objects.name, ''/'', 1)
+                        ) OR
+                        EXISTS (
+                          SELECT 1 FROM public.user_profiles up
+                          WHERE up.user_id = auth.uid() AND up.role = ''admin''
+                        )
+                      )
+                    );
+                  ';
+                END IF;
+              END $$;
+
+              DO $$ BEGIN
+                IF NOT EXISTS (
+                  SELECT 1 FROM pg_policies WHERE schemaname='storage' AND tablename='objects' AND policyname='objects_insert_own_or_architect'
+                ) THEN
+                  EXECUTE '
+                    CREATE POLICY objects_insert_own_or_architect ON storage.objects
+                    FOR INSERT TO authenticated
+                    WITH CHECK (
+                      bucket_id = ''app-uploads'' AND (
+                        split_part(name, ''/'', 1) = auth.uid()::text OR
+                        EXISTS (
+                          SELECT 1 FROM public.architect_clients ac
+                          WHERE ac.architect_id = auth.uid()
+                            AND ac.client_id::text = split_part(storage.objects.name, ''/'', 1)
+                        ) OR
+                        EXISTS (
+                          SELECT 1 FROM public.user_profiles up
+                          WHERE up.user_id = auth.uid() AND up.role = ''admin''
+                        )
+                      )
+                    );
+                  ';
+                END IF;
+              END $$;
+
+              DO $$ BEGIN
+                IF NOT EXISTS (
+                  SELECT 1 FROM pg_policies WHERE schemaname='storage' AND tablename='objects' AND policyname='objects_update_own_or_architect'
+                ) THEN
+                  EXECUTE '
+                    CREATE POLICY objects_update_own_or_architect ON storage.objects
+                    FOR UPDATE TO authenticated
+                    USING (
+                      bucket_id = ''app-uploads'' AND (
+                        split_part(name, ''/'', 1) = auth.uid()::text OR
+                        EXISTS (
+                          SELECT 1 FROM public.architect_clients ac
+                          WHERE ac.architect_id = auth.uid()
+                            AND ac.client_id::text = split_part(storage.objects.name, ''/'', 1)
+                        ) OR
+                        EXISTS (
+                          SELECT 1 FROM public.user_profiles up
+                          WHERE up.user_id = auth.uid() AND up.role = ''admin''
+                        )
+                      )
+                    )
+                    WITH CHECK (
+                      bucket_id = ''app-uploads'' AND (
+                        split_part(name, ''/'', 1) = auth.uid()::text OR
+                        EXISTS (
+                          SELECT 1 FROM public.architect_clients ac
+                          WHERE ac.architect_id = auth.uid()
+                            AND ac.client_id::text = split_part(storage.objects.name, ''/'', 1)
+                        ) OR
+                        EXISTS (
+                          SELECT 1 FROM public.user_profiles up
+                          WHERE up.user_id = auth.uid() AND up.role = ''admin''
+                        )
+                      )
+                    );
+                  ';
+                END IF;
+              END $$;
+
+              DO $$ BEGIN
+                IF NOT EXISTS (
+                  SELECT 1 FROM pg_policies WHERE schemaname='storage' AND tablename='objects' AND policyname='objects_delete_own_or_architect'
+                ) THEN
+                  EXECUTE '
+                    CREATE POLICY objects_delete_own_or_architect ON storage.objects
+                    FOR DELETE TO authenticated
+                    USING (
+                      bucket_id = ''app-uploads'' AND (
+                        split_part(name, ''/'', 1) = auth.uid()::text OR
+                        EXISTS (
+                          SELECT 1 FROM public.architect_clients ac
+                          WHERE ac.architect_id = auth.uid()
+                            AND ac.client_id::text = split_part(storage.objects.name, ''/'', 1)
+                        ) OR
+                        EXISTS (
+                          SELECT 1 FROM public.user_profiles up
+                          WHERE up.user_id = auth.uid() AND up.role = ''admin''
+                        )
+                      )
+                    );
+                  ';
+                END IF;
+              END $$;
+
+  - changeSet:
+      id: grants-storage-service-role
+      author: microcement-dev
+      changes:
+        - sql:
+            comment: Grant service role full access for server-side operations
+            splitStatements: false
+            sql: |
+              DO $$ BEGIN
+                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+                  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE storage.objects TO service_role;
+                  GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA storage TO service_role;
+                END IF;
+              END $$;
+

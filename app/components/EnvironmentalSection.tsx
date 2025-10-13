@@ -150,7 +150,7 @@ export default function EnvironmentalSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.6 }}
               transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
-              className="bg-white dark:bg-violet-500 p-6 rounded-lg border border-gray-200 dark:border-gray-600"
+              className="bg-white dark:bg-accent-highlight p-6 rounded-lg border border-gray-200 dark:border-gray-600"
             >
               <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
                 {t('renewableHeader')}
@@ -165,7 +165,7 @@ export default function EnvironmentalSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.6 }}
               transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
-              className="bg-white dark:bg-violet-500 p-6 rounded-lg border border-gray-200 dark:border-gray-600"
+              className="bg-white dark:bg-accent-highlight p-6 rounded-lg border border-gray-200 dark:border-gray-600"
             >
               <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
                 {t('durabilityHeader')}
@@ -180,7 +180,7 @@ export default function EnvironmentalSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.6 }}
               transition={{ duration: ANIMATION_DURATION, ease: ANIMATION_EASING }}
-              className="bg-white dark:bg-violet-500 p-6 rounded-lg border border-gray-200 dark:border-gray-600"
+              className="bg-white dark:bg-accent-highlight p-6 rounded-lg border border-gray-200 dark:border-gray-600"
             >
               <h5 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
                 {t('durabilityHeader')}

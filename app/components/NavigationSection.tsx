@@ -10,7 +10,7 @@ import { GeoLocationSection } from "./GeoLocationSection";
 import LocaleSwitcherSelect from "./LocaleSwitcherSelect"
 import UserProfile from "./UserProfile"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useUserRole } from "@/hooks/useUserRole"
+import type { UserRole } from "@/hooks/useUserRole"
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -20,14 +20,25 @@ const LANGUAGES = [
 
 // Navigation links will be created dynamically using translations
 
-export default function NavigationSection({ user, onUserChange }: { user?: any, onUserChange?: (user: any) => void }) {
+export default function NavigationSection({ 
+  user, 
+  onUserChange, 
+  role: propRole, 
+  loading: propLoading 
+}: { 
+  user?: any
+  onUserChange?: (user: any) => void
+  role?: 'admin' | 'architect' | 'end_user' | 'guest'
+  loading?: boolean
+}) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [showNav, setShowNav] = useState(false) // Start hidden
   const [isDark, setIsDark] = useState(false)
   
-  // Get user role information
-  const { role, loading: userRoleLoading } = useUserRole()
+  // Use prop values (passed from HomeClient)
+  const role = propRole || 'guest'
+  const userRoleLoading = propLoading !== undefined ? propLoading : false
 
   // Theme detection for logo filtering
   useEffect(() => {
@@ -56,7 +67,7 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
       return 'brightness(0) invert(0) contrast(1.2)';
     }
   };
-  const [navVisible, setNavVisible] = useState(false) // Start hidden
+  const [navVisible, setNavVisible] = useState(true) // Start visible
   const lastScrollY = useRef(0)
   const animating = useRef(false)
   const pathname = usePathname();
@@ -135,7 +146,7 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
           initial="visible"
           animate={navVisible ? "visible" : "hidden"}
         >
-          <div className="w-full flex items-center justify-between h-12 px-2 py-1">
+          <div className="w-full flex items-center justify-between px-2" style={{height: '44px'}}>
             {/* Logo only on left */}
             <div className="flex items-center">
               <a href="#" className="font-bold text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
@@ -146,6 +157,8 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
                   height={20}
                   style={{ 
                     filter: getLogoFilter(),
+                    width: 'auto',
+                    height: '20px',
                     objectFit: 'contain'
                   }}
                   className="h-5 sm:h-6 md:h-8"
@@ -166,20 +179,24 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
 
     // Default navigation for guests - simplified
     return (
-      <motion.nav 
-        id="main-navigation"
-        className="fixed top-0 left-0 right-0 z-[1003] w-full bg-white dark:bg-gray-900 border-b border-light-dark/30 dark:border-gray-700/30 backdrop-blur-md"
-        variants={navVariants}
-        initial="visible"
-        animate={navVisible ? "visible" : "hidden"}
-      >
-        <div className="w-full flex items-center justify-between h-12 px-2 py-1">
+      <>
+        <motion.nav 
+          id="main-navigation"
+          className="fixed top-0 left-0 right-0 z-[1003] w-full bg-white dark:bg-gray-900 border-b border-light-dark/30 dark:border-gray-700/30 backdrop-blur-md pointer-events-auto"
+          variants={navVariants}
+          initial="visible"
+          animate={navVisible ? "visible" : "hidden"}
+        >
+        <div className="w-full flex items-center justify-between px-2 relative z-[1004]" style={{height: '44px'}}>
           {/* Logo and Mobile Menu */}
           <div className="flex items-center">
             {/* Mobile Hamburger Menu */}
             <button
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className="md:hidden mr-3 p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              onClick={() => {
+                console.log('🍔 Hamburger clicked, current state:', mobileOpen);
+                setMobileOpen(!mobileOpen);
+              }}
+              className="md:hidden mr-3 p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative z-[1005]"
               aria-label="Toggle menu"
             >
               <div className="w-6 h-6 flex flex-col justify-center items-center">
@@ -190,17 +207,19 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
             </button>
 
             {/* Logo */}
-            <a href="#" className="font-bold text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
+            <a href="#" className="inline-flex items-center font-bold text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
               <Image
                 src="/images/logo-procemento.png"
                 alt="Microcement"
-                width={60}
-                height={40}
+                width={30}
+                height={20}
                 style={{ 
                   filter: getLogoFilter(),
+                  width: 'auto',
+                  height: '20px',
                   objectFit: 'contain'
                 }}
-                className="h-5 sm:h-6 md:h-8"
+                className="h-5"
               />
             </a>
           </div>
@@ -243,74 +262,78 @@ export default function NavigationSection({ user, onUserChange }: { user?: any, 
             <UserProfile onUserChange={onUserChange} />
           </div>
 
-          {/* Mobile Menu */}
-          <AnimatePresence>
-            {mobileOpen && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="absolute top-full left-0 right-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-lg"
-              >
-                <ul className="py-2 space-y-1">
-                  {navLinks.map((link, index) => (
-                    <li key={index}>
-                      {link.dropdown ? (
-                        <div className="relative">
-                          <button
-                            onClick={() => setOpenDropdown(openDropdown === link.name ? null : link.name)}
-                            className="w-full px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center justify-between"
-                          >
-                            {link.name}
-                            <svg
-                              className={`w-4 h-4 transition-transform duration-200 ${openDropdown === link.name ? 'rotate-180' : ''}`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                          <AnimatePresence>
-                            {openDropdown === link.name && (
-                              <motion.ul
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="bg-gray-50 dark:bg-gray-800"
-                              >
-                                {link.dropdown.map((item, i) => (
-                                  <li key={i}>
-                                    <a
-                                      href={item.href}
-                                      onClick={() => setMobileOpen(false)}
-                                      className="block px-8 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                    >
-                                      {item.name}
-                                    </a>
-                                  </li>
-                                ))}
-                              </motion.ul>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      ) : (
-                        <a
-                          href={link.href}
-                          onClick={() => setMobileOpen(false)}
-                          className="block px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          </div>
+        </motion.nav>
+        
+        {/* Mobile Menu Overlay - Always on top, independent of nav scroll hide */}
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="fixed top-12 left-0 right-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-lg z-[1004] pointer-events-auto"
+              onAnimationStart={() => console.log('🍔 Mobile menu opening, navVisible:', navVisible)}
+              onAnimationComplete={() => console.log('🍔 Mobile menu animation complete')}
+            >
+              <ul className="py-2 space-y-1">
+              {navLinks.map((link, index) => (
+                <li key={index}>
+                  {link.dropdown ? (
+                    <div className="relative">
+                      <button
+                        onClick={() => setOpenDropdown(openDropdown === link.name ? null : link.name)}
+                        className="w-full px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center justify-between"
+                      >
+                        {link.name}
+                        <svg
+                          className={`w-4 h-4 transition-transform duration-200 ${openDropdown === link.name ? 'rotate-180' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
                         >
-                          {link.name}
-                        </a>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </motion.nav>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      <AnimatePresence>
+                        {openDropdown === link.name && (
+                          <motion.ul
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="bg-gray-50 dark:bg-gray-800"
+                          >
+                            {link.dropdown.map((item, i) => (
+                              <li key={i}>
+                                <a
+                                  href={item.href}
+                                  onClick={() => setMobileOpen(false)}
+                                  className="block px-8 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                >
+                                  {item.name}
+                                </a>
+                              </li>
+                            ))}
+                          </motion.ul>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ) : (
+                    <a
+                      href={link.href}
+                      onClick={() => setMobileOpen(false)}
+                      className="block px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      {link.name}
+                    </a>
+                  )}
+                </li>
+              ))}
+              </ul>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </>
     )
   }
 
