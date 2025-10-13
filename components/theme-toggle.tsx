@@ -2,12 +2,24 @@
 
 import { useTheme } from "next-themes"
 import { motion } from "framer-motion"
+import { useEffect } from "react"
+import { useThemeStore } from "@/lib/stores/themeStore"
 
 export function ThemeToggle() {
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const { setResolvedTheme } = useThemeStore();
+
+  // Sync next-themes with Zustand store
+  useEffect(() => {
+    if (resolvedTheme) {
+      setResolvedTheme(resolvedTheme as 'light' | 'dark');
+    }
+  }, [resolvedTheme, setResolvedTheme]);
 
   const toggleTheme = () => {
-    setTheme((resolvedTheme === "dark" ? "light" : "dark"));
+    const newTheme = resolvedTheme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    setResolvedTheme(newTheme as 'light' | 'dark');
   };
 
   return (

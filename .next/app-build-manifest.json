@@ -17,11 +17,6 @@
       "static/chunks/main-app.js",
       "static/chunks/app/[locale]/page.js"
     ],
-    "/api/gallery/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/gallery/route.js"
-    ],
     "/api/camera-path/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",

@@ -39,7 +39,8 @@ const config: Config = {
   			},
   			accent: {
   				DEFAULT: 'hsl(var(--accent))',
-  				foreground: 'hsl(var(--accent-foreground))'
+  				foreground: 'hsl(var(--accent-foreground))',
+  				highlight: '#84A019' // Dark theme highlight color from scene config
   			},
   			destructive: {
   				DEFAULT: 'hsl(var(--destructive))',

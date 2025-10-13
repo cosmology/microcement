@@ -26,6 +26,7 @@ export const SCENE_CONFIG = {
   INTRO_DURATION: 3000,
   INTRO_START_POS: new THREE.Vector3(0, 20, 0),
   INTRO_END_POS: new THREE.Vector3(-6.554798188035982, 7.001298362376955, 26.293127720925533),
+  INTRO_START_LOOKAT: new THREE.Vector3(0, 10, 0),  // Look at model center height
   
   // Hotspot settings
   HOTSPOT_COLORS: {
@@ -93,6 +94,11 @@ export const SCENE_CONFIG = {
     new THREE.Vector3(30, 8, 20),
     new THREE.Vector3(0, 8, -40),
   ],
+  
+  // Path visuals debug settings
+  SHOW_CAMERA_PATH: false,
+  SHOW_WAYPOINTS: false,
+  SHOW_LOOKUP_TARGETS: false,
   
   // API settings
   API_HOTSPOT_KEY_ALIASES: {

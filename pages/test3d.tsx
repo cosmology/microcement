@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
-const ScrollScene = dynamic(() => import("../app/components/ScrollScene"), { ssr: false });
+const SceneEditor = dynamic(() => import("../app/components/SceneEditor"), { ssr: false });
 
 export default function Test3D() {
   const [show, setShow] = useState(false);
@@ -16,7 +16,7 @@ export default function Test3D() {
 
   return (
     <div style={{ width: "100vw", height: "100vh", background: "#222" }}>
-      <ScrollScene />
+      <SceneEditor />
       <div style={{ position: "absolute", top: 20, right: 20, color: "white", zIndex: 100 }}>
         <h2>3D Scene Test Page (Pages Router)</h2>
         <p>If you see the 3D scene and no errors, the setup is correct.</p>

@@ -1,3 +1,4 @@
 {
+  "/api/camera-path/route": "app/api/camera-path/route.js",
   "/[locale]/page": "app/[locale]/page.js"
 }

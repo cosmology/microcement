@@ -23,39 +23,36 @@ export function useUserRole(): UserRoleInfo {
   useEffect(() => {
     const loadUserProfile = async () => {
       try {
-        // Add timeout to prevent hanging - increased to 10 seconds for fresh container startup
+        // Add timeout to prevent hanging - increased to 20 seconds for fresh container startup
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('User profile loading timeout')), 10000) // 10 second timeout
+          setTimeout(() => reject(new Error('User profile loading timeout')), 20000) // 20 second timeout
         })
         
         const profilePromise = (async () => {
-          console.log('🔐 [useUserRole] Starting initial profile load...')
           const { data: { session } } = await supabase.auth.getSession()
           
           if (session?.user) {
-            console.log('🔐 [useUserRole] Session found, loading profile for:', session.user.email)
             // Load user profile from database
             const userProfileService = UserProfileService.getInstance()
             const userWithProfile = await userProfileService.getUserWithProfile(session.user)
             
             setUser(userWithProfile.auth)
             setProfile(userWithProfile.profile)
-            
-            console.log('🔐 [useUserRole] User role loaded successfully:', {
-              email: userWithProfile.auth.email,
-              role: userWithProfile.profile?.role || 'guest',
-              profile: userWithProfile.profile
-            })
           } else {
-            console.log('🔐 [useUserRole] No session found during initial load')
           }
         })()
         
         await Promise.race([profilePromise, timeoutPromise])
       } catch (error) {
-        console.error('Failed to load user profile:', error)
-        // Set loading to false even on error to prevent infinite loading
-        setLoading(false)
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        if (errorMessage.includes('timeout')) {
+          console.warn('⚠️ [useUserRole] Profile loading timeout - continuing as guest')
+        } else {
+          console.error('❌ [useUserRole] Failed to load user profile:', error)
+        }
+        // Continue as guest on error
+        setUser(null)
+        setProfile(null)
       } finally {
         setLoading(false)
       }
@@ -67,43 +64,37 @@ export function useUserRole(): UserRoleInfo {
     const fallbackTimeout = setTimeout(() => {
       console.warn('⚠️ [useUserRole] Fallback timeout - clearing loading state')
       setLoading(false)
-    }, 12000) // 12 second fallback timeout
+    }, 30000) // 30 second fallback timeout (longer than main timeout)
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         try {
-          // Add timeout to prevent hanging - increased to 10 seconds for fresh container startup
+          // Add timeout to prevent hanging - increased to 20 seconds to match initial load
+          // This is especially important for Docker containers that may have slower startup
           const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Auth state change timeout')), 10000) // 10 second timeout
+            setTimeout(() => reject(new Error('Auth state change timeout')), 20000) // 20 second timeout
           })
           
           const profilePromise = (async () => {
-            console.log('🔐 [useUserRole] Loading user profile for auth change...')
             const userProfileService = UserProfileService.getInstance()
             const userWithProfile = await userProfileService.getUserWithProfile(session.user)
             
             setUser(userWithProfile.auth)
             setProfile(userWithProfile.profile)
-            
-            console.log('🔐 [useUserRole] Auth state changed successfully:', {
-              event,
-              email: userWithProfile.auth.email,
-              role: userWithProfile.profile?.role || 'guest'
-            })
           })()
           
           await Promise.race([profilePromise, timeoutPromise])
         } catch (error) {
-          console.error('Failed to load user profile on auth change:', error)
-          // Set user without profile if profile loading fails
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+          if (errorMessage.includes('timeout')) {
+            console.warn('⚠️ [useUserRole] Profile loading timeout on auth change - continuing with fallback')
+          } else {
+            console.error('❌ [useUserRole] Failed to load user profile on auth change:', error)
+          }
+          // Set user without profile if profile loading fails (this is a valid fallback)
           setUser(session.user)
           setProfile(null)
-          console.log('🔐 [useUserRole] Auth state changed with fallback (no profile):', {
-            event,
-            email: session.user.email,
-            role: 'guest'
-          })
         }
       } else {
         setUser(null)
