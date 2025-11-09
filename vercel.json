@@ -1,4 +1,10 @@
 {
   "installCommand": "pnpm install",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "functions": {
+    "api/background/convert.ts": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 900
+    }
+  }
 }

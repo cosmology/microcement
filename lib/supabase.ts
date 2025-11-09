@@ -1,12 +1,33 @@
 import { createClient } from '@supabase/supabase-js'
 
+const resolveSupabaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    const override = (window as any).__SUPABASE_URL_OVERRIDE__
+    if (override) {
+      return override
+    }
+  }
+
+  return (
+    process.env.PLAYWRIGHT_SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    'http://localhost:8000'
+  )
+}
+
 // Environment variables with fallbacks for development
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:8000'
+const supabaseUrl = resolveSupabaseUrl()
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'your-anon-key-here'
 
 // Validate environment variables
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
+}
+
+if (typeof window !== 'undefined') {
+  console.log('[Supabase] Using URL (client):', supabaseUrl)
+} else {
+  console.log('[Supabase] Using URL (server):', supabaseUrl)
 }
 
 // Create Supabase client with proper configuration
@@ -27,6 +48,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     }
   }
 })
+
+if (typeof window !== 'undefined') {
+  (window as any).supabase = supabase
+}
 
 // Database types
 export interface UserSceneConfig {

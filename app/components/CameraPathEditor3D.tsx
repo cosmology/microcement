@@ -4,7 +4,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { cameraPointUpdater } from '@/lib/utils/debouncedUpdater'
 import * as THREE from 'three'
 import gsap from 'gsap'
-import { Eye, Ruler, Bird, Waypoints, Lock, LockOpen, Route, RouteOff, Orbit } from 'lucide-react'
+import { Eye, Ruler, Bird, Waypoints, Lock, LockOpen, Route, RouteOff, Orbit, Play, Pause } from 'lucide-react'
 import { useCameraStore } from '@/lib/stores/cameraStore'
 import { useThemeStore } from '@/lib/stores/themeStore'
 import { useTranslations } from 'next-intl'
@@ -51,6 +51,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
     showLookAtTargets,
     selectedHeightIndex,
     isBirdViewLocked,
+    isAnimationPlaying,
     cameraRef,
     rendererRef,
     sceneRef,
@@ -67,6 +68,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
     setSelectedHeightIndex,
     showPathVisuals,
     togglePathVisuals,
+    toggleAnimation,
   } = useCameraStore()
   
   // Convert store data to local format
@@ -874,8 +876,8 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
       {/* Consolidated Menu Buttons - Left aligned, top aligned - Compact Design */}
       <div className="relative top-0 left-0 z-[51] flex flex-col gap-1 origin-left pointer-events-auto mb-2">
         
-        {/* 0. Camera Type Toggle Row (UI only) */}
-        <div className="flex items-center gap-2">
+        {/* 0. Camera Type & Animation Controls */}
+        <div className="flex items-center gap-1">
           <button
             onClick={(e) => {
               e.preventDefault();
@@ -892,6 +894,23 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
             {cameraType === 'orbital' ? <Orbit size={16} /> : <Route size={16} />}
           </button>
           
+          {/* Play/Pause Animation */}
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleAnimation();
+            }}
+            className={`w-8 h-8 p-1 rounded-md transition-all duration-200 flex items-center justify-center flex-shrink-0 ${
+              isAnimationPlaying
+                ? 'bg-purple-500 text-white border border-purple-400 shadow-md hover:bg-purple-600 hover:shadow-lg'
+                : 'bg-white/90 dark:bg-gray-900/90 text-gray-600 dark:text-gray-300 border border-gray-200/50 dark:border-gray-600/50 hover:bg-gray-100 dark:hover:bg-gray-800/90 shadow-sm'
+            }`}
+            title={isAnimationPlaying ? 'Pause Animation' : 'Play Animation'}
+          >
+            {isAnimationPlaying ? <Pause size={16} /> : <Play size={16} />}
+          </button>
+
           {/* Orbital Height Slider - Only visible in orbital mode */}
           {cameraType === 'orbital' && (
             <div 
@@ -904,7 +923,7 @@ const CameraPathEditor3D: React.FC<CameraPathEditor3DProps> = ({
             >
               <Slider
                 min={0}
-                max={100}
+                max={180}
                 step={1}
                 value={[orbitalHeight]}
                 onValueChange={(values) => setOrbitalHeight(values[0])}

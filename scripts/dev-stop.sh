@@ -7,6 +7,12 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SUPABASE_DIR="$ROOT_DIR/supabase"
 
+# Suppress Docker Compose warnings about environment variables
+# These are loaded from .env when actually starting services
+export NEXT_PUBLIC_SUPABASE_ANON_KEY="${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}"
+export SUPABASE_SERVICE_ROLE_KEY="${SUPABASE_SERVICE_ROLE_KEY:-}"
+export SUPABASE_PROJECT_REF="${SUPABASE_PROJECT_REF:-}"
+
 echo "[stop] Stopping app stack (root compose)"
 (
   cd "$ROOT_DIR"

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react"
 import { useTranslations } from 'next-intl';
+import { useSearchParams } from 'next/navigation';
 import HeroSection from "./HeroSection"
 import Preloader from "./Preloader"
 import BeforeAndAfterSection from "./BeforeAndAfterSection"
@@ -28,11 +29,19 @@ import { SCENE_CONFIG } from '@/lib/config/sceneConfig';
 import TimelineWaypoints from "./TimelineWaypoints";
 import DockedNavigation from "./DockedNavigation";
 import { useUserRole, UserRole } from "@/hooks/useUserRole";
+import { useSceneStore } from "@/lib/stores/sceneStore";
 
 // Import SceneEditor directly - uses Zustand stores, no event bridge needed
-const SceneEditor = dynamic(() => import("./SceneEditor"), { ssr: false });
+const SceneEditorDynamic = dynamic(
+  () => import("./SceneEditor").then((mod) => mod.default ?? mod.SceneEditorActive ?? mod),
+  {
+    ssr: false,
+  }
+);
+const disableSceneStatic = process.env.NEXT_PUBLIC_DISABLE_SCENE === '1';
 
 export default function HomeClient() {
+  const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false)
   const [preloadDone, setPreloadDone] = useState(false)
   const [sceneStage, setSceneStage] = useState(0);
@@ -43,11 +52,24 @@ export default function HomeClient() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [hasUserConfig, setHasUserConfig] = useState<boolean | null>(null);
   const [configCheckComplete, setConfigCheckComplete] = useState(false);
+  const [sceneDisabled, setSceneDisabled] = useState(() => {
+    if (disableSceneStatic) {
+      return true;
+    }
+    if (typeof window === 'undefined') {
+      return true;
+    }
+    return (window as any).__DISABLE_SCENE__ === true;
+  });
+  const showSceneEditor = !sceneDisabled;
   const t = useTranslations('Index');
   const tMarker = useTranslations('MarkerPanels');
   
   // Get user role information
   const { user: userWithRole, role, profile, loading: userRoleLoading } = useUserRole();
+  
+  // Scene store for iOS export loading
+  const { setModelPath, setRoomPlanJsonPath, setRoomPlanMetadata } = useSceneStore();
 
   // Section refs
   const hero = useRef<HTMLDivElement>(null);
@@ -79,7 +101,104 @@ export default function HomeClient() {
 
   useEffect(() => {
     setMounted(true)
+    if (disableSceneStatic) {
+      setSceneDisabled(true)
+      return
+    }
+    if (typeof window !== 'undefined') {
+      setSceneDisabled((window as any).__DISABLE_SCENE__ === true)
+    } else {
+      setSceneDisabled(false)
+    }
   }, [])
+
+  // Handle iOS export URL parameters
+  useEffect(() => {
+    console.log('🔍 [HomeClient] Checking iOS export URL params...');
+    console.log('🔍 [HomeClient] mounted:', mounted);
+    console.log('🔍 [HomeClient] searchParams:', searchParams);
+    console.log('🔍 [HomeClient] current URL:', typeof window !== 'undefined' ? window.location.href : 'N/A');
+    
+    if (!mounted) {
+      console.log('⚠️ [HomeClient] Not mounted yet, waiting...');
+      return;
+    }
+    
+    // Try to get params from useSearchParams first, fallback to URLSearchParams
+    const params = searchParams || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null);
+    
+    if (!params) {
+      console.log('⚠️ [HomeClient] No search params available');
+      return;
+    }
+    
+    const exportId = params.get('exportId');
+    const userId = params.get('userId');
+    
+    console.log('🔍 [HomeClient] exportId:', exportId);
+    console.log('🔍 [HomeClient] userId:', userId);
+    
+    if (exportId && userId) {
+      console.log('✅ [HomeClient] Starting iOS export load for exportId:', exportId, 'userId:', userId);
+      // Fetch export data and load directly into scene
+      const loadIOSExport = async () => {
+        try {
+          console.log('📡 [HomeClient] Fetching export data from /api/exports/' + exportId);
+          const response = await fetch(`/api/exports/${exportId}`);
+          if (response.ok) {
+            const exportData = await response.json();
+            console.log('✅ [HomeClient] Export data received:', exportData);
+            console.log('📊 [HomeClient] Export status:', exportData.status);
+            console.log('📊 [HomeClient] Export GLB path:', exportData.glb_path);
+            
+            if (exportData.status === 'ready' && exportData.glb_path) {
+              console.log('✅ [HomeClient] Export is ready, saving to Zustand store');
+              
+              // Save model path to store - SceneEditor will watch this and load automatically
+              setModelPath(exportData.glb_path);
+              console.log('✅ [HomeClient] Set modelPath in store:', exportData.glb_path);
+              
+              // Save JSON path to store
+              if (exportData.json_path) {
+                setRoomPlanJsonPath(exportData.json_path);
+                console.log('✅ [HomeClient] Set roomPlanJsonPath in store:', exportData.json_path);
+                
+                // Load and save JSON metadata
+                try {
+                  const jsonResponse = await fetch(exportData.json_path);
+                  if (jsonResponse.ok) {
+                    const roomPlanJson = await jsonResponse.json();
+                    setRoomPlanMetadata(roomPlanJson);
+                    console.log('✅ [HomeClient] Loaded and saved roomPlanMetadata to store');
+                  } else {
+                    console.warn('⚠️ [HomeClient] Failed to load JSON metadata:', jsonResponse.status);
+                  }
+                } catch (jsonError) {
+                  console.error('❌ [HomeClient] Error loading JSON metadata:', jsonError);
+                }
+              } else {
+                console.log('ℹ️ [HomeClient] No JSON path available for this export');
+              }
+              
+              // Clear URL params after saving to store
+              window.history.replaceState({}, '', window.location.pathname);
+              console.log('✅ [HomeClient] iOS export data saved to store, SceneEditor will load automatically');
+            } else {
+              console.warn('⚠️ [HomeClient] Export not ready or missing GLB path');
+            }
+          } else {
+            console.error('❌ [HomeClient] Failed to fetch export data:', response.status, response.statusText);
+          }
+        } catch (error) {
+          console.error('❌ [HomeClient] Failed to load iOS export:', error);
+        }
+      };
+      
+      loadIOSExport();
+    } else {
+      console.log('⚠️ [HomeClient] Missing exportId or userId, skipping iOS export load');
+    }
+  }, [mounted, searchParams]);
 
   // Check if user has scene configurations
   // Function to check user configs (moved outside useEffect for reuse)
@@ -664,10 +783,10 @@ export default function HomeClient() {
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Loading User Profile...
+              {t('loadingUserProfile')}
             </h2>
             <p className="text-gray-600 dark:text-gray-400">
-              Please wait while we load your account information
+              {t('pleaseWaitAccountInfo')}
             </p>
           </div>
         </div>
@@ -745,9 +864,9 @@ export default function HomeClient() {
       
       {/* END USERS: Always render SceneEditor (but don't auto-load models) */}
       {/* This ensures event listeners are registered for loading selected projects */}
-      {configCheckComplete && (
+      {configCheckComplete && showSceneEditor && (
         <>
-          <SceneEditor 
+          <SceneEditorDynamic 
             sceneStage={sceneStage} 
             currentSection={currentSection}
             user={user}
@@ -788,9 +907,9 @@ export default function HomeClient() {
       
       {/* ARCHITECTS: Always render SceneEditor (but don't auto-load own models) */}
       {/* This ensures event listeners are registered for loading client projects */}
-      {configCheckComplete && (
+      {configCheckComplete && showSceneEditor && (
         <>
-          <SceneEditor 
+          <SceneEditorDynamic 
             sceneStage={sceneStage} 
             currentSection={currentSection}
             user={user}

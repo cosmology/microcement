@@ -75,7 +75,7 @@ export function ArchitectModelsList({ architectId, role, onModelSelected }: Arch
       // Build query based on role
       let query = supabase
         .from('scene_design_configs')
-        .select('id, user_id, config_name, model_path, architect_id, client_id, created_at')
+        .select('id, user_id, config_name, model_path, architect_id, client_id, project_status, created_at')
       
       // Admin sees ALL projects, architect sees only their assigned projects
       if (role !== 'admin') {
@@ -137,7 +137,9 @@ export function ArchitectModelsList({ architectId, role, onModelSelected }: Arch
         // Get relationship by client_id (config.user_id is the client)
         const relationship = relationshipMap.get(config.user_id)
 
-        const status = relationship?.status || 'pending_architect'
+        // ✅ Use scene_design_config.project_status for button (each project has its own status)
+        // Fallback to relationship.status for backwards compatibility
+        const status = config.project_status || relationship?.status || 'pending_architect'
         
         // Use config_name as the unique project identifier, not relationship.project_name
         const displayName = config.config_name || relationship?.project_name || 'Untitled Project'
@@ -193,25 +195,22 @@ export function ArchitectModelsList({ architectId, role, onModelSelected }: Arch
 
     console.log('🎯 [ArchitectModelsList] Project action:', { status, sceneConfigId, clientId, relationshipId })
 
-    // If PENDING_ARCHITECT, update status to IN_PROGRESS first
-    if (status === 'pending_architect' && relationshipId) {
+    // If PENDING_ARCHITECT, update project status to IN_PROGRESS first
+    if (status === 'pending_architect') {
       try {
         setUpdatingStatus(project.id)
         
-        const response = await fetch('/api/architect-clients/update-status', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            relationshipId,
-            status: 'in_progress'
-          })
-        })
+        // ✅ Update the scene_design_config.project_status (not architect_clients.status)
+        const { error: updateError } = await supabase
+          .from('scene_design_configs')
+          .update({ project_status: 'in_progress' })
+          .eq('id', sceneConfigId)
 
-        if (!response.ok) {
-          throw new Error('Failed to update status')
+        if (updateError) {
+          throw new Error('Failed to update project status')
         }
 
-        console.log('✅ [ArchitectModelsList] Status updated to IN_PROGRESS')
+        console.log('✅ [ArchitectModelsList] Project status updated to IN_PROGRESS for config:', sceneConfigId)
         
         // Reload projects to reflect new status
         await loadClientProjects()

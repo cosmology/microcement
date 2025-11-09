@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
-import { FileStack, Trash2 } from 'lucide-react'
+import { FileStack, Trash2, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useSceneStore } from '@/lib/stores/sceneStore'
 
 interface AssetItem {
   id: string
@@ -21,13 +22,19 @@ interface UploadsListProps {
 
 export default function UploadsList({ onAssetSelected }: UploadsListProps = {}) {
   const t = useTranslations('Dock')
+  const { setModelLoadingProgress } = useSceneStore()
   const [assets, setAssets] = useState<AssetItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedAsset, setSelectedAsset] = useState<AssetItem | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null) // Track which asset is being deleted
+  const [loadingAssetId, setLoadingAssetId] = useState<string | null>(null)
+  const fetchingRef = useRef(false) // Prevent race conditions
 
   useEffect(() => {
+    // Use a ref to prevent duplicate fetches
+    if (fetchingRef.current) return
+    fetchingRef.current = true
     fetchUploads()
   }, [])
 
@@ -60,6 +67,8 @@ export default function UploadsList({ onAssetSelected }: UploadsListProps = {}) 
 
   const handleAssetSelect = (asset: AssetItem) => {
     setSelectedAsset(asset)
+    setLoadingAssetId(asset.id)
+    setModelLoadingProgress(0)
     
     console.log('📤 [UploadsList] Asset selected:', asset.project_name)
     console.log('📤 [UploadsList] Loading RAW MODEL ONLY (no architect hotspots/paths)')
@@ -84,10 +93,11 @@ export default function UploadsList({ onAssetSelected }: UploadsListProps = {}) 
     
     // Close the panel after a short delay to allow the model to load
     setTimeout(() => {
+      setLoadingAssetId(null)
       if (onAssetSelected) {
         onAssetSelected()
       }
-    }, 100)
+    }, 1000)
   }
 
   const handleDeleteAsset = async (e: React.MouseEvent, assetId: string) => {
@@ -188,7 +198,10 @@ export default function UploadsList({ onAssetSelected }: UploadsListProps = {}) 
             onClick={() => handleAssetSelect(asset)}
           >
             <div className="flex items-start justify-between gap-2">
-              <div className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1 flex-1">
+              <div className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1 flex-1 flex items-center gap-2">
+                {loadingAssetId === asset.id && (
+                  <Loader2 className="w-3 h-3 animate-spin text-blue-600" />
+                )}
                 {asset.project_name || asset.object_path.split('/').slice(-1)[0]}
               </div>
               

@@ -30,6 +30,8 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
   // Align dropdown panel with header bottom
   const [headerBottom, setHeaderBottom] = useState<number>(64)
   const rafRef = useRef<number | null>(null)
+  // Prevent duplicate profile fetches in React StrictMode
+  const fetchingRef = useRef<boolean>(false)
   
   const t = useTranslations('Navigation')
   const tu = useTranslations('UserProfile')
@@ -181,8 +183,22 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
   };
 
   useEffect(() => {
+    // Prevent duplicate fetches in React StrictMode
+    if (fetchingRef.current) {
+      console.log('⚠️ [UserProfile] Duplicate fetch prevented')
+      return
+    }
+
     // Check if user is already authenticated
     const checkAuth = async () => {
+      if (fetchingRef.current) {
+        console.log('⚠️ [UserProfile] Already fetching, skipping')
+        return
+      }
+      
+      fetchingRef.current = true
+      console.log('🔐 [UserProfile] Starting auth check...')
+      
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
@@ -221,6 +237,8 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
         console.error('Auth check failed:', error)
       } finally {
         setLoading(false)
+        fetchingRef.current = false
+        console.log('✅ [UserProfile] Auth check complete')
       }
     }
 
@@ -228,49 +246,64 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        console.log('🔐 [UserProfile] User logged in - Full user metadata:', {
-          user: session.user,
-          user_metadata: session.user.user_metadata,
-          app_metadata: session.user.app_metadata,
-          aud: session.user.aud,
-          created_at: session.user.created_at,
-          email: session.user.email,
-          email_confirmed_at: session.user.email_confirmed_at,
-          id: session.user.id,
-          last_sign_in_at: session.user.last_sign_in_at,
-          phone: session.user.phone,
-          role: session.user.role,
-          updated_at: session.user.updated_at
-        })
-
-        // Load user profile from database
-        const userProfileService = UserProfileService.getInstance()
-        const userWithProfile = await userProfileService.getUserWithProfile(session.user)
-        setUserWithProfile(userWithProfile)
-        if (typeof window !== 'undefined') {
-          ;(window as any).__currentUserId = session.user.id
-        }
-        
-        console.log('🔐 [UserProfile] User with profile loaded on auth change:', {
-          auth: userWithProfile.auth,
-          profile: userWithProfile.profile,
-          role: userWithProfile.profile?.role || 'no profile'
-        })
-      } else {
-        // User logged out
-        setUserWithProfile(null)
-        if (typeof window !== 'undefined') {
-          ;(window as any).__currentUserId = null
-          ;(window as any).__currentSceneConfigId = null
-        }
+      if (fetchingRef.current) {
+        console.log('⚠️ [UserProfile] Already fetching user profile, skipping onAuthStateChange')
+        return
       }
-      setUser(session?.user ?? null)
-      onUserChange?.(session?.user ?? null)
-      setLoading(false)
+      
+      fetchingRef.current = true
+      
+      try {
+        if (session?.user) {
+          console.log('🔐 [UserProfile] User logged in - Full user metadata:', {
+            user: session.user,
+            user_metadata: session.user.user_metadata,
+            app_metadata: session.user.app_metadata,
+            aud: session.user.aud,
+            created_at: session.user.created_at,
+            email: session.user.email,
+            email_confirmed_at: session.user.email_confirmed_at,
+            id: session.user.id,
+            last_sign_in_at: session.user.last_sign_in_at,
+            phone: session.user.phone,
+            role: session.user.role,
+            updated_at: session.user.updated_at
+          })
+
+          // Load user profile from database
+          const userProfileService = UserProfileService.getInstance()
+          const userWithProfile = await userProfileService.getUserWithProfile(session.user)
+          setUserWithProfile(userWithProfile)
+          if (typeof window !== 'undefined') {
+            ;(window as any).__currentUserId = session.user.id
+          }
+          
+          console.log('🔐 [UserProfile] User with profile loaded on auth change:', {
+            auth: userWithProfile.auth,
+            profile: userWithProfile.profile,
+            role: userWithProfile.profile?.role || 'no profile'
+          })
+        } else {
+          // User logged out
+          setUserWithProfile(null)
+          if (typeof window !== 'undefined') {
+            ;(window as any).__currentUserId = null
+            ;(window as any).__currentSceneConfigId = null
+          }
+        }
+        setUser(session?.user ?? null)
+        onUserChange?.(session?.user ?? null)
+      } finally {
+        setLoading(false)
+        fetchingRef.current = false
+        console.log('✅ [UserProfile] Auth state change complete')
+      }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+      fetchingRef.current = false
+    }
   }, [onUserChange])
 
   // Handle forceShowAuth prop changes
@@ -279,6 +312,26 @@ export default function UserProfile({ onUserChange, forceShowAuth = false }: Use
       setShowAuthModal(true)
     }
   }, [forceShowAuth])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if ((window as any).__PLAYWRIGHT_FORCE_AUTH_MODAL__) {
+      setShowAuthModal(true)
+    }
+  }, [])
+
+  // Allow Playwright helpers to request the auth modal directly
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleOpenRequest = () => setShowAuthModal(true)
+
+    window.addEventListener('playwright-open-auth-modal', handleOpenRequest)
+
+    return () => {
+      window.removeEventListener('playwright-open-auth-modal', handleOpenRequest)
+    }
+  }, [])
 
   const handleSignOut = async () => {
     try {

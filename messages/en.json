@@ -1,7 +1,9 @@
 {
   "Index": {
     "title": "Microcement - Transform Spaces Sustainably",
-    "description": "Innovative micro-cement solutions for modern spaces. Sustainable, stylish, and fast installation."
+    "description": "Innovative micro-cement solutions for modern spaces. Sustainable, stylish, and fast installation.",
+    "loadingUserProfile": "Loading User Profile...",
+    "pleaseWaitAccountInfo": "Please wait while we load your account information"
   },
   "Navigation": {
     "ecoFriendly": "Eco Friendly",
@@ -343,6 +345,11 @@
     "lockBirdView": "Lock Bird View",
     "rotateModel": "Rotate Model 90°",
     "clearScene": "Clear Scene",
+    "resetScene": "Reset Scene",
+    "showMeasurements": "Show Measurements",
+    "hideMeasurements": "Hide Measurements",
+    "roomScanner": "Room Scanner",
+  "scannedRooms": "Scanned Rooms",
     "Upload Models": "Upload Models",
     "uploadModels": "Upload Models",
     "All Models": "All Models",
@@ -350,6 +357,7 @@
     "My Uploads": "My Uploads",
     "myUploads": "My Uploads",
     "uploads": "Uploads",
+    "videoCapture": "Video Capture",
     "User Management": "User Management",
     "userManagement": "User Management",
     "System Settings": "System Settings",
@@ -416,5 +424,22 @@
     "close": "Close",
     "waypoint": "Waypoint",
     "lookAt": "LookAt Target"
+  },
+  "VideoCapture": {
+    "readyToScan": "Ready to Scan Your Space",
+    "scanInstructions": "Move slowly around the room in a circular motion. Capture all angles for the best 3D reconstruction.",
+    "startRecording": "Start Recording",
+    "stopAndUpload": "Stop & Upload",
+    "recordingInstructions": "Recording... Move slowly and capture all angles",
+    "uploadingVideo": "Uploading video to server...",
+    "processingVideo": "Processing video into 3D model...",
+    "processingComplete": "✅ 3D model generated successfully!",
+    "cameraAccessError": "Unable to access camera. Please check permissions.",
+    "uploadError": "Upload failed. Please try again.",
+    "tipsTitle": "💡 Scanning Tips:",
+    "tip1": "Move slowly in a smooth circular motion",
+    "tip2": "Keep the camera steady and avoid sudden movements",
+    "tip3": "Ensure good lighting throughout the room",
+    "tip4": "Record for 30-60 seconds for best results"
   }
 } 

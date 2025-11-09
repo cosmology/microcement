@@ -64,6 +64,11 @@ These listeners need DOM events and will NOT be migrated:
 7. **camera-goto-waypoint** - Waypoint navigation
 8. **gallery-closed** - Gallery modal events
 
+### iOS Export Loading (Zustand-based)
+- **Removed**: `load-scanned-room` event listener
+- **Added**: Zustand store subscription in SceneEditor
+- **Flow**: HomeClient → Zustand store → SceneEditor (automatic loading)
+
 ## Code Changes
 
 ### SceneEditor.tsx

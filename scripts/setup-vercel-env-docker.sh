@@ -32,7 +32,7 @@ echo "🔧 Adding environment variables to Vercel..."
 docker run --rm -it \
   -v "$(pwd):/app" \
   -w /app \
-  node:18-alpine \
+  node:20-alpine \
   sh -c "
     npm install -g vercel &&
     vercel env add NEXT_PUBLIC_SUPABASE_URL production <<< '$SUPABASE_URL' &&

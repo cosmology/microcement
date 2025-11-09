@@ -1,20 +1,23 @@
 'use client'
 
 import React from 'react'
-import { Upload, FileStack, Settings, Users, Trash2, RotateCw, PanelLeftClose, Boxes, Camera } from 'lucide-react'
+import { Upload, FileStack, Settings, Users, RulerIcon, RotateCw, RotateCcw, PanelLeftClose, Boxes, Camera, Scan, Home, Ruler } from 'lucide-react'
 import { UserRole } from '@/hooks/useUserRole'
 import { useTranslations } from 'next-intl'
 import { useDockedNavigationStore } from '@/lib/stores/dockedNavigationStore'
 import { useCameraStore } from '@/lib/stores/cameraStore'
+import { useSceneStore } from '@/lib/stores/sceneStore'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import ModelsList from './ModelsList'
 import { ArchitectModelsList } from './ArchitectModelsList'
 import ProjectBriefModal from './ProjectBriefModal'
 import UploadsList from './UploadsList'
 import CameraPathEditor3D from './CameraPathEditor3D'
+import RoomScanner from './RoomScanner'
+import ScannedRoomsList from './ScannedRoomsList'
 
 // UI Constants
 const SUBPANEL_WIDTH = 'w-[21rem]' // 800px uniform width for all subpanels
-6
 interface DockedNavigationProps {
   role: UserRole
 }
@@ -39,19 +42,28 @@ export default function DockedNavigation({ role, userWithRole }: DockedNavigatio
     showUploadModal,
     showUploads: showMyUploads,
     showCameraControls,
+    showScanner,
+    showScannedRooms,
     setIsCollapsed,
     setShowUploadModal,
     setShowModelsList,
     setShowUploads,
     setShowCameraControls,
+    setShowScanner,
+    setShowScannedRooms,
     openModelsList,
     openUploads,
     openUploadModal,
     openCameraControls,
+    openScanner,
+    openScannedRooms,
   } = useDockedNavigationStore()
   
   // Camera store (for editor state and model utilities)
   const { isEditorEnabled, requestClearScene, requestRotateModel } = useCameraStore()
+  
+  // Scene store (for measurements toggle)
+  const { showMeasurements, toggleMeasurements } = useSceneStore()
 
   // Monitor header visibility - panels stick to top when header is hidden
   React.useEffect(() => {
@@ -123,26 +135,52 @@ export default function DockedNavigation({ role, userWithRole }: DockedNavigatio
     }
   }, [openUploadModal])
 
+  const [forceExpanded, setForceExpanded] = React.useState(() => {
+    if (typeof window !== 'undefined' && (window as any).__PLAYWRIGHT_EXPAND_NAV__) {
+      return true
+    }
+    return false
+  })
+
+  React.useLayoutEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).__PLAYWRIGHT_EXPAND_NAV__) {
+      setForceExpanded(true)
+      setIsCollapsed(false)
+    }
+  }, [setIsCollapsed])
+
+  React.useEffect(() => {
+    if (forceExpanded && isCollapsed) {
+      setIsCollapsed(false)
+    }
+  }, [forceExpanded, isCollapsed, setIsCollapsed])
+
   const navItems = (): NavItem[] => {
     switch (role) {
       case 'admin':
         return [
-          { icon: Camera, label: 'cameraControls', href: '#camera', onClick: () => { openCameraControls(); setIsCollapsed(true); } },
+          { icon: Scan, label: 'roomScanner', href: '#scanner', onClick: openScanner },
+          { icon: Home, label: 'scannedRooms', href: '#scanned-rooms', onClick: openScannedRooms },
           { icon: Boxes, label: 'clientModels', href: '#models', onClick: openModelsList },
           { icon: FileStack, label: 'uploads', href: '#uploads', onClick: openUploads },
           { icon: Upload, label: 'uploadModels', href: '#upload', onClick: openUploadModal },
+          { icon: Camera, label: 'cameraControls', href: '#camera', onClick: () => { openCameraControls(); setIsCollapsed(true); } },
           { icon: Users, label: 'userManagement', href: '#users' },
           { icon: Settings, label: 'systemSettings', href: '#settings' }
         ]
       case 'architect':
         return [
-          { icon: Camera, label: 'cameraControls', href: '#camera', onClick: () => { openCameraControls(); setIsCollapsed(true); } },
+          { icon: Scan, label: 'roomScanner', href: '#scanner', onClick: openScanner },
+          { icon: Home, label: 'scannedRooms', href: '#scanned-rooms', onClick: openScannedRooms },
           { icon: Boxes, label: 'clientModels', href: '#my-models', onClick: openModelsList },
           { icon: FileStack, label: 'uploads', href: '#uploads', onClick: openUploads },
-          { icon: Upload, label: 'uploadModel', href: '#upload', onClick: openUploadModal }
+          { icon: Upload, label: 'uploadModel', href: '#upload', onClick: openUploadModal },
+          { icon: Camera, label: 'cameraControls', href: '#camera', onClick: () => { openCameraControls(); setIsCollapsed(true); } }
         ]
       case 'end_user':
         return [
+          { icon: Scan, label: 'roomScanner', href: '#scanner', onClick: openScanner },
+          { icon: Home, label: 'scannedRooms', href: '#scanned-rooms', onClick: openScannedRooms },
           { icon: Boxes, label: 'myModels', href: '#models', onClick: openModelsList },
           { icon: FileStack, label: 'uploads', href: '#uploads', onClick: openUploads },
           { icon: Upload, label: 'uploadProject', href: '#upload', onClick: openUploadModal }
@@ -155,10 +193,10 @@ export default function DockedNavigation({ role, userWithRole }: DockedNavigatio
   if (role === 'guest') return null
 
   // Model utility handlers
-  const handleClearScene = (e: React.MouseEvent) => {
+  const handleResetScene = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('🗑️ [DockedNavigation] Clear scene clicked')
+    console.log('🔄 [DockedNavigation] Reset scene clicked')
     requestClearScene()
   }
   
@@ -175,8 +213,17 @@ export default function DockedNavigation({ role, userWithRole }: DockedNavigatio
         className={`fixed left-0 top-0 h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transition-all    duration-100 z-[100] ${
           isCollapsed ? 'w-12' : 'w-48'
         }`}
-        onMouseEnter={() => setIsCollapsed(false)}
-        onMouseLeave={() => setIsCollapsed(true)}
+        onMouseEnter={() => {
+          if (!forceExpanded) {
+            setIsCollapsed(false)
+          }
+        }}
+        onMouseLeave={() => {
+          if (!forceExpanded) {
+            setIsCollapsed(true)
+          }
+        }}
+        data-testid="docked-navigation"
       >
         {/* Header */}
         <div className="flex items-center px-4 border-b border-gray-200 dark:border-gray-700" style={{height: '44px'}}>
@@ -191,62 +238,82 @@ export default function DockedNavigation({ role, userWithRole }: DockedNavigatio
 
         {/* Navigation Items */}
         <nav>
-        <ul className="flex w-full min-w-0 flex-col gap-1">
-          <div className="relative flex w-full min-w-0 flex-col p-2 gap-0.5">
-            {/* Model Utilities Section - Only show for architect and admin roles */}
-            {role !== 'end_user' && (
-              <>
-                {/* Rotate Model */}
-                <li className="group/menu-item relative">
-                  <a onClick={handleRotateModel} className="flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer group">
-                    <div className="flex items-center justify-center shrink-0">
-                      <RotateCw className="w-[19px] h-[19px] text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight transition-colors" />
-                    </div>
-                    <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs whitespace-nowrap transition-[opacity,transform] duration-100 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight`}>{t('rotateModel')}</span>
-                  </a>
-                </li>
+          <ul className="flex w-full min-w-0 flex-col gap-1">
+            <div className="relative flex w-full min-w-0 flex-col p-2 gap-0.5">
+              {/* Existing grouped items */}
+              {navItems().map((item, index) => {
+                const Icon = item.icon
+                return (
+                  <li key={`extra-${index}`} className="group/menu-item relative">
+                    <a
+                      href={item.href}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        if (item.onClick) {
+                          item.onClick()
+                        }
+                      }}
+                      data-testid={`nav-${item.label}`}
+                      className="peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 text-left outline-none transition-[width,height,padding] hover:bg-gray-100 dark:hover:bg-gray-800 h-8 group"
+                    >
+                      <div className="flex items-center justify-center shrink-0">
+                        <Icon className="w-[19px] h-[19px] text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight transition-colors" />
+                      </div>
+                      <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs whitespace-nowrap transition-[opacity,transform] duration-100 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight`}>{t(item.label)}</span>
+                    </a>
+                  </li>
+                )
+              })}
 
-                {/* Clear Scene */}
-                <li className="group/menu-item relative">
-                  <a onClick={handleClearScene} className="flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer group">
-                    <div className="flex items-center justify-center shrink-0">
-                      <Trash2 className="w-[19px] h-[19px] text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight transition-colors" />
-                    </div>
-                    <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs whitespace-nowrap transition-[opacity,transform] duration-100 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight`}>{t('clearScene')}</span>
-                  </a>
-                </li>
+               {/* Model Utilities Section - Only show for architect and admin roles */}
+               {role !== 'end_user' && (
+                <>
 
-                {/* Separator after utilities */}
-                <div className="shrink-0 bg-gray-200 dark:bg-gray-700 h-px w-[calc(100%-1rem)] mx-auto my-1" />
-              </>
-            )}
-            {/* Existing grouped items */}
-            {navItems().map((item, index) => {
-              const Icon = item.icon
-              return (
-                <li key={`extra-${index}`} className="group/menu-item relative">
-                  <a
-                    href={item.href}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      if (item.onClick) {
-                        item.onClick()
-                      }
-                    }}
-                    className="peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 text-left outline-none transition-[width,height,padding] hover:bg-gray-100 dark:hover:bg-gray-800 h-8 group"
-                  >
-                    <div className="flex items-center justify-center shrink-0">
-                      <Icon className="w-[19px] h-[19px] text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight transition-colors" />
-                    </div>
-                    <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs whitespace-nowrap transition-[opacity,transform] duration-100 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight`}>{t(item.label)}</span>
-                  </a>
-                </li>
-              )
-            })}
-          </div>
-        </ul>
-      </nav>
+                  {/* Separator after utilities */}
+                  <div className="shrink-0 bg-gray-200 dark:bg-gray-700 h-px w-[calc(100%-1rem)] mx-auto my-1" />
+
+                  {/* Toggle Measurements */}
+                  <li className="group/menu-item relative">
+                    <a 
+                      onClick={() => toggleMeasurements()} 
+                      className="flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer group"
+                    >
+                      <div className="flex items-center justify-center shrink-0">
+                        <RulerIcon className={`w-[19px] h-[19px] transition-colors ${showMeasurements ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'} group-hover:text-blue-600 dark:group-hover:text-blue-400`} />
+                      </div>
+                      <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs whitespace-nowrap transition-[opacity,transform] duration-100 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight`}>
+                        {showMeasurements ? t('hideMeasurements', { default: 'Hide Measurements' }) : t('showMeasurements', { default: 'Show Measurements' })}
+                      </span>
+                    </a>
+                  </li>
+
+                  {/* Reset Scene */}
+                  <li className="group/menu-item relative">
+                    <a onClick={handleResetScene} className="flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer group">
+                      <div className="flex items-center justify-center shrink-0">
+                        <RotateCcw className="w-[19px] h-[19px] text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight transition-colors" />
+                      </div>
+                      <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs whitespace-nowrap transition-[opacity,transform] duration-100 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight`}>{t('resetScene')}</span>
+                    </a>
+                  </li>
+
+                                  
+                  {/* Rotate Model */}
+                  {/* <li className="group/menu-item relative">
+                    <a onClick={handleRotateModel} className="flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer group">
+                      <div className="flex items-center justify-center shrink-0">
+                        <RotateCw className="w-[19px] h-[19px] text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight transition-colors" />
+                      </div>
+                      <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs whitespace-nowrap transition-[opacity,transform] duration-100 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight`}>{t('rotateModel')}</span>
+                    </a>
+                  </li> */}
+                
+                </>
+              )}
+            </div>
+          </ul>
+        </nav>
 
         {/* Role Badge */}
         <div
@@ -366,6 +433,57 @@ export default function DockedNavigation({ role, userWithRole }: DockedNavigatio
           <div className="p-1">
             <CameraPathEditor3D activePathId="default" />
           </div>
+        </div>
+      )}
+
+      {/* Room Scanner Modal */}
+      {showScanner && (
+        <div 
+          className="fixed inset-0 bg-black/95 backdrop-blur-sm z-[200] flex flex-col"
+        >
+          <div className="flex-shrink-0 bg-black/90 backdrop-blur-md border-b border-gray-700/50 px-4 py-3 flex items-center justify-between min-h-[60px]">
+            <h2 className="text-lg font-semibold text-white">{t('roomScanner')}</h2>
+            <button
+              onClick={() => setShowScanner(false)}
+              className="p-2 hover:bg-gray-800 rounded-md transition-colors flex items-center justify-center"
+              aria-label="Close room scanner"
+            >
+              <PanelLeftClose className="w-6 h-6 text-gray-400" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-auto p-4">
+            <RoomScanner 
+              userId={userWithRole?.id}
+              onComplete={() => {
+                setShowScanner(false)
+                // Optionally reload models list
+                window.dispatchEvent(new CustomEvent('reload-models'))
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Scanned Rooms Panel */}
+      {showScannedRooms && (
+        <div 
+          className={`fixed left-12 ${SUBPANEL_WIDTH} bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-l border-r border-t border-b border-gray-200/50 dark:border-gray-700/50 shadow-lg z-[90] overflow-y-auto transition-all duration-200 ease-out`}
+          style={{ 
+            top: `${headerHeight}px`,
+            height: `calc(100vh - ${headerHeight}px)`
+          }}
+        >
+          <div className="sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-4 z-10 flex items-center justify-between" style={{height: '44px'}}>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">{t('scannedRooms')}</h2>
+            <button
+              onClick={() => setShowScannedRooms(false)}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+              aria-label="Close panel"
+            >
+              <PanelLeftClose className="w-5 h-5 text-gray-400 dark:text-gray-600" />
+            </button>
+          </div>
+          <ScannedRoomsList userId={userWithRole?.id} />
         </div>
       )}
     </>

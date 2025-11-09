@@ -63,12 +63,14 @@ export class UserProfileService {
       // Check cache first
       const cached = this.profileCache.get(userId)
       if (cached) {
+        console.info('[UserProfileService] Returning cached profile', { userId, role: cached.role })
         return cached
       }
 
       // Check if request is already pending
       const pending = this.pendingRequests.get(userId)
       if (pending) {
+        console.info('[UserProfileService] Awaiting pending profile request', { userId })
         return pending
       }
 
@@ -80,7 +82,10 @@ export class UserProfileService {
       this.pendingRequests.delete(userId)
 
       if (result) {
+        console.info('[UserProfileService] Fetched profile from DB', { userId, role: result.role })
         this.profileCache.set(userId, result)
+      } else {
+        console.info('[UserProfileService] No profile found in DB', { userId })
       }
 
       return result
@@ -106,6 +111,7 @@ export class UserProfileService {
         if (error) {
           if (error.code === 'PGRST116') {
             // No profile found - this could be due to RLS or missing profile
+            console.info('[UserProfileService] No profile (PGRST116)', { userId })
             return null
           }
           
@@ -141,8 +147,14 @@ export class UserProfileService {
    * Get complete user data (auth + profile)
    */
   public async getUserWithProfile(authUser: AuthUser): Promise<UserWithProfile> {
+    console.info('[UserProfileService] getUserWithProfile start', { userId: authUser.id })
     const profile = await this.getUserProfile(authUser.id)
-    
+    console.info('[UserProfileService] getUserWithProfile result', {
+      userId: authUser.id,
+      profileRole: profile?.role,
+      hasProfile: Boolean(profile)
+    })
+
     return {
       auth: authUser,
       profile

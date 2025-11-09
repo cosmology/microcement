@@ -19,14 +19,14 @@ if ! docker run --rm -it \
   -v "$(pwd):/app" \
   -w /app \
   -v ~/.vercel:/root/.vercel \
-  node:18-alpine \
+  node:20-alpine \
   sh -c "npm install -g vercel && vercel whoami" &> /dev/null; then
     echo "🔐 Please log in to Vercel first:"
     docker run --rm -it \
       -v "$(pwd):/app" \
       -w /app \
       -v ~/.vercel:/root/.vercel \
-      node:18-alpine \
+      node:20-alpine \
       sh -c "npm install -g vercel && vercel login"
 fi
 
@@ -39,7 +39,7 @@ docker run --rm -it \
   -v "$(pwd):/app" \
   -w /app \
   -v ~/.vercel:/root/.vercel \
-  node:18-alpine \
+  node:20-alpine \
   sh -c "npm install -g vercel && vercel env ls"
 
 echo ""
@@ -60,7 +60,7 @@ docker run --rm -it \
   -v "$(pwd):/app" \
   -w /app \
   -v ~/.vercel:/root/.vercel \
-  node:18-alpine \
+  node:20-alpine \
   sh -c "npm install -g vercel && vercel --prod"
 
 echo ""

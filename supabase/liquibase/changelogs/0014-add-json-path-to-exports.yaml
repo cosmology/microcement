@@ -1,0 +1,8 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0014-add-json-path-to-exports
+      author: system
+      changes:
+        - sql:
+            sql: ALTER TABLE exports ADD COLUMN IF NOT EXISTS json_path VARCHAR(500);
+

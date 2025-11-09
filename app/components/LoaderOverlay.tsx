@@ -21,14 +21,16 @@ export default function LoaderOverlay({ percent, loadedMB, totalMB }: LoaderOver
   
   // Don't render if percent is 0 and no bytes loaded (not actually loading yet)
   // This prevents the "stuck at 0%" bug
-  if (percent === 0 && loadedMB === 0 && totalMB === null) {
-    console.log('⏸️ [LoaderOverlay] Skipping render - no progress yet')
+  if (percent === 0 && loadedMB === 0 && (totalMB === null || totalMB === 0)) {
+    return null
+  }
+
+  // Don't render if we have 0.0MB loaded and 0.0MB total (invalid state)
+  if (loadedMB === 0 && totalMB === 0) {
     return null
   }
 
   const isDark = resolvedTheme === 'dark'
-  
-  console.log('📊 [LoaderOverlay] Rendering:', { percent: Math.round(percent), loadedMB: loadedMB.toFixed(1), totalMB: totalMB?.toFixed(1) || 'unknown' })
 
   // Use createPortal to render outside the normal React tree
   return createPortal(
@@ -98,7 +100,7 @@ export default function LoaderOverlay({ percent, loadedMB, totalMB }: LoaderOver
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
         >
-          {totalMB 
+          {totalMB !== null
             ? `Loading: ${loadedMB.toFixed(1)} MB / ${totalMB.toFixed(1)} MB`
             : `Loading: ${loadedMB.toFixed(1)} MB`
           }

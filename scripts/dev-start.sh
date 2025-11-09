@@ -19,10 +19,10 @@ fi
 echo "[start] Bringing up Supabase stack (arm64 default if on Apple Silicon)"
 (
   cd "$SUPABASE_DIR"
-  # Pull all services except mailhog to avoid amd64-only image on ARM
+  # Pull all services
   DOCKER_DEFAULT_PLATFORM=${DOCKER_DEFAULT_PLATFORM:-linux/arm64} docker compose pull studio kong auth rest realtime storage imgproxy meta functions analytics db vector supavisor liquibase || true
   # Avoid blocking startup on ARM or slow healthchecks by scaling out optional services
-  DOCKER_DEFAULT_PLATFORM=${DOCKER_DEFAULT_PLATFORM:-linux/arm64} docker compose up -d --scale mailhog=0 --scale analytics=0
+  DOCKER_DEFAULT_PLATFORM=${DOCKER_DEFAULT_PLATFORM:-linux/arm64} docker compose up -d --scale analytics=0
 )
 
 echo "[start] Waiting for Postgres health..."
@@ -193,13 +193,9 @@ echo "[start] Ensuring _supabase database exists for pooler"
 echo "[start] Ensuring Supabase client URL is set correctly"
 (
   cd "$ROOT_DIR"
-  # Ensure NEXT_PUBLIC_SUPABASE_URL points to localhost for browser access
-  if grep -q "NEXT_PUBLIC_SUPABASE_URL=http://localhost:8000" .env; then
-    echo "[start] Supabase URL already set to localhost:8000"
-  else
-    echo "[start] Setting Supabase URL to localhost:8000"
-    sed -i.bak 's|NEXT_PUBLIC_SUPABASE_URL=.*|NEXT_PUBLIC_SUPABASE_URL=http://localhost:8000|' .env
-  fi
+  # For Docker setup, the URL should match the docker-compose.yml configuration
+  # which is set to 192.168.1.9:8000 for external device access
+  echo "[start] Supabase URL configured in docker-compose.yml for external access"
 )
 
 echo "[start] Restarting Kong to apply key-auth plugin"
@@ -210,9 +206,17 @@ echo "[start] Restarting Kong to apply key-auth plugin"
 )
 
 echo "[start] Starting app stack from project root (profile: dev)"
+echo "[start] (Note: 'CACHED' build messages are normal - Docker is using cached layers)"
 (
   cd "$ROOT_DIR"
-  docker compose --profile dev up -d --build
+  # Build and start - capture exit code
+  if docker compose --profile dev up -d --build; then
+    echo "[start] ✅ App stack build and start completed successfully"
+  else
+    EXIT_CODE=$?
+    echo "[start] ❌ Failed to start app stack (exit code: $EXIT_CODE)"
+    exit $EXIT_CODE
+  fi
 )
 
 echo "[start] Status overview:\n"
@@ -239,6 +243,8 @@ echo "[start] Quick verification - testing login..."
   fi
 )
 
-echo "[start] Done. Visit http://localhost:3000 and Supabase Studio at http://localhost:8000"
+echo ""
+echo "[start] ✅ All services started successfully!"
+echo "[start] Visit http://localhost:3000 and Supabase Studio at http://localhost:8000"
 
 

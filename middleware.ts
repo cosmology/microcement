@@ -74,7 +74,6 @@ export async function middleware(req: NextRequest) {
   // Find country info from countries.json with proper type guard
   const countryInfo: Country | undefined = countriesTyped.find((x: Country) => x.cca2 === country)
 
-  console.log("countryInfo: ", countryInfo)
   
   // Default values with proper typing
   let currencyCode = 'USD';
@@ -99,8 +98,6 @@ export async function middleware(req: NextRequest) {
   url.searchParams.set('name', currency.name)
   url.searchParams.set('languages', languages)
 
-  // Log for debugging
-  console.log({ geo, country, city, region, currencyCode, currency, languages, locale })
 
   // Supported locales
   const supportedLocales = ['en', 'es', 'sr'];

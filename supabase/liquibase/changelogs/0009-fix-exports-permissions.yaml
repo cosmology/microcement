@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0009-fix-exports-permissions
+      author: system
+      changes:
+        - sql:
+            sql: |
+              -- Grant permissions to service_role for exports table
+              GRANT ALL PRIVILEGES ON TABLE exports TO service_role;
+              
+              -- Grant permissions on sequences for UUID generation
+              GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
+              
+              -- Also grant permissions to authenticated users for RLS compatibility
+              GRANT SELECT, INSERT, UPDATE ON TABLE exports TO authenticated;
+              
+              -- Grant permissions on sequences to authenticated users
+              GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;

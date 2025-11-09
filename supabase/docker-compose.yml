@@ -137,10 +137,10 @@ services:
       # GOTRUE_SMTP_PASS: ${SMTP_PASS}
       # GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME}
       
-      # Local Development SMTP Configuration (MailHog)
+      # Local Development SMTP Configuration (Disabled)
       GOTRUE_SMTP_ADMIN_EMAIL: admin@localhost
-      GOTRUE_SMTP_HOST: mailhog
-      GOTRUE_SMTP_PORT: "1025"
+      GOTRUE_SMTP_HOST: localhost
+      GOTRUE_SMTP_PORT: "587"
       GOTRUE_SMTP_USER: 
       GOTRUE_SMTP_PASS: 
       GOTRUE_SMTP_SENDER_NAME: Supabase Local
@@ -537,19 +537,6 @@ services:
         "/app/bin/migrate && /app/bin/server"
       ]
 
-  # SMTP Server for email testing
-  mailhog:
-    container_name: supabase-mailhog
-    image: mailhog/mailhog:latest
-    restart: unless-stopped
-    ports:
-      - "1025:1025"  # SMTP port
-      - "8025:8025"  # Web UI port
-    environment:
-      - MH_STORAGE=maildir
-      - MH_MAILDIR_PATH=/maildir
-    volumes:
-      - mailhog-data:/maildir
 
   # Liquibase Migration Service
   liquibase:
@@ -568,4 +555,3 @@ services:
 
 volumes:
   db-config:
-  mailhog-data:

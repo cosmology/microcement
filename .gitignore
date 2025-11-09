@@ -43,6 +43,7 @@ scripts/sync-user-uuids.sh
 scripts/sync-user-uuids-proper.sh
 
 public/uploads
+public/models/scanned-rooms/
 
 frontend/tsconfig.tsbuildinfo
 frontend/tsconfig.tsbuildinfo
@@ -78,3 +79,17 @@ supabase/functions/.env*
 
 # MCP Configuration (contains sensitive tokens)
 .cursor/mcp.json
+
+# Test coverage and reports
+coverage/
+.nyc_output/
+*.lcov
+htmlcov/
+.coverage
+coverage.xml
+coverage.json
+playwright-report/
+playwright/.cache/
+test-results/
+.vitest/
+*.spec.js.snap

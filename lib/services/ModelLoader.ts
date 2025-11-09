@@ -122,35 +122,57 @@ export class ModelLoader {
         console.warn('[ModelLoader] HEAD request failed; continuing without total bytes');
       }
 
-      // Load model data
-      const fileLoader = new THREE.FileLoader();
-      fileLoader.setResponseType('arraybuffer');
-
+      // Load model data using GLTFLoader directly (handles both GLB and GLTF)
       const gltf = await new Promise<any>((resolve, reject) => {
-        fileLoader.load(
+        gltfLoader.load(
           modelUrl,
-          (data: ArrayBuffer) => {
-            gltfLoader.parse(
-              data,
-              '',
-              (parsedGltf) => {
-                // Cleanup Draco loader after parsing
-                dracoLoader.dispose();
-                resolve(parsedGltf);
-              },
-              reject
-            );
+          (parsedGltf) => {
+            // Cleanup Draco loader after parsing
+            dracoLoader.dispose();
+            
+            // Call onComplete callback if provided
+            if (onComplete) {
+              console.log('✅ [ModelLoader] Calling onComplete callback');
+              onComplete();
+            }
+            
+            resolve(parsedGltf);
           },
           (evt: ProgressEvent) => {
-            if (onProgress && totalBytes > 0) {
+            if (onProgress) {
               const loaded = evt.loaded;
-              const progress = (loaded / totalBytes) * 100;
-              onProgress(progress, loaded, totalBytes);
+              if (totalBytes > 0) {
+                const progress = (loaded / totalBytes) * 100;
+                onProgress(progress, loaded, totalBytes);
+              } else {
+                // If we don't know total bytes, show a more realistic progress
+                // For small files, gradually increase progress instead of jumping to 100%
+                let progress = 0;
+                if (loaded > 0) {
+                  // Estimate progress based on typical file sizes
+                  // For very small files (< 1KB), show gradual progress
+                  if (loaded < 1024) {
+                    progress = Math.min(90, (loaded / 1024) * 90); // 0-90% for < 1KB
+                  } else {
+                    progress = 95; // 95% for larger files when we don't know total
+                  }
+                }
+                onProgress(progress, loaded, 0);
+              }
             }
           },
           (error) => {
             // Cleanup Draco loader on error
             dracoLoader.dispose();
+            
+            console.error('❌ [ModelLoader] GLTF loading error:', error);
+            
+            // Call onError callback if provided
+            if (onError) {
+              console.log('❌ [ModelLoader] Calling onError callback');
+              onError(error instanceof Error ? error : new Error(String(error)));
+            }
+            
             reject(error);
           }
         );
@@ -192,7 +214,7 @@ export class ModelLoader {
 
     } catch (error) {
       console.error('ModelLoader error:', error);
-      onError?.(error as Error);
+      onError?.(error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -206,6 +228,38 @@ export class ModelLoader {
     rotationY: number, 
     scaleMultiplier: number
   ): void {
+    // Log model geometry before transformations
+    console.log('🏗️ [ModelLoader] ========== BEFORE TRANSFORMATIONS ==========');
+    let boxBefore = new THREE.Box3().setFromObject(model);
+    const sizeBefore = boxBefore.getSize(new THREE.Vector3());
+    const centerBefore = boxBefore.getCenter(new THREE.Vector3());
+    console.log('🏗️ [ModelLoader] Bounding box before:', {
+      min: boxBefore.min,
+      max: boxBefore.max,
+      center: centerBefore,
+      size: sizeBefore
+    });
+    
+    // Log positions of all meshes
+    model.traverse((child: any) => {
+      if (child.isMesh && child.geometry) {
+        const positions = child.geometry.attributes.position;
+        if (positions && positions.count > 0) {
+          const firstVertex = {
+            x: positions.array[0],
+            y: positions.array[1],
+            z: positions.array[2]
+          };
+          const lastVertex = {
+            x: positions.array[(positions.count - 1) * 3],
+            y: positions.array[(positions.count - 1) * 3 + 1],
+            z: positions.array[(positions.count - 1) * 3 + 2]
+          };
+          console.log(`🏗️ [ModelLoader] Mesh "${child.name || 'unnamed'}": vertices=${positions.count}, firstVertex=`, firstVertex, 'lastVertex=', lastVertex);
+        }
+      }
+    });
+    
     // Normalize and scale to target visibility
     model.position.set(0, 0, 0);
     model.rotation.set(0, 0, 0);
@@ -223,6 +277,44 @@ export class ModelLoader {
     model.rotation.y = rotationY;
     model.updateMatrix();
     model.updateMatrixWorld(true);
+    
+    // Log model geometry after transformations
+    console.log('🏗️ [ModelLoader] ========== AFTER TRANSFORMATIONS ==========');
+    console.log('🏗️ [ModelLoader] Applied transformations:', {
+      scale: scale,
+      rotationY: rotationY * 180 / Math.PI + ' degrees',
+      scaleMultiplier: scaleMultiplier,
+      targetSize: targetSize
+    });
+    let boxAfter = new THREE.Box3().setFromObject(model);
+    const sizeAfter = boxAfter.getSize(new THREE.Vector3());
+    const centerAfter = boxAfter.getCenter(new THREE.Vector3());
+    console.log('🏗️ [ModelLoader] Bounding box after:', {
+      min: boxAfter.min,
+      max: boxAfter.max,
+      center: centerAfter,
+      size: sizeAfter
+    });
+    
+    // Log positions of all meshes after transformation
+    model.traverse((child: any) => {
+      if (child.isMesh && child.geometry) {
+        const positions = child.geometry.attributes.position;
+        if (positions && positions.count > 0) {
+          const firstVertex = {
+            x: positions.array[0].toFixed(3),
+            y: positions.array[1].toFixed(3),
+            z: positions.array[2].toFixed(3)
+          };
+          const lastVertex = {
+            x: positions.array[(positions.count - 1) * 3].toFixed(3),
+            y: positions.array[(positions.count - 1) * 3 + 1].toFixed(3),
+            z: positions.array[(positions.count - 1) * 3 + 2].toFixed(3)
+          };
+          console.log(`🏗️ [ModelLoader] Mesh "${child.name || 'unnamed'}" after transform: firstVertex=`, firstVertex, 'lastVertex=', lastVertex);
+        }
+      }
+    });
   }
 
   /**

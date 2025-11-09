@@ -10,5 +10,13 @@
     <include file="changelogs/0004-ensure-auth-uid-and-rls.yaml" relativeToChangelogFile="true"/>
     <include file="changelogs/0005-storage.yaml" relativeToChangelogFile="true"/>
     <include file="changelogs/0006-user-assets.yaml" relativeToChangelogFile="true"/>
+    <include file="changelogs/0007-fix-storage-permissions.yaml" relativeToChangelogFile="true"/>
+    <include file="changelogs/0008-create-exports-table.yaml" relativeToChangelogFile="true"/>
+    <include file="changelogs/0009-fix-exports-permissions.yaml" relativeToChangelogFile="true"/>
+    <include file="changelogs/0010-fix-storage-rls-policies.yaml" relativeToChangelogFile="true"/>
+    <include file="changelogs/0011-comprehensive-rls-setup.yaml" relativeToChangelogFile="true"/>
+    <include file="changelogs/0012-export-notification-function.yaml" relativeToChangelogFile="true"/>
+    <include file="changelogs/0013-ensure-extensions.yaml" relativeToChangelogFile="true"/>
+    <include file="changelogs/0014-add-json-path-to-exports.yaml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

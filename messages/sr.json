@@ -1,7 +1,9 @@
 {
   "Index": {
     "title": "Mikrocement - Transformišite Prostore Održivo",
-    "description": "Inovativna mikro-cementna rešenja za moderne prostore. Održiva, elegantna i brza instalacija."
+    "description": "Inovativna mikro-cementna rešenja za moderne prostore. Održiva, elegantna i brza instalacija.",
+    "loadingUserProfile": "Учитавање Корисничког Профила...",
+    "pleaseWaitAccountInfo": "Молимо сачекајте док учитавамо информације о вашем налогу"
   },
   "Navigation": {
     "ecoFriendly": "Ekološki",
@@ -343,6 +345,8 @@
     "lockBirdView": "Zaključaj Ptičiji Pogled",
     "rotateModel": "Rotiraj Model 90°",
     "clearScene": "Očisti Scenu",
+    "resetScene": "Resetuj Scenu",
+    "roomScanner": "Skeniranje Sobe",
     "Upload Models": "Otpremi Modele",
     "uploadModels": "Otpremi Modele",
     "All Models": "Svi Modeli",
@@ -362,6 +366,7 @@
     "uploadProject": "Pošalji Brief",
     "My Models": "Modeli",
     "myModels": "Modeli",
+    "videoCapture": "Snimanje Videa",
     "clientProjectsSubtitle": "Klijentski projekti i modeli",
     "noClientsFound": "Nema aktivnih klijenata",
     "defaultModel": "Podrazumevano",
@@ -416,5 +421,22 @@
     "close": "Zatvori",
     "waypoint": "Tačka Putanje",
     "lookAt": "Cilj Pogleda"
+  },
+  "VideoCapture": {
+    "readyToScan": "Spremno za Skeniranje Prostora",
+    "scanInstructions": "Krećite se polako oko sobe u kružnom kretanju. Snimite sve uglove za najbolju 3D rekonstrukciju.",
+    "startRecording": "Počni Snimanje",
+    "stopAndUpload": "Zaustavi i Otpremi",
+    "recordingInstructions": "Snimanje... Krećite se polako i snimite sve uglove",
+    "uploadingVideo": "Otpremanje videa na server...",
+    "processingVideo": "Obrada videa u 3D model...",
+    "processingComplete": "✅ 3D model uspešno generisan!",
+    "cameraAccessError": "Nije moguće pristupiti kameri. Molimo proverite dozvole.",
+    "uploadError": "Otpremanje neuspešno. Molimo pokušajte ponovo.",
+    "tipsTitle": "💡 Saveti za Skeniranje:",
+    "tip1": "Krećite se polako u glatkom kružnom pokretu",
+    "tip2": "Držite kameru stabilno i izbegavajte nagle pokrete",
+    "tip3": "Obezbedite dobro osvetljenje u celoj prostoriji",
+    "tip4": "Snimajte 30-60 sekundi za najbolje rezultate"
   }
 } 

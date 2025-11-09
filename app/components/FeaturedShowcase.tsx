@@ -157,6 +157,7 @@ export default function FeaturedShowcase() {
               animate={getAnim(elementsStates[index], forceIntro)}
               transition={{ duration: 0.7, ease: "easeOut" }}
             >
+              {/* @ts-ignore - ElementType is HTML element, not Three.js Image */}
               <ElementType 
                 className={element.className}
                 style={element.type === "h2" ? {} : {}}

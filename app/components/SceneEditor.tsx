@@ -10,6 +10,8 @@ import { ModelLoader, SCENE_CONFIG, getCameraPathData, getHotspotSettings, getUs
 import { SceneConfigService } from '@/lib/services/SceneConfigService';
 import { useCameraStore } from '@/lib/stores/cameraStore';
 import { DEFAULT_ORBITAL_CONFIG } from '@/lib/config/defaultOrbitalPath';
+import { useSceneStore } from '@/lib/stores/sceneStore';
+import { createRoomMeasurements, RoomPlanMetadata } from './RoomMeasurementsOverlay';
 
 
 interface ScrollSceneProps {
@@ -22,6 +24,16 @@ interface ScrollSceneProps {
   userRole?: 'admin' | 'architect' | 'end_user' | 'guest';
 }
 
+const isSceneDisabledGlobally = () => {
+  if (process.env.NEXT_PUBLIC_DISABLE_SCENE === '1') {
+    return true;
+  }
+  if (typeof window !== 'undefined' && (window as any).__DISABLE_SCENE__ === true) {
+    return true;
+  }
+  return false;
+};
+
 export default function SceneEditor({ 
   sceneStage = 0, 
   currentSection = 'hero',
@@ -33,6 +45,11 @@ export default function SceneEditor({
 }: ScrollSceneProps) {
   const authRole = userRole || 'guest';
   const authUser = user;
+  
+  if (isSceneDisabledGlobally()) {
+    console.log('🚫 [SceneEditor] SceneEditor is globally disabled. Not rendering.');
+    return null;
+  }
   
   // Subscribe to Zustand stores
   const {
@@ -58,6 +75,22 @@ export default function SceneEditor({
     clearRotateModelRequest,
   } = useCameraStore()
   
+  const {
+    showMeasurements,
+    roomPlanJsonPath,
+    roomPlanMetadata,
+    setRoomPlanMetadata,
+    modelPath,
+    setModelPath,
+  } = useSceneStore((state) => ({
+    showMeasurements: state.showMeasurements,
+    roomPlanJsonPath: state.roomPlanJsonPath,
+    roomPlanMetadata: state.roomPlanMetadata,
+    setRoomPlanMetadata: state.setRoomPlanMetadata,
+    modelPath: state.modelPath,
+    setModelPath: state.setModelPath,
+  }));
+  
   const [hasUserConfig, setHasUserConfig] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [userSceneConfig, setUserSceneConfig] = useState<any>(null);
@@ -74,6 +107,9 @@ export default function SceneEditor({
   const [isEditorEnabled, setIsEditorEnabled] = useState(storeEditorEnabled);
   const [wasBirdViewActiveBeforeScroll, setWasBirdViewActiveBeforeScroll] = useState(false);
   const [isManualEditMode, setIsManualEditMode] = useState(false); // Track manual editing
+  
+  const measurementGroupRef = useRef<THREE.Group | null>(null);
+  const modelRef = useRef<THREE.Object3D | null>(null);
   
   // Watch camera type and orbital height - swap waypoint data
   useEffect(() => {
@@ -224,9 +260,23 @@ export default function SceneEditor({
           y: targetRotation,
           duration: 0.5,
           ease: 'power2.inOut',
+          onUpdate: () => {
+            // Force render during animation
+            if (rendererRef.current && cameraRef.current && sceneRef.current) {
+              rendererRef.current.render(sceneRef.current, cameraRef.current);
+            }
+            if (measurementGroupRef.current) {
+              measurementGroupRef.current.rotation.y = model.rotation.y;
+              measurementGroupRef.current.updateMatrixWorld(true);
+            }
+          },
           onComplete: () => {
-            console.log('🔄 [SceneEditor] Rotation complete. New rotation Y:', model.rotation.y.toFixed(3), 'radians', '(', (model.rotation.y * 180 / Math.PI).toFixed(2), 'degrees)')
-            clearRotateModelRequest()
+            console.log('🔄 [ZUSTAND] Rotation complete. New rotation Y:', model.rotation.y.toFixed(3), 'radians', '(', (model.rotation.y * 180 / Math.PI).toFixed(2), 'degrees)');
+            if (measurementGroupRef.current) {
+              measurementGroupRef.current.rotation.y = model.rotation.y;
+              measurementGroupRef.current.updateMatrixWorld(true);
+            }
+            clearRotateModelRequest();
           }
         })
       } else {
@@ -480,7 +530,6 @@ export default function SceneEditor({
       loadModelWithService();
     }
   }, [userSceneConfig, loadingConfig]);
-
   // Load model function - moved outside createScene to be callable from useEffect
   const loadModelWithService = async () => {
     if (!sceneRef.current) {
@@ -561,6 +610,8 @@ export default function SceneEditor({
       });
 
       sceneRef.current.add(model);
+      modelRef.current = model;
+      setModelPath(modelPath);
       
       // Log final model position and rotation
       console.log('📐 MODEL LOADED - Position and Rotation:');
@@ -707,8 +758,13 @@ export default function SceneEditor({
     console.log('🗑️ [ScrollScene] Path visuals removed');
     
     console.log('🗑️ [ScrollScene] Scene cleared successfully');
+    
+    modelRef.current = null;
+    if (measurementGroupRef.current) {
+      measurementGroupRef.current.parent?.remove(measurementGroupRef.current);
+      measurementGroupRef.current = null;
+    }
   };
-
   // Handle follow path selection and reload camera data
   useEffect(() => {
     const handleSceneReloadCamera = (e: any) => {
@@ -760,6 +816,118 @@ export default function SceneEditor({
     };
   }, []);
 
+  useEffect(() => {
+    if (!roomPlanJsonPath) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadMetadata = async () => {
+      try {
+        console.log('📐 [Measurements] Fetching RoomPlan metadata from', roomPlanJsonPath);
+        const response = await fetch(roomPlanJsonPath);
+        if (!response.ok) {
+          console.warn('⚠️ [Measurements] Failed to load metadata:', response.status);
+          return;
+        }
+        const data: RoomPlanMetadata = await response.json();
+        if (!cancelled) {
+          setRoomPlanMetadata(data);
+        }
+      } catch (error) {
+        console.error('❌ [Measurements] Error loading RoomPlan metadata:', error);
+      }
+    };
+
+    loadMetadata();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [roomPlanJsonPath, setRoomPlanMetadata]);
+
+  useEffect(() => {
+    if (!sceneRef.current) {
+      return;
+    }
+
+    if (measurementGroupRef.current) {
+      measurementGroupRef.current.parent?.remove(measurementGroupRef.current);
+      measurementGroupRef.current = null;
+    }
+
+    if (!showMeasurements || !roomPlanMetadata) {
+      if (rendererRef.current && cameraRef.current && sceneRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
+      return;
+    }
+
+    const scene = sceneRef.current;
+    const model = modelRef.current ?? scene?.getObjectByName('floorPlan') ?? null;
+
+    if (!scene || !model) {
+      console.warn('📐 [Measurements] Cannot align measurements - scene/model missing');
+      return;
+    }
+
+    model.updateMatrixWorld(true);
+
+    const modelBox = new THREE.Box3().setFromObject(model);
+    const modelSize = modelBox.getSize(new THREE.Vector3());
+    const modelCenter = modelBox.getCenter(new THREE.Vector3());
+
+    const measurementGroup = createRoomMeasurements(roomPlanMetadata, true, 1);
+    measurementGroupRef.current = measurementGroup;
+
+    const metadataBox = new THREE.Box3().setFromObject(measurementGroup);
+    if (metadataBox.isEmpty()) {
+      console.warn('📐 [Measurements] Metadata bounding box is empty, skipping overlay');
+      measurementGroupRef.current = null;
+      return;
+    }
+
+    const metadataSize = metadataBox.getSize(new THREE.Vector3());
+    const metadataCenter = metadataBox.getCenter(new THREE.Vector3());
+
+    const scaleX = metadataSize.x !== 0 ? modelSize.x / metadataSize.x : 1;
+    const scaleY = metadataSize.y !== 0 ? modelSize.y / metadataSize.y : scaleX;
+    const scaleZ = metadataSize.z !== 0 ? modelSize.z / metadataSize.z : 1;
+
+    const uniformHorizontalScale = Number.isFinite(scaleX) && Number.isFinite(scaleZ) && scaleX > 0 && scaleZ > 0
+      ? (scaleX + scaleZ) / 2
+      : model.scale.x;
+    const verticalScale = Number.isFinite(scaleY) && scaleY > 0 ? scaleY : uniformHorizontalScale;
+
+    const toOrigin = new THREE.Matrix4().makeTranslation(-metadataCenter.x, -metadataCenter.y, -metadataCenter.z);
+    measurementGroup.applyMatrix4(toOrigin);
+
+    measurementGroup.scale.set(uniformHorizontalScale, verticalScale, uniformHorizontalScale);
+    measurementGroup.quaternion.copy(model.quaternion);
+    measurementGroup.position.copy(modelCenter);
+    measurementGroup.matrixAutoUpdate = true;
+    measurementGroup.updateMatrixWorld(true);
+
+    scene.add(measurementGroup);
+    console.log('📐 [Measurements] Overlay aligned', {
+      modelSize,
+      metadataSize,
+      uniformHorizontalScale,
+      verticalScale,
+    });
+
+    if (rendererRef.current && cameraRef.current) {
+      rendererRef.current.render(scene, cameraRef.current);
+    }
+
+    return () => {
+      if (measurementGroupRef.current && measurementGroupRef.current.parent) {
+        measurementGroupRef.current.parent.remove(measurementGroupRef.current);
+      }
+      measurementGroupRef.current = null;
+    };
+  }, [showMeasurements, roomPlanMetadata, modelPath]);
   // Handle external waypoint navigation requests
   useEffect(() => {
     const handleGotoWaypoint = (e: any) => {
@@ -1063,7 +1231,6 @@ export default function SceneEditor({
     loaderLoadedMB: number | undefined;
     loaderTotalMB: number | undefined;
   } | null>(null);
-  
   // Gallery system state
   const [galleryVisible, setGalleryVisible] = useState(false);
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
@@ -1394,7 +1561,6 @@ export default function SceneEditor({
       window.removeEventListener('wheel', wheelHandler);
     };
   }, []);
-  
   // Event counters for debug panel
   const [eventCounts, setEventCounts] = useState({
     wheel: 0,
@@ -1404,7 +1570,6 @@ export default function SceneEditor({
     click: 0,
     keydown: 0
   });
-
   // Gallery system functions
   const loadGalleryImages = async (hotspotName: string) => {
     setGalleryLoading(true);
@@ -1487,7 +1652,6 @@ export default function SceneEditor({
     
     return baseImages;
   };
-  
   const closeGallery = () => {
     console.log('🔧 closeGallery() called - Starting gallery cleanup...');
     console.log('  Current galleryVisible:', galleryVisible);
@@ -1553,7 +1717,6 @@ export default function SceneEditor({
     
     console.log('✅ Scene events restored - scrolling and hotspots should work normally');
   };
-
   const onReturnToMainPath = () => {
     console.log('🔄 Return to Main Path initiated...');
     console.log('  Current state - galleryVisible:', galleryVisible);
@@ -1609,7 +1772,6 @@ export default function SceneEditor({
       console.log('  🧹 Forced cleanup of existing hotspot state');
     }
   };
-
   const enableSceneMouseEvents = () => {
     console.log('✅ Re-enabling scene mouse events - Gallery is closed');
     
@@ -2196,7 +2358,6 @@ export default function SceneEditor({
     
     animate();
   };
-
   // Function to animate the pulse markers with brief, swift pulses
   const animateHotspotPulses = () => {
     if (!hotspotPulseRefs.current.length) {
@@ -2255,7 +2416,6 @@ export default function SceneEditor({
       pulseAnimationRef.current = undefined;
     }
   };
-
   // Function to cleanup pulse markers
   const cleanupPulseMarkers = () => {
     if (sceneRef.current) {
@@ -2328,7 +2488,6 @@ export default function SceneEditor({
     }
     */
   };
-
   // Function to add cursor pointer styles for hotspots and pulse markers
   const addPulseMarkerCursorStyles = () => {
     // Check if styles already exist
@@ -2835,7 +2994,6 @@ export default function SceneEditor({
       progress: tween.progress()
     });
   };
-
   // Function to return to main journey path
   const continueJourney = () => {
     // 🎨 CLOSE GALLERY IMMEDIATELY WHEN CONTINUE JOURNEY IS CLICKED
@@ -3190,7 +3348,6 @@ export default function SceneEditor({
     scene.add(diagonalLight);
     scene.add(diagonalLight.target);
   };
-
   // Function to create and setup the scene
   const createScene = () => {
     const scene = new THREE.Scene();
@@ -3515,6 +3672,8 @@ export default function SceneEditor({
                   });
 
                   scene.add(model);
+                  modelRef.current = model;
+                  setModelPath(modelPath);
 
                   // Fit camera so the model is visible
                   if (cameraRef.current) {
@@ -3697,7 +3856,6 @@ export default function SceneEditor({
     // Don't append to DOM yet - wait for animation to start
     return renderer;
   };
-
   // Function to handle intro animation
   const startIntroAnimation = (camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer, scene: THREE.Scene) => {
     // Dev-only guard: skip the very first call (React StrictMode double-mount)
@@ -3968,8 +4126,6 @@ export default function SceneEditor({
     }
     renderer.render(scene, camera);
   };
-
-  // Old DOM-based loader functions - REMOVED
   // Now using React state and LoaderOverlay component instead
 
   const updateLoaderOverlayProgress = (evt: ProgressEvent<EventTarget>) => {
@@ -4285,7 +4441,6 @@ export default function SceneEditor({
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   };
-
   // Main useEffect for scene setup
   useEffect(() => {
     if (!mountRef.current) return;
@@ -4465,7 +4620,6 @@ export default function SceneEditor({
       (window as any).__isScrolling = false;
     };
   }, [wasBirdViewActiveBeforeScroll]);
-
   // Bird view animation handler
   useEffect(() => {
     const handleBirdViewAnimation = (event: CustomEvent) => {
@@ -4793,6 +4947,7 @@ export default function SceneEditor({
         // Add model to scene
         if (sceneRef.current && model) {
           sceneRef.current.add(model);
+          modelRef.current = model;
           console.log('📤 [ScrollScene] Model added to scene');
         }
         
@@ -4922,7 +5077,6 @@ export default function SceneEditor({
       clearClearSceneRequest();
     }
   }, [clearSceneRequested, clearClearSceneRequest]);
-  
   // Subscribe to rotateModelRequested
   useEffect(() => {
     if (rotateModelRequested) {
@@ -4954,9 +5108,17 @@ export default function SceneEditor({
             if (rendererRef.current && cameraRef.current && sceneRef.current) {
               rendererRef.current.render(sceneRef.current, cameraRef.current);
             }
+            if (measurementGroupRef.current) {
+              measurementGroupRef.current.rotation.y = model.rotation.y;
+              measurementGroupRef.current.updateMatrixWorld(true);
+            }
           },
           onComplete: () => {
             console.log('🔄 [ZUSTAND] Rotation complete. New rotation Y:', model.rotation.y.toFixed(3), 'radians', '(', (model.rotation.y * 180 / Math.PI).toFixed(2), 'degrees)');
+            if (measurementGroupRef.current) {
+              measurementGroupRef.current.rotation.y = model.rotation.y;
+              measurementGroupRef.current.updateMatrixWorld(true);
+            }
             clearRotateModelRequest();
           }
         });
@@ -4967,7 +5129,6 @@ export default function SceneEditor({
       }
     }
   }, [rotateModelRequested, rotationAngle, clearRotateModelRequest])
-
   // Mouse event handlers for hotspot interaction
   useEffect(() => {
     if (!mountRef.current) return;
@@ -5415,7 +5576,6 @@ export default function SceneEditor({
       stopPulseAnimation();
     };
   }, [hoveredHotspot]);
-
   return (
     <>
       <div

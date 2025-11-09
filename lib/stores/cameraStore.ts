@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import * as THREE from 'three'
 import gsap from 'gsap'
-import { SCENE_CONFIG } from '@/lib/config/sceneConfig'
+import { SCENE_CONFIG } from '../config/sceneConfig'
 
 // Camera type enum
 export type CameraType = 'orbital' | 'path'
@@ -22,6 +22,10 @@ interface CameraState {
   // Camera type (UI state only for now)
   cameraType: CameraType
   orbitalHeight: number  // Height for orbital camera (0-100)
+  
+  // Animation state
+  isAnimationPlaying: boolean
+  isIntroCompleted: boolean
   
   // Bird view state
   isBirdView: boolean
@@ -55,6 +59,11 @@ interface CameraState {
   setCameraType: (type: CameraType) => void
   toggleCameraType: () => void
   setOrbitalHeight: (height: number) => void
+  
+  // Actions - Animation
+  setIsAnimationPlaying: (value: boolean) => void
+  toggleAnimation: () => void
+  setIsIntroCompleted: (value: boolean) => void
   
   // Actions - Bird View
   setIsBirdView: (value: boolean) => void
@@ -115,6 +124,8 @@ const initialState = {
   sceneRef: null,
   cameraType: 'orbital' as CameraType,  // UI state (doesn't control animation yet)
   orbitalHeight: 25,  // Default orbital height
+  isAnimationPlaying: false,  // Start paused by default (no autoplay)
+  isIntroCompleted: false,    // Start with intro not completed
   isBirdView: false,
   isBirdViewLocked: false,
   wasBirdViewActiveBeforeScroll: false,
@@ -169,6 +180,26 @@ export const useCameraStore = create<CameraState>()(
       
       setOrbitalHeight: (height) => {
         set({ orbitalHeight: height })
+      },
+      
+      // Animation actions
+      setIsAnimationPlaying: (value) => {
+        set({ isAnimationPlaying: value })
+        console.log(`🎬 Animation ${value ? 'playing' : 'paused'}`)
+      },
+      
+      setIsIntroCompleted: (value) => {
+        console.log(`🔧 [Store] setIsIntroCompleted called with value:`, value)
+        set({ isIntroCompleted: value })
+        console.log(`✅ Intro ${value ? 'completed' : 'not completed'}`)
+        // Debug: log current state after setting
+        console.log(`🔧 [Store] Current isIntroCompleted state:`, get().isIntroCompleted)
+      },
+      
+      toggleAnimation: () => {
+        const newValue = !get().isAnimationPlaying
+        set({ isAnimationPlaying: newValue })
+        console.log(`🎬 Animation toggled: ${newValue ? 'playing' : 'paused'}`)
       },
       
       // Bird View actions
@@ -272,4 +303,32 @@ export const useCameraStore = create<CameraState>()(
     { name: 'CameraStore' }
   )
 )
+
+// Add subscription to track store changes
+let prevIntroCompleted = false;
+let prevAnimationPlaying = false;
+
+useCameraStore.subscribe((state) => {
+  if (state.isIntroCompleted !== prevIntroCompleted) {
+    console.log('🔧 [Store Subscription] isIntroCompleted changed:', { 
+      from: prevIntroCompleted, 
+      to: state.isIntroCompleted 
+    });
+    prevIntroCompleted = state.isIntroCompleted;
+  }
+  
+  if (state.isAnimationPlaying !== prevAnimationPlaying) {
+    console.log('🔧 [Store Subscription] isAnimationPlaying changed:', { 
+      from: prevAnimationPlaying, 
+      to: state.isAnimationPlaying 
+    });
+    prevAnimationPlaying = state.isAnimationPlaying;
+  }
+})
+
+// Global access function for animation loop
+export const getStoreState = () => useCameraStore.getState();
+export const subscribeToStore = (callback: (state: CameraState) => void) => {
+  return useCameraStore.subscribe(callback);
+};
 

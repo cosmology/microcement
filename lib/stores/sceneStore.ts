@@ -35,6 +35,35 @@ interface FollowPath {
   is_active: boolean
 }
 
+interface RoomPlanWall {
+  dimensions: [number, number, number] // [width, height, depth] in meters
+  transform: number[] // 4x4 matrix (16 elements)
+  identifier: string
+  surfaceArea?: number // calculated in m²
+}
+
+interface RoomPlanOpening {
+  category: string // 'door' or 'window'
+  transform: number[] // 4x4 matrix (16 elements)
+  dimensions?: [number, number, number] // if available
+  surfaceArea?: number // calculated in m²
+}
+
+interface RoomPlanObject {
+  category: string
+  transform: number[] // 4x4 matrix (16 elements)
+  dimensions?: [number, number, number] // if available
+  surfaceArea?: number // calculated in m²
+}
+
+interface RoomPlanMetadata {
+  walls?: RoomPlanWall[]
+  doors?: RoomPlanOpening[]
+  windows?: RoomPlanOpening[]
+  objects?: RoomPlanObject[]
+  totalSurfaceArea?: number // total calculated surface area in m²
+}
+
 interface SceneState {
   // Current scene config
   currentConfig: SceneConfig | null
@@ -45,6 +74,11 @@ interface SceneState {
   modelPath: string | null
   modelLoadingProgress: number
   
+  // RoomPlan JSON metadata
+  roomPlanJsonPath: string | null
+  roomPlanMetadata: RoomPlanMetadata | null
+  showMeasurements: boolean
+  
   // Scene progress
   sceneStage: number
   currentSection: string
@@ -54,6 +88,13 @@ interface SceneState {
   introComplete: boolean
   introPlaying: boolean
   scrollEnabled: boolean
+  
+  // World rotation state
+  worldRotation: {
+    x: number
+    y: number
+    z: number
+  }
   
   // Loading states
   configsLoading: boolean
@@ -66,6 +107,10 @@ interface SceneState {
   setModelLoaded: (loaded: boolean) => void
   setModelPath: (path: string | null) => void
   setModelLoadingProgress: (progress: number) => void
+  setRoomPlanJsonPath: (path: string | null) => void
+  setRoomPlanMetadata: (metadata: RoomPlanMetadata | null) => void
+  setShowMeasurements: (show: boolean) => void
+  toggleMeasurements: () => void
   setSceneStage: (stage: number) => void
   setCurrentSection: (section: string) => void
   setScrollProgress: (progress: number) => void
@@ -75,6 +120,11 @@ interface SceneState {
   setConfigsLoading: (loading: boolean) => void
   setHasUserConfig: (has: boolean | null) => void
   setConfigCheckComplete: (complete: boolean) => void
+  
+  // World rotation actions
+  setWorldRotation: (rotation: { x: number; y: number; z: number }) => void
+  updateWorldRotation: (axis: 'x' | 'y' | 'z', value: number) => void
+  resetWorldRotation: () => void
   
   // Complex actions
   loadConfig: (configId: string) => Promise<void>
@@ -88,12 +138,20 @@ const initialState = {
   modelLoaded: false,
   modelPath: null,
   modelLoadingProgress: 0,
+  roomPlanJsonPath: null,
+  roomPlanMetadata: null,
+  showMeasurements: false,
   sceneStage: 0,
   currentSection: 'hero',
   scrollProgress: 0,
   introComplete: false,
   introPlaying: false,
   scrollEnabled: true,
+  worldRotation: {
+    x: 0,
+    y: 0,
+    z: 0
+  },
   configsLoading: false,
   hasUserConfig: null,
   configCheckComplete: false,
@@ -110,6 +168,10 @@ export const useSceneStore = create<SceneState>()(
       setModelLoaded: (loaded) => set({ modelLoaded: loaded }),
       setModelPath: (path) => set({ modelPath: path }),
       setModelLoadingProgress: (progress) => set({ modelLoadingProgress: progress }),
+      setRoomPlanJsonPath: (path) => set({ roomPlanJsonPath: path }),
+      setRoomPlanMetadata: (metadata) => set({ roomPlanMetadata: metadata }),
+      setShowMeasurements: (show) => set({ showMeasurements: show }),
+      toggleMeasurements: () => set((state) => ({ showMeasurements: !state.showMeasurements })),
       setSceneStage: (stage) => set({ sceneStage: stage }),
       setCurrentSection: (section) => set({ currentSection: section }),
       setScrollProgress: (progress) => set({ scrollProgress: progress }),
@@ -119,6 +181,18 @@ export const useSceneStore = create<SceneState>()(
       setConfigsLoading: (loading) => set({ configsLoading: loading }),
       setHasUserConfig: (has) => set({ hasUserConfig: has }),
       setConfigCheckComplete: (complete) => set({ configCheckComplete: complete }),
+      
+      // World rotation actions
+      setWorldRotation: (rotation) => set({ worldRotation: rotation }),
+      updateWorldRotation: (axis, value) => set((state) => ({
+        worldRotation: {
+          ...state.worldRotation,
+          [axis]: value
+        }
+      })),
+      resetWorldRotation: () => set({
+        worldRotation: { x: 0, y: 0, z: 0 }
+      }),
       
       // Complex actions
       loadConfig: async (configId) => {
@@ -130,6 +204,9 @@ export const useSceneStore = create<SceneState>()(
         modelLoaded: false,
         modelPath: null,
         modelLoadingProgress: 0,
+        roomPlanJsonPath: null,
+        roomPlanMetadata: null,
+        worldRotation: { x: 0, y: 0, z: 0 }
       }),
       
       reset: () => set(initialState),
@@ -137,4 +214,7 @@ export const useSceneStore = create<SceneState>()(
     { name: 'SceneStore' }
   )
 )
+
+// Global access function for animation loop
+export const getSceneStoreState = () => useSceneStore.getState();
 

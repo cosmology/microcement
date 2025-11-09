@@ -1,7 +1,9 @@
 {
   "Index": {
     "title": "Microcemento - Transforma Espacios de Forma Sostenible",
-    "description": "Soluciones innovadoras de micro-cemento para espacios modernos. Instalación sostenible, elegante y rápida."
+    "description": "Soluciones innovadoras de micro-cemento para espacios modernos. Instalación sostenible, elegante y rápida.",
+    "loadingUserProfile": "Cargando Perfil de Usuario...",
+    "pleaseWaitAccountInfo": "Por favor espere mientras cargamos la información de su cuenta"
   },
   "Navigation": {
     "ecoFriendly": "Ecológico",
@@ -343,6 +345,8 @@
     "lockBirdView": "Bloquear Vista de Pájaro",
     "rotateModel": "Rotar Modelo 90°",
     "clearScene": "Limpiar Escena",
+    "resetScene": "Restablecer Escena",
+    "roomScanner": "Escáner de Habitación",
     "Upload Models": "Subir Modelos",
     "uploadModels": "Subir Modelos",
     "All Models": "Todos los Modelos",
@@ -362,6 +366,7 @@
     "uploadProject": "Enviar Brief",
     "My Models": "Modelos",
     "myModels": "Modelos",
+    "videoCapture": "Captura de Video",
     "clientProjectsSubtitle": "Proyectos y modelos de clientes",
     "noClientsFound": "No se encontraron clientes activos",
     "defaultModel": "Predeterminado",
@@ -416,5 +421,22 @@
     "close": "Cerrar",
     "waypoint": "Punto de Ruta",
     "lookAt": "Objetivo de Vista"
+  },
+  "VideoCapture": {
+    "readyToScan": "Listo para Escanear tu Espacio",
+    "scanInstructions": "Muévete lentamente alrededor de la habitación en un movimiento circular. Captura todos los ángulos para la mejor reconstrucción 3D.",
+    "startRecording": "Iniciar Grabación",
+    "stopAndUpload": "Detener y Subir",
+    "recordingInstructions": "Grabando... Muévete lentamente y captura todos los ángulos",
+    "uploadingVideo": "Subiendo video al servidor...",
+    "processingVideo": "Procesando video en modelo 3D...",
+    "processingComplete": "✅ ¡Modelo 3D generado exitosamente!",
+    "cameraAccessError": "No se puede acceder a la cámara. Por favor verifica los permisos.",
+    "uploadError": "Subida fallida. Por favor intenta nuevamente.",
+    "tipsTitle": "💡 Consejos de Escaneo:",
+    "tip1": "Muévete lentamente en un movimiento circular suave",
+    "tip2": "Mantén la cámara estable y evita movimientos bruscos",
+    "tip3": "Asegura buena iluminación en toda la habitación",
+    "tip4": "Graba por 30-60 segundos para mejores resultados"
   }
 } 

@@ -12,6 +12,55 @@ function getServerSupabase() {
   })
 }
 
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { name, description, model_url, user_id, created_by, metadata } = body
+
+    if (!name || !model_url || !user_id) {
+      return NextResponse.json({ 
+        error: 'Missing required fields: name, model_url, user_id' 
+      }, { status: 400 })
+    }
+
+    const supabase = getServerSupabase()
+    
+    // Create a new user asset record
+    const { data, error } = await supabase
+      .from('user_assets')
+      .insert({
+        project_name: name,
+        object_path: model_url,
+        bucket: 'models', // or appropriate bucket
+        owner_id: user_id,
+        content_type: 'model/gltf-binary',
+        file_size: 0, // We don't have file size for GLB files
+        metadata: {
+          ...metadata,
+          created_by: created_by || 'ios_scan' // Store in metadata instead
+        }
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating user asset:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ 
+      success: true,
+      asset: data 
+    }, { status: 201 })
+
+  } catch (e: any) {
+    console.error('Error in POST user-assets:', e)
+    return NextResponse.json({ 
+      error: e?.message || 'Failed to create asset' 
+    }, { status: 500 })
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)

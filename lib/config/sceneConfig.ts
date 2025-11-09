@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { SceneConfigService } from '@/lib/services/SceneConfigService';
+import { SceneConfigService } from '../services/SceneConfigService';
 
 /**
  * Global configuration constants for the 3D scene
