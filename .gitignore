@@ -82,6 +82,7 @@ supabase/functions/.env*
 
 # Test coverage and reports
 coverage/
+coverage-local/
 .nyc_output/
 *.lcov
 htmlcov/
