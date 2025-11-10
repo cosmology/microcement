@@ -32,12 +32,9 @@ import { useUserRole, UserRole } from "@/hooks/useUserRole";
 import { useSceneStore } from "@/lib/stores/sceneStore";
 
 // Import SceneEditor directly - uses Zustand stores, no event bridge needed
-const SceneEditorDynamic = dynamic(
-  () => import("./SceneEditor").then((mod) => mod.default ?? mod.SceneEditorActive ?? mod),
-  {
-    ssr: false,
-  }
-);
+const SceneEditorDynamic = dynamic(() => import("./SceneEditor"), {
+  ssr: false,
+});
 const disableSceneStatic = process.env.NEXT_PUBLIC_DISABLE_SCENE === '1';
 
 export default function HomeClient() {

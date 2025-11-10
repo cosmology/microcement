@@ -361,8 +361,9 @@ export async function hasActiveSession(page: Page): Promise<boolean> {
 
 export async function waitForRoleState(page: Page, expectedRole?: TestUserRole, timeout = 20000) {
   try {
+    const maxAttempts = Math.max(1, Math.ceil(timeout / 250));
     const handle = await page.waitForFunction(
-      (role, maxAttempts) => {
+      ({ role, maxAttempts }: { role: TestUserRole | null; maxAttempts: number }) => {
         const state = (window as any).__USER_ROLE_STATE__;
         if (state && state.role && state.role !== 'guest' && (!role || state.role === role)) {
           return state;
@@ -397,7 +398,7 @@ export async function waitForRoleState(page: Page, expectedRole?: TestUserRole, 
         }
         return undefined;
       },
-      expectedRole ?? null,
+      { role: expectedRole ?? null, maxAttempts },
       { timeout, polling: 250 }
     );
     const roleState = await handle.jsonValue();
