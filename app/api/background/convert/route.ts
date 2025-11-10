@@ -208,3 +208,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+export const runtime = 'nodejs'; // or 'edge' if you ever switch
+export const maxDuration = 10;   // seconds; stays within the Hobby plan limit
