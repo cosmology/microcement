@@ -431,6 +431,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    ports:
+     - "54322:5432"
     depends_on:
       vector:
         condition: service_healthy

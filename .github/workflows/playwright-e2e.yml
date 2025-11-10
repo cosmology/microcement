@@ -1,0 +1,81 @@
+name: Playwright E2E Tests
+
+on:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    name: Run Playwright suite
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 0
+      PLAYWRIGHT_TEST_BASE_URL: http://127.0.0.1:3000
+      FAST_REFRESH: "false"
+      HMR: "false"
+      WATCHPACK_POLLING: "false"
+      CHOKIDAR_USEPOLLING: "false"
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVER_URL: ${{ secrets.SUPABASE_SERVER_URL || secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SERVICE_ROLE_KEY: ${{ secrets.SERVICE_ROLE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      PLAYWRIGHT_SUPABASE_URL: ${{ secrets.PLAYWRIGHT_SUPABASE_URL }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps
+
+      - name: Build project
+        run: pnpm run build
+
+      - name: Start Next.js dev server
+        run: |
+          pnpm run dev -- --hostname 0.0.0.0 --port 3000 &
+          echo $! > .next-dev.pid
+
+      - name: Wait for healthcheck
+        run: pnpm dlx wait-on http://127.0.0.1:3000/api/health --interval 500 --timeout 120000
+
+      - name: Run Playwright tests
+        run: pnpm run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          if-no-files-found: ignore
+
+      - name: Stop Next.js dev server
+        if: always()
+        run: |
+          if [ -f .next-dev.pid ]; then
+            kill $(cat .next-dev.pid) || true
+          fi
+

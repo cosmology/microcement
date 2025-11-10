@@ -1,3 +1,17 @@
+## Local Supabase Postgres Connection
+
+When the Supabase stack is running (`docker compose --profile dev up`), connect to Postgres with:
+
+```
+Host: localhost
+Port: 5432
+Database: postgres
+User: postgres
+Password: supabase
+SSL Mode: disable
+```
+
+This is useful if you want to compare the local schema to production using tools like psql, TablePlus, or Supabase Studio's inspector. Values come from `supabase/docker-compose.yml`.
 # Microcement Website Prototype
 
 A modern, responsive website prototype showcasing microcement solutions and services. This project demonstrates the potential for a professional microcement company website with advanced animations, theme switching, and interactive components.
