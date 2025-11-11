@@ -1,9 +1,12 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import type { PluginOption } from 'vite';
+
+const plugins: PluginOption[] = [react() as unknown as PluginOption];
 
 export default defineConfig({
-  plugins: [react()],
+  plugins,
   test: {
     globals: true,
     environment: 'jsdom',
