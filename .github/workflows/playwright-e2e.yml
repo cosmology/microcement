@@ -25,7 +25,7 @@ jobs:
       SERVICE_ROLE_KEY: ${{ secrets.SERVICE_ROLE_KEY != '' && secrets.SERVICE_ROLE_KEY || 'changeme-service-role-key' }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY != '' && secrets.SUPABASE_SERVICE_ROLE_KEY || 'changeme-service-role-key' }}
       PLAYWRIGHT_SUPABASE_URL: ${{ secrets.PLAYWRIGHT_SUPABASE_URL }}
-      PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report.json
+      PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report-${{ matrix.shard_index }}.json
       PLAYWRIGHT_MINIMUM_COVERAGE: "0.75"
       PLAYWRIGHT_SHARD_TOTAL: "2"
     steps:
@@ -87,11 +87,9 @@ jobs:
           fi
 
       - name: Run Playwright tests
-        run: pnpm exec playwright test --reporter=line --reporter=html --reporter=json=test-results/playwright-report-${{ matrix.shard_index }}.json --shard=${{ matrix.shard_index }}/2
+        run: pnpm exec playwright test --shard=${{ matrix.shard_index }}/2
 
       - name: Enforce Playwright coverage threshold
-        env:
-          PLAYWRIGHT_JSON_PATH: test-results/playwright-report-${{ matrix.shard_index }}.json
         run: pnpm run check:playwright:coverage
 
       - name: Upload Playwright report
