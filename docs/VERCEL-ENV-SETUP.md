@@ -23,7 +23,7 @@
 1. Go to **Settings** → **API**
 2. Copy these values:
    - **Project URL**: `https://your-project-id.supabase.co`
-   - **anon public key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+   - **anon public key**: `your-supabase-anon-key`
 
 ### Step 3: Configure Supabase Authentication
 
@@ -93,7 +93,7 @@ Create `.env.local` in your project root:
 ```bash
 # Local Development (Docker)
 NEXT_PUBLIC_SUPABASE_URL=http://localhost:8000
-NEXT_PUBLIC_SUPABASE_ANON_KEY=SUPABASE_ANON_KEY_PLACEHOLDER
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-local-anon-key
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_APP_NAME=Microcement Studio
 ```

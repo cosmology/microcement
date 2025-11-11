@@ -1,5 +1,5 @@
-import { supabase } from '@/lib/supabase'
 import { SceneConfigService } from '@/lib/services/SceneConfigService'
+import { AuthService } from '@/lib/services/AuthService'
 
 export class DebouncedUpdater {
   private timeoutId: NodeJS.Timeout | null = null
@@ -49,16 +49,14 @@ export const getCurrentSceneConfigId = (): string | null => {
 // Extend the DebouncedUpdater class to include camera point methods
 export class CameraPointUpdater extends DebouncedUpdater {
   async getCurrentUserId(): Promise<string | null> {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      const userId = user?.id ?? null
-      if (typeof window !== 'undefined') {
-        ;(window as any).__currentUserId = userId
-      }
-      return userId
-    } catch {
-      return null
+    const identity = await AuthService.getClientIdentity()
+    const userId = identity?.userId ?? null
+
+    if (typeof window !== 'undefined') {
+      ;(window as any).__currentUserId = userId
     }
+
+    return userId
   }
 
   async getCurrentSceneConfigId(): Promise<string | null> {

@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { FileStack, Trash2, Loader2 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import { useSceneStore } from '@/lib/stores/sceneStore'
+import { AuthService } from '@/lib/services/AuthService'
 
 interface AssetItem {
   id: string
@@ -42,15 +42,15 @@ export default function UploadsList({ onAssetSelected }: UploadsListProps = {}) 
     setLoading(true)
     setError(null)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      const identity = await AuthService.getClientIdentity()
+      if (!identity) {
         setAssets([])
         setLoading(false)
         return
       }
       
       // Fetch via API route to avoid RLS issues
-      const res = await fetch(`/api/user-assets?ownerId=${user.id}`)
+      const res = await fetch(`/api/user-assets?ownerId=${identity.userId}`)
       if (!res.ok) {
         const errorData = await res.json()
         throw new Error(errorData.error || 'Failed to load uploads')

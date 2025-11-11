@@ -1,28 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { AuthService } from '@/lib/services/AuthService'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader) {
-      return NextResponse.json({ error: 'No authorization header' }, { status: 401 })
+    const authResult = await AuthService.authenticateRequest(request.headers)
+    if (!authResult.ok) {
+      const message = authResult.reason === 'missing-authorization' ? 'No authorization header' : 'Invalid token'
+      return NextResponse.json({ error: message }, { status: authResult.status })
     }
 
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
+    const { userId } = authResult.identity
 
     const { data: config, error } = await supabase
       .from('user_scene_configs')
       .select('*')
       .eq('id', params.id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single()
 
     if (error) {
@@ -40,17 +37,13 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader) {
-      return NextResponse.json({ error: 'No authorization header' }, { status: 401 })
+    const authResult = await AuthService.authenticateRequest(request.headers)
+    if (!authResult.ok) {
+      const message = authResult.reason === 'missing-authorization' ? 'No authorization header' : 'Invalid token'
+      return NextResponse.json({ error: message }, { status: authResult.status })
     }
 
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
+    const { userId } = authResult.identity
 
     const body = await request.json()
     const { config_name, ...configData } = body
@@ -60,7 +53,7 @@ export async function PUT(
       const { data: existingConfig } = await supabase
         .from('user_scene_configs')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('config_name', config_name)
         .neq('id', params.id)
         .single()
@@ -77,7 +70,7 @@ export async function PUT(
         ...configData
       })
       .eq('id', params.id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .select()
       .single()
 
@@ -96,23 +89,19 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader) {
-      return NextResponse.json({ error: 'No authorization header' }, { status: 401 })
+    const authResult = await AuthService.authenticateRequest(request.headers)
+    if (!authResult.ok) {
+      const message = authResult.reason === 'missing-authorization' ? 'No authorization header' : 'Invalid token'
+      return NextResponse.json({ error: message }, { status: authResult.status })
     }
 
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
+    const { userId } = authResult.identity
 
     const { error } = await supabase
       .from('user_scene_configs')
       .delete()
       .eq('id', params.id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

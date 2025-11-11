@@ -11,7 +11,11 @@ echo "[start] Project root: $ROOT_DIR"
 
 # Ensure .env is loaded from project root for docker compose
 if [ -f "$ROOT_DIR/.env" ]; then
-  echo "[start] Found .env in project root."
+  echo "[start] Loading environment from .env in project root."
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT_DIR/.env"
+  set +a
 else
   echo "[start] WARNING: No .env in project root. Copy env.example to .env and set values."
 fi
@@ -228,14 +232,24 @@ sleep 10
 echo "[start] Quick verification - testing login..."
 (
   cd "$ROOT_DIR"
-  # Quick test to verify login works
-  ARCHITECT_TOKEN=$(curl -s "http://localhost:8000/auth/v1/token?grant_type=password" \
+
+  SUPABASE_AUTH_URL=${SUPABASE_AUTH_URL:-"${NEXT_PUBLIC_SUPABASE_URL:-http://localhost:8000}/auth/v1/token?grant_type=password"}
+  SUPABASE_API_KEY=${SUPABASE_API_KEY:-${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}}
+  LOGIN_EMAIL=${DEV_LOGIN_TEST_EMAIL:-${E2E_ARCHITECT_EMAIL:-${PLAYWRIGHT_ARCHITECT_EMAIL:-}}}
+  LOGIN_PASSWORD=${DEV_LOGIN_TEST_PASSWORD:-${E2E_ARCHITECT_PASSWORD:-${PLAYWRIGHT_ARCHITECT_PASSWORD:-}}}
+
+  if [ -z "$SUPABASE_API_KEY" ] || [ -z "$LOGIN_EMAIL" ] || [ -z "$LOGIN_PASSWORD" ]; then
+    echo "[start] ⚠️  Skipping login smoke test (missing SUPABASE_API_KEY or credentials)."
+    exit 0
+  fi
+
+  ARCHITECT_TOKEN=$(curl -s "$SUPABASE_AUTH_URL" \
     -X POST \
     -H "Content-Type: application/json" \
-    -H "apikey: SUPABASE_ANON_KEY_PLACEHOLDER" \
-    -d '{"email":"ivanprokic@yahoo.com","password":"ivan12345"}' \
+    -H "apikey: $SUPABASE_API_KEY" \
+    -d "{\"email\":\"$LOGIN_EMAIL\",\"password\":\"$LOGIN_PASSWORD\"}" \
     | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
-  
+
   if [ -n "$ARCHITECT_TOKEN" ]; then
     echo "[start] ✅ Login successful - RLS setup complete"
   else

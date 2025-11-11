@@ -61,8 +61,11 @@ const getSupabaseConfig = () => {
     supabaseUrl = 'http://host.docker.internal:8000';
   }
   
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
-    'SUPABASE_ANON_KEY_PLACEHOLDER';
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+
+  if (!supabaseAnonKey) {
+    throw new Error('[Playwright] Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable.');
+  }
   
   return { supabaseUrl, supabaseAnonKey };
 };
@@ -195,10 +198,11 @@ export async function findUserIconButton(page: Page): Promise<Locator> {
   ];
 
   await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
 
   const navContainer = page.locator('nav#main-navigation, nav, header').first();
 
-  for (let attempt = 0; attempt < 20; attempt++) {
+  for (let attempt = 0; attempt < 40; attempt++) {
     // Try each selector in order
     for (const selector of selectors) {
       const candidate = navContainer.locator(`${selector}:not([data-nextjs-dev-tools-button])`).first();

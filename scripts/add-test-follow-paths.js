@@ -1,9 +1,45 @@
 #!/usr/bin/env node
 
 const { createClient } = require('@supabase/supabase-js');
+const fs = require('fs');
+const path = require('path');
 
-const supabaseUrl = 'http://kong:8000';
-const supabaseAnonKey = 'SUPABASE_ANON_KEY_PLACEHOLDER';
+const projectRoot = path.resolve(__dirname, '..');
+const envPath = path.join(projectRoot, '.env');
+
+if (fs.existsSync(envPath)) {
+  const envLines = fs.readFileSync(envPath, 'utf-8').split('\n');
+  for (const rawLine of envLines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) {
+      continue;
+    }
+    const equalsIndex = line.indexOf('=');
+    if (equalsIndex === -1) {
+      continue;
+    }
+    const key = line.slice(0, equalsIndex).trim();
+    const value = line.slice(equalsIndex + 1).trim();
+    if (!process.env[key]) {
+      process.env[key] = value;
+    }
+  }
+}
+
+const supabaseUrl =
+  process.env.SUPABASE_SERVICE_URL ||
+  process.env.PLAYWRIGHT_SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  'http://kong:8000';
+
+const supabaseAnonKey =
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseAnonKey) {
+  console.error('❌ Missing Supabase anon key. Set NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env file.');
+  process.exit(1);
+}
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

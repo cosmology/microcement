@@ -3,6 +3,19 @@
 # Verification Script for Microcement Project
 # This script verifies that all migrations ran successfully
 
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+if [ -f "$ROOT_DIR/.env" ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$ROOT_DIR/.env"
+    set +a
+fi
+
+SUPABASE_BASE_URL=${SUPABASE_BASE_URL:-${NEXT_PUBLIC_SUPABASE_URL:-http://localhost:8000}}
+SUPABASE_REST_URL="${SUPABASE_BASE_URL%/}/rest/v1/user_scene_configs"
+SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}}
+
 echo "🔍 Verification Script for Microcement Project"
 echo "=============================================="
 echo ""
@@ -104,12 +117,17 @@ fi
 
 # Test API endpoint
 print_status "Testing API endpoint..."
-API_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8000/rest/v1/user_scene_configs" -H "apikey: SUPABASE_ANON_KEY_PLACEHOLDER")
 
-if [ "$API_RESPONSE" = "200" ]; then
-    print_success "API endpoint is accessible!"
+if [ -z "$SUPABASE_ANON_KEY" ]; then
+    print_warning "Skipping API check - NEXT_PUBLIC_SUPABASE_ANON_KEY not set."
 else
-    print_error "API endpoint returned status code: $API_RESPONSE"
+    API_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$SUPABASE_REST_URL" -H "apikey: $SUPABASE_ANON_KEY")
+
+    if [ "$API_RESPONSE" = "200" ]; then
+        print_success "API endpoint is accessible!"
+    else
+        print_error "API endpoint returned status code: $API_RESPONSE"
+    fi
 fi
 
 # Final summary

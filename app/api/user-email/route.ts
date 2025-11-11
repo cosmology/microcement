@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { AuthService } from '@/lib/services/AuthService'
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader) {
-      return NextResponse.json({ error: 'No authorization header' }, { status: 401 })
-    }
-
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    const authResult = await AuthService.authenticateRequest(request.headers)
+    if (!authResult.ok) {
+      const message = authResult.reason === 'missing-authorization' ? 'No authorization header' : 'Invalid token'
+      return NextResponse.json({ error: message }, { status: authResult.status })
     }
 
     const { searchParams } = new URL(request.url)

@@ -1,6 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+if [ -f "$ROOT_DIR/.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT_DIR/.env"
+  set +a
+fi
+
+SUPABASE_BASE_URL=${SUPABASE_BASE_URL:-${NEXT_PUBLIC_SUPABASE_URL:-http://localhost:8000}}
+SUPABASE_STORAGE_BUCKET=${SUPABASE_STORAGE_BUCKET:-${BUCKET_NAME:-exports}}
+SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}}
+
+if [ -z "$SUPABASE_ANON_KEY" ]; then
+  echo "❌ NEXT_PUBLIC_SUPABASE_ANON_KEY (or SUPABASE_ANON_KEY) not set. Please export it in .env before running."
+  exit 1
+fi
+
+SUPABASE_STORAGE_URL="${SUPABASE_BASE_URL%/}/storage/v1/bucket/${SUPABASE_STORAGE_BUCKET}"
+
 echo "🧪 Testing Complete USDZ → GLB Export Pipeline"
 echo "=============================================="
 
@@ -47,10 +67,10 @@ cd ..
 # Test 4: Check if storage bucket exists
 echo ""
 echo "🗄️ Checking storage bucket..."
-if curl -s -f "http://192.168.1.9:8000/storage/v1/bucket/exports" -H "apikey: SUPABASE_ANON_KEY_PLACEHOLDER" > /dev/null; then
-  echo "✅ exports storage bucket exists"
+if curl -s -f "$SUPABASE_STORAGE_URL" -H "apikey: $SUPABASE_ANON_KEY" > /dev/null; then
+  echo "✅ ${SUPABASE_STORAGE_BUCKET} storage bucket exists"
 else
-  echo "❌ exports storage bucket missing - create it manually"
+  echo "❌ ${SUPABASE_STORAGE_BUCKET} storage bucket missing - create it manually"
 fi
 
 # Test 5: Check if app is running

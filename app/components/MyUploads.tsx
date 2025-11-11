@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
+import { AuthService } from '@/lib/services/AuthService'
 
 interface AssetItem {
   id: string
@@ -24,15 +25,15 @@ export default function MyUploads() {
       setLoading(true)
       setError(null)
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
+        const identity = await AuthService.getClientIdentity()
+        if (!identity) {
           setAssets([])
           setLoading(false)
           return
         }
         
         // Fetch via API route to avoid RLS issues
-        const res = await fetch(`/api/user-assets?ownerId=${user.id}`)
+        const res = await fetch(`/api/user-assets?ownerId=${identity.userId}`)
         if (!res.ok) {
           const errorData = await res.json()
           throw new Error(errorData.error || 'Failed to load uploads')

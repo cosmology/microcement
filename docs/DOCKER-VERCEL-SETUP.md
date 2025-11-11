@@ -99,7 +99,7 @@ http://localhost:3000/auth/callback
 Create `.env.local` in your project root:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=http://localhost:8000
-NEXT_PUBLIC_SUPABASE_ANON_KEY=SUPABASE_ANON_KEY_PLACEHOLDER
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-local-anon-key
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_APP_NAME=Microcement Studio
 ```

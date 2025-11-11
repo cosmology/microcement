@@ -7,7 +7,7 @@ Create a `.env.local` file in your project root with:
 ```bash
 # Supabase Configuration (Local Development)
 NEXT_PUBLIC_SUPABASE_URL=http://localhost:8000
-NEXT_PUBLIC_SUPABASE_ANON_KEY=SUPABASE_ANON_KEY_PLACEHOLDER
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-local-anon-key
 
 # Site Configuration
 NEXT_PUBLIC_SITE_URL=http://localhost:3000

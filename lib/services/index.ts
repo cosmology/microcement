@@ -1,6 +1,7 @@
 // Services
 export { ModelLoader } from './ModelLoader';
 export { UserLoader } from './UserLoader';
+export { AuthService } from './AuthService';
 export type { 
   ModelLoadResult, 
   ModelLoadOptions, 
