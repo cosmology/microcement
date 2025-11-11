@@ -73,16 +73,39 @@ export class AuthService {
     options?: { allowExpired?: boolean }
   ): Promise<AuthIdentity | null> {
     try {
+      const startTime = this.now()
       const { data, error } = await supabase.auth.getClaims(token, options)
+      const duration = this.now() - startTime
 
       if (error || !data?.claims) {
         if (error) {
-          console.warn('[AuthService] getClaims error', error)
+          console.warn('[AuthService] getClaims error', {
+            tokenProvided: Boolean(token),
+            durationMs: Number(duration.toFixed(1)),
+            message: error.message,
+          })
         }
         return null
       }
 
-      return this.normalizeClaims(data.claims)
+      console.info('[AuthService] getClaims', {
+        tokenProvided: Boolean(token),
+        durationMs: Number(duration.toFixed(1)),
+        subject: data.claims.sub,
+      })
+
+      const normalizedClaims = this.normalizeClaims(data.claims)
+
+      if (normalizedClaims) {
+        const totalDuration = this.now() - startTime
+        console.info('[AuthService] normalizeClaims', {
+          userId: normalizedClaims.userId,
+          role: normalizedClaims.role,
+          totalDurationMs: Number(totalDuration.toFixed(1)),
+        })
+      }
+
+      return normalizedClaims
     } catch (err) {
       console.error('[AuthService] Unexpected error while fetching claims', err)
       return null
@@ -123,6 +146,13 @@ export class AuthService {
       role,
       claims,
     }
+  }
+
+  private static now(): number {
+    if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+      return performance.now()
+    }
+    return Date.now()
   }
 }
 
