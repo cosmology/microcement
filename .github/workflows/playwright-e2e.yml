@@ -87,9 +87,11 @@ jobs:
           fi
 
       - name: Run Playwright tests
-        run: pnpm run test:e2e -- --reporter=line --reporter=html --reporter=json --shard=${{ matrix.shard_index }}/2
+        run: pnpm exec playwright test --reporter=line --reporter=html --reporter=json=test-results/playwright-report-${{ matrix.shard_index }}.json --shard=${{ matrix.shard_index }}/2
 
       - name: Enforce Playwright coverage threshold
+        env:
+          PLAYWRIGHT_JSON_PATH: test-results/playwright-report-${{ matrix.shard_index }}.json
         run: pnpm run check:playwright:coverage
 
       - name: Upload Playwright report
