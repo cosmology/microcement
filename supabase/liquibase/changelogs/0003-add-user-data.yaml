@@ -12,18 +12,13 @@ databaseChangeLog:
               ON CONFLICT (name) DO NOTHING;
 
               -- Users (idempotent)
-              -- Seed users with configurable passwords. Override defaults by setting:
-              --   SELECT set_config('app.seed_admin_password', 'your-admin-password', false);
-              --   SELECT set_config('app.seed_architect_password', 'your-architect-password', false);
-              --   SELECT set_config('app.seed_end_user_password', 'your-end-user-password', false);
-              --   SELECT set_config('app.seed_additional_user_password', 'your-auxiliary-password', false);
               INSERT INTO auth.users (
                 id, instance_id, aud, role, email, encrypted_password,
                 recovery_sent_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data,
                 created_at, updated_at, confirmation_token, email_change, recovery_token,
                 email_change_token_new, email_change_token_current, phone_change_token, reauthentication_token
               )
-              SELECT 'bd9be8f7-5217-43d7-a2ad-d9f2728a14e3','00000000-0000-0000-0000-000000000000','authenticated','authenticated','ivanprokic@gmail.com',crypt(coalesce(current_setting('app.seed_admin_password', true), 'changeme'), gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"ivanprokic@gmail.com","email_verified":true,"phone_verified":false,"sub":"bd9be8f7-5217-43d7-a2ad-d9f2728a14e3"}',NOW(),NOW(),'','','','','','',''
+              SELECT 'bd9be8f7-5217-43d7-a2ad-d9f2728a14e3','00000000-0000-0000-0000-000000000000','authenticated','authenticated','ivanprokic@gmail.com',crypt('test12345', gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"ivanprokic@gmail.com","email_verified":true,"phone_verified":false,"sub":"bd9be8f7-5217-43d7-a2ad-d9f2728a14e3"}',NOW(),NOW(),'','','','','','',''
               WHERE NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'ivanprokic@gmail.com');
 
               INSERT INTO auth.users (
@@ -32,7 +27,7 @@ databaseChangeLog:
                 created_at, updated_at, confirmation_token, email_change, recovery_token,
                 email_change_token_new, email_change_token_current, phone_change_token, reauthentication_token
               )
-              SELECT '225a781d-0944-4c2c-9b7a-bb353175c323','00000000-0000-0000-0000-000000000000','authenticated','authenticated','ivanprokic@yahoo.com',crypt(coalesce(current_setting('app.seed_architect_password', true), 'changeme'), gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"ivanprokic@yahoo.com","email_verified":true,"phone_verified":false,"sub":"225a781d-0944-4c2c-9b7a-bb353175c323"}',NOW(),NOW(),'','','','','','',''
+              SELECT '225a781d-0944-4c2c-9b7a-bb353175c323','00000000-0000-0000-0000-000000000000','authenticated','authenticated','ivanprokic@yahoo.com',crypt('ivan12345', gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"ivanprokic@yahoo.com","email_verified":true,"phone_verified":false,"sub":"225a781d-0944-4c2c-9b7a-bb353175c323"}',NOW(),NOW(),'','','','','','',''
               WHERE NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'ivanprokic@yahoo.com');
 
               INSERT INTO auth.users (
@@ -41,7 +36,7 @@ databaseChangeLog:
                 created_at, updated_at, confirmation_token, email_change, recovery_token,
                 email_change_token_new, email_change_token_current, phone_change_token, reauthentication_token
               )
-              SELECT '12c23ebf-446e-4223-a351-737c97bd6e93','00000000-0000-0000-0000-000000000000','authenticated','authenticated','biljana.h.g@gmail.com',crypt(coalesce(current_setting('app.seed_end_user_password', true), 'changeme'), gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"biljana.h.g@gmail.com","email_verified":true,"phone_verified":false,"sub":"12c23ebf-446e-4223-a351-737c97bd6e93"}',NOW(),NOW(),'','','','','','',''
+              SELECT '12c23ebf-446e-4223-a351-737c97bd6e93','00000000-0000-0000-0000-000000000000','authenticated','authenticated','biljana.h.g@gmail.com',crypt('biljana12345', gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"biljana.h.g@gmail.com","email_verified":true,"phone_verified":false,"sub":"12c23ebf-446e-4223-a351-737c97bd6e93"}',NOW(),NOW(),'','','','','','',''
               WHERE NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'biljana.h.g@gmail.com');
 
               INSERT INTO auth.users (
@@ -50,7 +45,7 @@ databaseChangeLog:
                 created_at, updated_at, confirmation_token, email_change, recovery_token,
                 email_change_token_new, email_change_token_current, phone_change_token, reauthentication_token
               )
-              SELECT '5c439016-9865-44af-88bc-478fff32ae36','00000000-0000-0000-0000-000000000000','authenticated','authenticated','emilijaprokic2015@gmail.com',crypt(coalesce(current_setting('app.seed_additional_user_password', true), 'changeme'), gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"emilijaprokic2015@gmail.com","email_verified":true,"phone_verified":false,"sub":"5c439016-9865-44af-88bc-478fff32ae36"}',NOW(),NOW(),'','','','','','',''
+              SELECT '5c439016-9865-44af-88bc-478fff32ae36','00000000-0000-0000-0000-000000000000','authenticated','authenticated','emilijaprokic2015@gmail.com',crypt('ema12345', gen_salt('bf')),NULL,NOW(),'{"provider":"email","providers":["email"]}','{"email":"emilijaprokic2015@gmail.com","email_verified":true,"phone_verified":false,"sub":"5c439016-9865-44af-88bc-478fff32ae36"}',NOW(),NOW(),'','','','','','',''
               WHERE NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'emilijaprokic2015@gmail.com');
 
               -- Profiles
