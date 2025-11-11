@@ -20,15 +20,66 @@ let passed = 0;
 let failed = 0;
 let flaky = 0;
 
+const classifyTest = (test) => {
+  // Prefer result statuses over legacy outcome
+  const results = Array.isArray(test.results) ? test.results : [];
+
+  let status = null;
+  for (const result of results) {
+    const s = result.status;
+    if (['failed', 'timedOut', 'interrupted'].includes(s)) {
+      status = 'failed';
+      break;
+    }
+    if (s === 'flaky') {
+      status = 'flaky';
+      // continue checking in case there's a hard failure later in results
+      continue;
+    }
+    if (s === 'passed') {
+      status = status === 'flaky' ? status : 'passed';
+      continue;
+    }
+    if (s === 'skipped') {
+      status = status ?? 'skipped';
+    }
+  }
+
+  if (!status) {
+    switch (test.outcome) {
+      case 'skipped':
+        status = 'skipped';
+        break;
+      case 'expected':
+        status = 'passed';
+        break;
+      case 'flaky':
+        status = 'flaky';
+        break;
+      case 'unexpected':
+      case 'failed':
+      case 'timedOut':
+      case 'interrupted':
+        status = 'failed';
+        break;
+      default:
+        status = 'failed';
+    }
+  }
+
+  return status;
+};
+
 const visitSuite = (suite) => {
   for (const spec of suite.specs ?? []) {
     for (const test of spec.tests ?? []) {
       total += 1;
-      switch (test.outcome) {
+      const status = classifyTest(test);
+      switch (status) {
         case 'skipped':
           skipped += 1;
           break;
-        case 'expected':
+        case 'passed':
           passed += 1;
           break;
         case 'flaky':
