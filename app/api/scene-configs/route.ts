@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     const { data: newConfig, error } = await supabase
       .from('user_scene_configs')
       .insert({
-        user_id: user.id,
+        user_id: userId,
         config_name: config_name || 'default',
         ...configData
       })
