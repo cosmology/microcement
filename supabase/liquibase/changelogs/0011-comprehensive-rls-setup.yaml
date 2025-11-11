@@ -1,0 +1,138 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0011-comprehensive-rls-setup
+      author: system
+      changes:
+        - sql:
+            sql: |
+              -- =============================================
+              -- COMPREHENSIVE RLS SETUP FOR MICROCEMENT
+              -- =============================================
+              
+              -- 1. EXPORTS TABLE PERMISSIONS
+              -- =============================================
+              
+              -- Enable RLS on exports table
+              ALTER TABLE exports ENABLE ROW LEVEL SECURITY;
+              
+              -- Grant permissions to service_role for exports table
+              GRANT ALL PRIVILEGES ON TABLE exports TO service_role;
+              GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
+              
+              -- Grant permissions to authenticated users
+              GRANT SELECT, INSERT, UPDATE ON TABLE exports TO authenticated;
+              GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+              
+              -- Create RLS policies for exports table
+              DROP POLICY IF EXISTS "service_role_exports_access" ON exports;
+              CREATE POLICY "service_role_exports_access" ON exports
+              FOR ALL TO service_role
+              USING (true)
+              WITH CHECK (true);
+              
+              DROP POLICY IF EXISTS "authenticated_exports_access" ON exports;
+              CREATE POLICY "authenticated_exports_access" ON exports
+              FOR ALL TO authenticated
+              USING (auth.uid()::text = user_id::text OR user_id IS NULL)
+              WITH CHECK (auth.uid()::text = user_id::text OR user_id IS NULL);
+              
+              -- 2. STORAGE PERMISSIONS
+              -- =============================================
+              
+              -- Enable RLS on storage tables
+              ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+              ALTER TABLE storage.buckets ENABLE ROW LEVEL SECURITY;
+              
+              -- Grant service_role full access to storage schema
+              GRANT ALL ON SCHEMA storage TO service_role;
+              GRANT ALL ON ALL TABLES IN SCHEMA storage TO service_role;
+              GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO service_role;
+              
+              -- Grant execute permissions on set_config (required by storage API)
+              GRANT EXECUTE ON FUNCTION pg_catalog.set_config(text, text, boolean) TO service_role;
+              GRANT EXECUTE ON FUNCTION pg_catalog.set_config(text, text, boolean) TO anon;
+              GRANT EXECUTE ON FUNCTION pg_catalog.set_config(text, text, boolean) TO authenticated;
+              
+              -- Drop all existing storage policies to avoid conflicts
+              DROP POLICY IF EXISTS "Allow service role to upload to exports bucket" ON storage.objects;
+              DROP POLICY IF EXISTS "Allow service_role to read from exports bucket" ON storage.objects;
+              DROP POLICY IF EXISTS "Allow service_role to update exports bucket" ON storage.objects;
+              DROP POLICY IF EXISTS "Service role bypass all RLS" ON storage.objects;
+              DROP POLICY IF EXISTS "objects_service_role_bypass" ON storage.objects;
+              DROP POLICY IF EXISTS "service_role_bypass_all" ON storage.objects;
+              DROP POLICY IF EXISTS "service_role_full_access" ON storage.objects;
+              
+              -- Create comprehensive service_role policy for full access
+              CREATE POLICY "service_role_full_access" ON storage.objects
+              FOR ALL TO service_role
+              USING (true)
+              WITH CHECK (true);
+              
+              -- Create policy for authenticated users to access their own files
+              DROP POLICY IF EXISTS "authenticated_storage_access" ON storage.objects;
+              CREATE POLICY "authenticated_storage_access" ON storage.objects
+              FOR ALL TO authenticated
+              USING (bucket_id IN ('app-uploads', 'models', 'exports'))
+              WITH CHECK (bucket_id IN ('app-uploads', 'models', 'exports'));
+              
+              -- 3. ENSURE BUCKETS EXIST
+              -- =============================================
+              
+              -- Create required buckets
+              INSERT INTO storage.buckets (id, name, public)
+              VALUES 
+                ('app-uploads', 'app-uploads', false),
+                ('models', 'models', true),
+                ('exports', 'exports', false)
+              ON CONFLICT (id) DO UPDATE SET 
+                public = EXCLUDED.public;
+              
+              -- 4. USER_ASSETS TABLE PERMISSIONS
+              -- =============================================
+              
+              -- Ensure user_assets table has proper RLS policies
+              ALTER TABLE user_assets ENABLE ROW LEVEL SECURITY;
+              
+              -- Grant permissions to service_role
+              GRANT ALL PRIVILEGES ON TABLE user_assets TO service_role;
+              
+              -- Grant permissions to authenticated users
+              GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE user_assets TO authenticated;
+              
+              -- Create RLS policies for user_assets
+              DROP POLICY IF EXISTS "service_role_user_assets_access" ON user_assets;
+              CREATE POLICY "service_role_user_assets_access" ON user_assets
+              FOR ALL TO service_role
+              USING (true)
+              WITH CHECK (true);
+              
+              DROP POLICY IF EXISTS "authenticated_user_assets_access" ON user_assets;
+              CREATE POLICY "authenticated_user_assets_access" ON user_assets
+              FOR ALL TO authenticated
+              USING (auth.uid()::text = owner_id::text)
+              WITH CHECK (auth.uid()::text = owner_id::text);
+              
+              -- 5. USER_PROFILES TABLE PERMISSIONS
+              -- =============================================
+              
+              -- Ensure user_profiles table has proper RLS policies
+              ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+              
+              -- Grant permissions to service_role
+              GRANT ALL PRIVILEGES ON TABLE user_profiles TO service_role;
+              
+              -- Grant permissions to authenticated users
+              GRANT SELECT, INSERT, UPDATE ON TABLE user_profiles TO authenticated;
+              
+              -- Create RLS policies for user_profiles
+              DROP POLICY IF EXISTS "service_role_user_profiles_access" ON user_profiles;
+              CREATE POLICY "service_role_user_profiles_access" ON user_profiles
+              FOR ALL TO service_role
+              USING (true)
+              WITH CHECK (true);
+              
+              DROP POLICY IF EXISTS "authenticated_user_profiles_access" ON user_profiles;
+              CREATE POLICY "authenticated_user_profiles_access" ON user_profiles
+              FOR ALL TO authenticated
+              USING (auth.uid()::text = user_id::text)
+              WITH CHECK (auth.uid()::text = user_id::text);

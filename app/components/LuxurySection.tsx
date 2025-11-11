@@ -13,9 +13,6 @@ export default function LuxurySection() {
   // State for each animated element
   const [headerState, setHeaderState] = useState({ visible: false, out: false })
   const [paraState, setParaState] = useState({ visible: false, out: false })
-  
-  // Force intro state for navigation triggers
-  const [forceIntro, setForceIntro] = useState(false)
 
   useEffect(() => {
     function onScroll() {
@@ -30,16 +27,7 @@ export default function LuxurySection() {
       }
       
       setHeaderState(getState(headerRef))
-      // Paragraph only visible after header is fully visible and not out
-      if (paraRef.current && headerRef.current) {
-        const paraRect = paraRef.current.getBoundingClientRect()
-        const headerRect = headerRef.current.getBoundingClientRect()
-        const headerVisible = headerRect.top < window.innerHeight * 0.8 && headerRect.top >= 50
-        setParaState({
-          visible: headerVisible && paraRect.top < window.innerHeight * 0.8,
-          out: paraRect.top < 50,
-        })
-      }
+      setParaState(getState(paraRef))
     }
     
     window.addEventListener("scroll", onScroll, { passive: true })
@@ -47,24 +35,10 @@ export default function LuxurySection() {
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
 
-  // Listen for navigation events
-  useEffect(() => {
-    function onNavActivate(e: any) {
-      if (e.detail?.sectionId === "luxury") {
-        setForceIntro(true)
-        // Reset after animation completes
-        setTimeout(() => setForceIntro(false), 1200)
-      }
-    }
-    window.addEventListener("section-nav-activate", onNavActivate)
-    return () => window.removeEventListener("section-nav-activate", onNavActivate)
-  }, [])
 
-  // Animation helper with force intro support
-  function getAnim(state: { visible: boolean; out: boolean }, force = false) {
-    if (force) {
-      return { opacity: 1, y: 0 }
-    }
+
+  // Animation helper
+  function getAnim(state: { visible: boolean; out: boolean }) {
     return {
       opacity: state.visible && !state.out ? 1 : 0,
       y: state.out ? -40 : state.visible ? 0 : 40,
@@ -81,9 +55,9 @@ export default function LuxurySection() {
         <motion.h2
           ref={headerRef}
           initial={{ opacity: 0, y: 40 }}
-          animate={getAnim(headerState, forceIntro)}
+          animate={getAnim(headerState)}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          className="text-4xl md:text-5xl font-light text-center mb-12 text-gray-900 dark:text-white"
+          className="text-4xl md:text-5xl font-light text-center mb-12 text-gray-900 dark:text-purple-200"
         >
           {t('title')}
         </motion.h2>
@@ -91,7 +65,7 @@ export default function LuxurySection() {
         <motion.div
           ref={paraRef}
           initial={{ opacity: 0, y: 40 }}
-          animate={getAnim(paraState, forceIntro)}
+          animate={getAnim(paraState)}
           transition={{ duration: 0.7, ease: "easeOut" }}
           className="max-w-4xl mx-auto"
         >

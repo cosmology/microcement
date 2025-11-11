@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0010-fix-storage-rls-policies
+      author: system
+      changes:
+        - sql:
+            sql: |
+              -- Enable RLS on storage.objects if not already enabled
+              ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+              
+              -- Drop any existing conflicting service_role policies
+              DROP POLICY IF EXISTS "Allow service role to upload to exports bucket" ON storage.objects;
+              DROP POLICY IF EXISTS "Allow service_role to read from exports bucket" ON storage.objects;
+              DROP POLICY IF EXISTS "Allow service_role to update exports bucket" ON storage.objects;
+              DROP POLICY IF EXISTS "Service role bypass all RLS" ON storage.objects;
+              DROP POLICY IF EXISTS "objects_service_role_bypass" ON storage.objects;
+              DROP POLICY IF EXISTS "service_role_bypass_all" ON storage.objects;
+              
+              -- Create comprehensive service_role policy for full access
+              CREATE POLICY "service_role_full_access" ON storage.objects
+              FOR ALL TO service_role
+              USING (true)
+              WITH CHECK (true);

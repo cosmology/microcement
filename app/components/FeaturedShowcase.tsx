@@ -157,6 +157,7 @@ export default function FeaturedShowcase() {
               animate={getAnim(elementsStates[index], forceIntro)}
               transition={{ duration: 0.7, ease: "easeOut" }}
             >
+              {/* @ts-ignore - ElementType is HTML element, not Three.js Image */}
               <ElementType 
                 className={element.className}
                 style={element.type === "h2" ? {} : {}}
@@ -197,13 +198,13 @@ export default function FeaturedShowcase() {
 
               <div className="lg:w-1/2 space-y-6">
                 <div>
-                  <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{project.title}</h3>
+                  <h3 className="text-3xl text-gray-900 mb-2">{project.title}</h3>
                   <p className="text-lg text-gray-600 dark:text-gray-400 mb-4">{project.location}</p>
                   <p className="text-lg text-gray-700 dark:text-gray-300 leading-relaxed">{project.description}</p>
                 </div>
 
                 <div>
-                  <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Key Features:</h4>
+                  <h4 className="text-xl text-gray-900 dark:text-white mb-4">Key Features:</h4>
                   <div className="grid grid-cols-2 gap-3">
                     {project.features.map((feature, featureIndex) => (
                       <motion.div

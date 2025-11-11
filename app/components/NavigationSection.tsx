@@ -2,13 +2,15 @@
 
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ThemeToggle } from "@/components/theme-toggle"
 import Image from "next/image"
 import { paths } from "@/lib/config"
 import { usePathname } from 'next/navigation';
-import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { GeoLocationSection } from "./GeoLocationSection";
+import LocaleSwitcherSelect from "./LocaleSwitcherSelect"
+import UserProfile from "./UserProfile"
+import { ThemeToggle } from "@/components/theme-toggle"
+import type { UserRole } from "@/hooks/useUserRole"
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -16,30 +18,56 @@ const LANGUAGES = [
   { code: 'sr', label: 'Srpski' },
 ];
 
-const galleryDropdown = [
-  { name: "Before & After", href: "#before-after" },
-  { name: "Featured", href: "#featured" },
-  { name: "Textures", href: "#textures" },
-  { name: "Upload", href: paths.uploadPage }, // Use centralized config
-]
+// Navigation links will be created dynamically using translations
 
-const navLinks = [
-  { name: "Eco Friendly", href: "#environmental" },
-  { name: "Speed", href: "#speed" },
-  { name: "Seamless Finishes", href: "#seamless" },
-  {
-    name: "Gallery",
-    dropdown: galleryDropdown,
-  },
-  { name: "Benefits", href: "#benefits" },
-  { name: "Luxury", href: "#luxury" },
-]
-
-export default function NavigationSection() {
+export default function NavigationSection({ 
+  user, 
+  onUserChange, 
+  role: propRole, 
+  loading: propLoading 
+}: { 
+  user?: any
+  onUserChange?: (user: any) => void
+  role?: 'admin' | 'architect' | 'end_user' | 'guest'
+  loading?: boolean
+}) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [showNav, setShowNav] = useState(false) // Start hidden
-  const [navVisible, setNavVisible] = useState(false) // Start hidden
+  const [isDark, setIsDark] = useState(false)
+  
+  // Use prop values (passed from HomeClient)
+  const role = propRole || 'guest'
+  const userRoleLoading = propLoading !== undefined ? propLoading : false
+
+  // Theme detection for logo filtering
+  useEffect(() => {
+    const checkTheme = () => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    };
+    
+    checkTheme();
+    
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    
+    return () => observer.disconnect();
+  }, []);
+
+  // Get logo filter based on theme
+  const getLogoFilter = () => {
+    if (isDark) {
+      // Dark theme: make logo light/white
+      return 'brightness(0) invert(1) contrast(0.9)';
+    } else {
+      // Light theme: make logo dark/gray
+      return 'brightness(0) invert(0) contrast(1.2)';
+    }
+  };
+  const [navVisible, setNavVisible] = useState(true) // Start visible
   const lastScrollY = useRef(0)
   const animating = useRef(false)
   const pathname = usePathname();
@@ -50,22 +78,38 @@ export default function NavigationSection() {
   const currentLang = LANGUAGES.find(l => l.code === locale) || LANGUAGES[0];
   const otherLangs = LANGUAGES.filter(l => l.code !== locale);
 
+  // Create navigation links dynamically using translations
+  const galleryDropdown = [
+    { name: t('beforeAfter'), href: "#before-after" },
+    { name: t('featured'), href: "#featured" },
+    { name: t('textures'), href: "#textures" },
+    { name: t('upload'), href: paths.uploadPage },
+  ]
+
+  const navLinks = [
+    { name: t('ecoFriendly'), href: "#environmental" },
+    { name: t('speed'), href: "#speed" },
+    {
+      name: t('gallery'),
+      dropdown: galleryDropdown,
+    },
+    { name: t('benefits'), href: "#benefits" },
+    { name: t('luxury'), href: "#luxury" },
+  ]
+
   // Hide nav on scroll down, show on scroll up, and ensure animation completes
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY
-      if (currentScrollY < 100) {
-        // Hide nav when on HeroSection (top of page)
-        setShowNav(false)
-        setNavVisible(false)
-      } else if (currentScrollY > lastScrollY.current) {
-        setShowNav(false)
+      if (currentScrollY > lastScrollY.current && currentScrollY > 24) {
+        // scrolling down
         setNavVisible(false)
       } else {
-        setShowNav(true)
+        // scrolling up
         setNavVisible(true)
       }
       lastScrollY.current = currentScrollY
+      setShowNav(true)
     }
     window.addEventListener("scroll", handleScroll, { passive: true })
     return () => window.removeEventListener("scroll", handleScroll)
@@ -91,303 +135,207 @@ export default function NavigationSection() {
     visible: { y: 0, opacity: 1, transition: { duration: 0.25, ease: "easeOut" } },
   }
 
-  return (
-    <AnimatePresence>
-      {showNav && (
-        <motion.nav
-          key="main-nav"
-          initial="hidden"
-          animate={navVisible ? "visible" : "hidden"}
-          exit="hidden"
+  // For role-based users, show simplified navigation
+  const renderRoleBasedNav = () => {
+    if (role === 'end_user' || role === 'architect' || role === 'admin') {
+      return (
+        <motion.nav 
+          id="main-navigation"
+          className="fixed top-0 left-0 right-0 z-[1003] w-full bg-white dark:bg-gray-900 border-b border-light-dark/30 dark:border-gray-700/30 backdrop-blur-md"
           variants={navVariants}
-          className="fixed top-0 left-0 right-0 z-50 w-full bg-light-light dark:bg-gray-900 border-b border-light-dark dark:border-gray-700 backdrop-blur-md"
+          initial="visible"
+          animate={navVisible ? "visible" : "hidden"}
         >
-          <div className="max-w-7xl mx-auto flex items-center justify-between h-12 sm:h-14 md:h-16 px-8 py-10">
-            {/* Logo or Brand */}
-            <a href="#" className={`font-bold ${navFont} text-light-dark dark:text-white`}>
+          <div className="w-full flex items-center justify-between px-2" style={{height: '44px'}}>
+            {/* Logo only on left */}
+            <div className="flex items-center">
+              <a href="#" className="font-bold text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
+                <Image
+                  src="/images/logo-procemento.png"
+                  alt="Microcement"
+                  width={30}
+                  height={20}
+                  style={{ 
+                    filter: getLogoFilter(),
+                    width: 'auto',
+                    height: '20px',
+                    objectFit: 'contain'
+                  }}
+                  className="h-5 sm:h-6 md:h-8"
+                />
+              </a>
+            </div>
+
+            {/* Right side - Auth controls only */}
+            <div className="flex items-center gap-2">
+              <LocaleSwitcherSelect defaultValue={locale} label="" />
+              <ThemeToggle />
+              <UserProfile onUserChange={onUserChange} />
+            </div>
+          </div>
+        </motion.nav>
+      )
+    }
+
+    // Default navigation for guests - simplified
+    return (
+      <>
+        <motion.nav 
+          id="main-navigation"
+          className="fixed top-0 left-0 right-0 z-[1003] w-full bg-white dark:bg-gray-900 border-b border-light-dark/30 dark:border-gray-700/30 backdrop-blur-md pointer-events-auto"
+          variants={navVariants}
+          initial="visible"
+          animate={navVisible ? "visible" : "hidden"}
+        >
+        <div className="w-full flex items-center justify-between px-2 relative z-[1004]" style={{height: '44px'}}>
+          {/* Logo and Mobile Menu */}
+          <div className="flex items-center">
+            {/* Mobile Hamburger Menu */}
+            <button
+              onClick={() => {
+                console.log('🍔 Hamburger clicked, current state:', mobileOpen);
+                setMobileOpen(!mobileOpen);
+              }}
+              className="md:hidden mr-3 p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative z-[1005]"
+              aria-label="Toggle menu"
+            >
+              <div className="w-6 h-6 flex flex-col justify-center items-center">
+                <span className={`w-5 h-0.5 bg-gray-700 dark:bg-gray-200 transition-all duration-300 ${mobileOpen ? 'rotate-45 translate-y-1.5' : ''}`}></span>
+                <span className={`w-5 h-0.5 bg-gray-700 dark:bg-gray-200 transition-all duration-300 mt-1 ${mobileOpen ? 'opacity-0' : ''}`}></span>
+                <span className={`w-5 h-0.5 bg-gray-700 dark:bg-gray-200 transition-all duration-300 mt-1 ${mobileOpen ? '-rotate-45 -translate-y-1.5' : ''}`}></span>
+              </div>
+            </button>
+
+            {/* Logo */}
+            <a href="#" className="inline-flex items-center font-bold text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
               <Image
-                src="/images/logo-horizontal.jpg"
+                src="/images/logo-procemento.png"
                 alt="Microcement"
-                width={120}
-                height={50}
-                className="hidden sm:block h-8 w-auto"
-              />
-              <Image
-                src="/images/logo.jpg"
-                alt="Microcement"
-                width={80}
-                height={80}
-                className="block sm:hidden h-8 w-auto"
+                width={30}
+                height={20}
+                style={{ 
+                  filter: getLogoFilter(),
+                  width: 'auto',
+                  height: '20px',
+                  objectFit: 'contain'
+                }}
+                className="h-5"
               />
             </a>
-            <GeoLocationSection />
-            {/* Desktop Nav */}
-            <ul className={`hidden md:flex items-center gap-2 sm:gap-4 md:gap-6 ${navFont}`}>
-              {navLinks.map((link) =>
-                link.dropdown ? (
-                  <li key={link.name} className="relative">
-                    <button
-                      className="flex items-center gap-1 font-medium text-light-dark dark:text-white bg-transparent border-none outline-none cursor-pointer py-2 px-3 rounded hover:bg-light-main dark:hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-light-dark"
-                      onClick={() => handleDropdown(link.name)}
-                      onBlur={() => setTimeout(() => setOpenDropdown(null), 150)}
-                      aria-haspopup="true"
-                      aria-expanded={openDropdown === link.name}
-                    >
+          </div>
+
+          {/* Desktop Navigation Menu Items */}
+          <ul className="hidden md:flex items-center space-x-6">
+            {navLinks.map((link, index) => (
+              <li key={index}>
+                {link.dropdown ? (
+                  <div className="relative group">
+                    <button className="text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors flex items-center">
                       {link.name}
-                      <svg className="ml-1 w-3 h-3 inline" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path d="M19 9l-7 7-7-7" />
+                      <svg className="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
-                    <AnimatePresence>
-                      {openDropdown === link.name && (
-                        <motion.ul
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={{ duration: 0.2 }}
-                          className="absolute left-0 mt-2 min-w-[160px] bg-light-light dark:bg-gray-800 rounded shadow-lg border border-light-dark dark:border-gray-700 z-50"
-                        >
-                          {link.dropdown.map((item) => (
-                            <li key={item.name}>
-                              <a
-                                href={item.href}
-                                className="block px-4 py-2 text-light-dark dark:text-white hover:bg-light-main dark:hover:bg-gray-700 rounded transition-colors"
-                                onClick={handleNavClick}
-                              >
-                                {item.name}
-                              </a>
-                            </li>
-                          ))}
-                        </motion.ul>
-                      )}
-                    </AnimatePresence>
-                  </li>
+                    <ul className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 border border-gray-200 dark:border-gray-700">
+                      {link.dropdown.map((item, i) => (
+                        <li key={i}>
+                          <a href={item.href} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            {item.name}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ) : (
-                  <li key={link.name}>
+                  <a href={link.href} className="text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
+                    {link.name}
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+
+          {/* Right side - Auth controls */}
+          <div className="flex items-center gap-2">
+            <LocaleSwitcherSelect defaultValue={locale} label="" />
+            <ThemeToggle />
+            <UserProfile onUserChange={onUserChange} />
+          </div>
+
+          </div>
+        </motion.nav>
+        
+        {/* Mobile Menu Overlay - Always on top, independent of nav scroll hide */}
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="fixed top-12 left-0 right-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-lg z-[1004] pointer-events-auto"
+              onAnimationStart={() => console.log('🍔 Mobile menu opening, navVisible:', navVisible)}
+              onAnimationComplete={() => console.log('🍔 Mobile menu animation complete')}
+            >
+              <ul className="py-2 space-y-1">
+              {navLinks.map((link, index) => (
+                <li key={index}>
+                  {link.dropdown ? (
+                    <div className="relative">
+                      <button
+                        onClick={() => setOpenDropdown(openDropdown === link.name ? null : link.name)}
+                        className="w-full px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center justify-between"
+                      >
+                        {link.name}
+                        <svg
+                          className={`w-4 h-4 transition-transform duration-200 ${openDropdown === link.name ? 'rotate-180' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      <AnimatePresence>
+                        {openDropdown === link.name && (
+                          <motion.ul
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="bg-gray-50 dark:bg-gray-800"
+                          >
+                            {link.dropdown.map((item, i) => (
+                              <li key={i}>
+                                <a
+                                  href={item.href}
+                                  onClick={() => setMobileOpen(false)}
+                                  className="block px-8 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                >
+                                  {item.name}
+                                </a>
+                              </li>
+                            ))}
+                          </motion.ul>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ) : (
                     <a
                       href={link.href}
-                      className="font-medium text-light-dark dark:text-white bg-transparent border-none outline-none cursor-pointer py-2 px-3 rounded hover:bg-light-main dark:hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-light-dark"
-                      onClick={handleNavClick}
+                      onClick={() => setMobileOpen(false)}
+                      className="block px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                     >
                       {link.name}
                     </a>
-                  </li>
-                )
-              )}
-            </ul>
-            {/* Right side controls - Theme Toggle, Hamburger, and Language Toggle */}
-            <div className="flex items-center gap-2">
-                            {/* Language Dropdown */}
-                            <div className="relative">
-                <button
-                  className="px-2 py-1 rounded border border-light-dark dark:border-gray-700 bg-white dark:bg-gray-800 text-light-dark dark:text-white hover:bg-light-main dark:hover:bg-gray-700 transition-colors flex items-center gap-1"
-                  onClick={() => setLangOpen(v => !v)}
-                  aria-haspopup="listbox"
-                  aria-expanded={langOpen}
-                >
-                  {currentLang.label}
-                  <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" /></svg>
-                </button>
-                {langOpen && (
-                  <ul className="absolute right-0 mt-2 min-w-[120px] bg-white dark:bg-gray-800 rounded shadow-lg border border-light-dark dark:border-gray-700 z-50" role="listbox">
-                    {otherLangs.map(lang => (
-                      <li key={lang.code}>
-                        <Link
-                          href={`/${lang.code}`}
-                          className="block px-4 py-2 text-light-dark dark:text-white hover:bg-light-main dark:hover:bg-gray-700 rounded transition-colors"
-                          onClick={() => setLangOpen(false)}
-                          role="option"
-                          aria-selected={false}
-                        >
-                          {lang.label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              {/* Theme Toggle */}
-              <div className="flex-shrink-0">
-                <ThemeToggle />
-              </div>
-              {/* Morphing Hamburger/X for mobile */}
-              <button
-                className="md:hidden flex items-center justify-center p-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-light-dark relative"
-                onClick={() => setMobileOpen((v) => !v)}
-                aria-label={mobileOpen ? "Close menu" : "Open menu"}
-              >
-                <motion.svg
-                  width="32"
-                  height="32"
-                  viewBox="0 0 32 32"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="w-8 h-8 text-light-dark dark:text-white"
-                >
-                  {/* Top line - fades out */}
-                  <motion.line
-                    x1="3" y1="9" x2="29" y2="9"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                    initial={false}
-                    animate={mobileOpen ? {
-                      opacity: 0,
-                      transition: { duration: 0.2, ease: "easeOut", delay: 0.1 }
-                    } : {
-                      opacity: 1,
-                      transition: { duration: 0.3, ease: "easeOut", delay: 0.2 }
-                    }}
-                  />
-                  {/* Middle line - fades out */}
-                  <motion.line
-                    x1="3" y1="16" x2="29" y2="16"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                    initial={false}
-                    animate={mobileOpen ? {
-                      opacity: 0,
-                      transition: { duration: 0.2, ease: "easeOut", delay: 0.2 }
-                    } : {
-                      opacity: 1,
-                      transition: { duration: 0.3, ease: "easeOut", delay: 0.1 }
-                    }}
-                  />
-                  {/* Bottom line - fades out */}
-                  <motion.line
-                    x1="3" y1="23" x2="29" y2="23"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                    initial={false}
-                    animate={mobileOpen ? {
-                      opacity: 0,
-                      transition: { duration: 0.2, ease: "easeOut", delay: 0.3 }
-                    } : {
-                      opacity: 1,
-                      transition: { duration: 0.3, ease: "easeOut" }
-                    }}
-                  />
-                </motion.svg>
-                {/* Top diagonal line - starts at middle, rotates counter-clockwise */}
-                <motion.div
-                  className="absolute w-4 h-0.5 bg-light-dark dark:bg-white rounded-full"
-                  style={{ 
-                    top: '50%', 
-                    left: '50%', 
-                    transformOrigin: 'center',
-                    transform: 'translate(-50%, -50%)'
-                  }}
-                  initial={{ opacity: 0, rotate: 0 }}
-                  animate={mobileOpen ? {
-                    opacity: 1,
-                    rotate: -45,
-                    transition: { 
-                      duration: 0.4, 
-                      ease: "easeOut", 
-                      delay: 0.4
-                    }
-                  } : {
-                    opacity: 0,
-                    rotate: 0,
-                    transition: { 
-                      duration: 0.3, 
-                      ease: "easeOut"
-                    }
-                  }}
-                />
-                {/* Bottom diagonal line - starts at middle, rotates clockwise */}
-                <motion.div
-                  className="absolute w-4 h-0.5 bg-light-dark dark:bg-white rounded-full"
-                  style={{ 
-                    top: '50%', 
-                    left: '50%', 
-                    transformOrigin: 'center',
-                    transform: 'translate(-50%, -50%)'
-                  }}
-                  initial={{ opacity: 0, rotate: 0 }}
-                  animate={mobileOpen ? {
-                    opacity: 1,
-                    rotate: 45,
-                    transition: { 
-                      duration: 0.4, 
-                      ease: "easeOut", 
-                      delay: 0.4
-                    }
-                  } : {
-                    opacity: 0,
-                    rotate: 0,
-                    transition: { 
-                      duration: 0.3, 
-                      ease: "easeOut"
-                    }
-                  }}
-                />
-              </button>
-            </div>
-          </div>
-          {/* Mobile Menu */}
-          <AnimatePresence>
-            {mobileOpen && (
-              <motion.div
-                initial={{ y: -40, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: -40, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="md:hidden bg-light-light dark:bg-gray-900 border-t border-light-dark dark:border-gray-700 px-4 py-4"
-              >
-                <ul className="flex flex-col gap-2">
-                  {navLinks.map((link) =>
-                    link.dropdown ? (
-                      <li key={link.name} className="relative">
-                        <button
-                          className="w-full flex items-center justify-between font-medium text-light-dark dark:text-white bg-transparent border-none outline-none cursor-pointer py-2 px-3 rounded hover:bg-light-main dark:hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-light-dark"
-                          onClick={() => handleDropdown(link.name)}
-                          aria-haspopup="true"
-                          aria-expanded={openDropdown === link.name}
-                        >
-                          {link.name}
-                          <svg className="ml-1 w-3 h-3 inline" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </button>
-                        <AnimatePresence>
-                          {openDropdown === link.name && (
-                            <motion.ul
-                              initial={{ opacity: 0, y: -10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -10 }}
-                              transition={{ duration: 0.2 }}
-                              className="pl-4"
-                            >
-                              {link.dropdown.map((item) => (
-                                <li key={item.name}>
-                                  <a
-                                    href={item.href}
-                                    className="block px-4 py-2 text-light-dark dark:text-white hover:bg-light-main dark:hover:bg-gray-700 rounded transition-colors"
-                                    onClick={handleNavClick}
-                                  >
-                                    {item.name}
-                                  </a>
-                                </li>
-                              ))}
-                            </motion.ul>
-                          )}
-                        </AnimatePresence>
-                      </li>
-                    ) : (
-                      <li key={link.name}>
-                        <a
-                          href={link.href}
-                          className="block font-medium text-light-dark dark:text-white bg-transparent border-none outline-none cursor-pointer py-2 px-3 rounded hover:bg-light-main dark:hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-light-dark"
-                          onClick={handleNavClick}
-                        >
-                          {link.name}
-                        </a>
-                      </li>
-                    )
                   )}
-                </ul>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.nav>
-      )}
-    </AnimatePresence>
-  )
-} 
+                </li>
+              ))}
+              </ul>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </>
+    )
+  }
+
+  return renderRoleBasedNav()
+}

@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Simple Migration Helper Script
+# This script provides clear instructions for manual migration
+
+echo "🎯 Simple Migration Approach"
+echo "============================"
+echo ""
+echo "✅ Step 1: Deploy your code"
+echo "   git add ."
+echo "   git commit -m 'Add user_scene_configs schema'"
+echo "   git push origin main"
+echo ""
+echo "✅ Step 2: Wait for Vercel deployment to complete"
+echo "   Check Vercel Dashboard for deployment status"
+echo ""
+echo "✅ Step 3: Run migration manually"
+echo "   1. Go to: https://supabase.com/dashboard/project/lxsbolsjavowlymvpyxo"
+echo "   2. Navigate to: SQL Editor (left sidebar)"
+echo "   3. Copy SQL from: supabase/production-migration.sql"
+echo "   4. Paste and click 'Run'"
+echo ""
+echo "✅ Step 4: Verify migration"
+echo "   Run this query in SQL Editor:"
+echo "   SELECT table_name FROM information_schema.tables WHERE table_name = 'user_scene_configs';"
+echo ""
+echo "🎉 Your app will work perfectly after migration!"
+echo ""
+echo "📁 Migration file: supabase/production-migration.sql"
+echo "📖 Full guide: SIMPLE-MIGRATION-APPROACH.md"

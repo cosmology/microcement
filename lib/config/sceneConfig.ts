@@ -1,0 +1,361 @@
+import * as THREE from 'three';
+import { SceneConfigService } from '../services/SceneConfigService';
+
+/**
+ * Global configuration constants for the 3D scene
+ * These can be overridden by user preferences or loaded from a database
+ */
+export const SCENE_CONFIG = {
+  // Model loading
+  DEFAULT_MODEL_PATH: '/models/no-material.glb',
+  
+  // Camera settings
+  CAMERA_FOV: 75,
+  CAMERA_NEAR: 0.1,
+  CAMERA_FAR: 1000,
+  ORBITAL_HEIGHT: 40,
+  ORBITAL_RADIUS_MULTIPLIER: 6,
+  ORBITAL_SPEED: 0.2,
+  
+  // Model transformations
+  TARGET_SIZE: 30,
+  SCALE_MULTIPLIER: 2,
+  ROTATION_Y: Math.PI / 2,
+  
+  // Intro animation
+  INTRO_DURATION: 3000,
+  INTRO_START_POS: new THREE.Vector3(0, 20, 0),
+  INTRO_END_POS: new THREE.Vector3(-6.554798188035982, 7.001298362376955, 26.293127720925533),
+  INTRO_START_LOOKAT: new THREE.Vector3(0, 10, 0),  // Look at model center height
+  
+  // Hotspot settings
+  HOTSPOT_COLORS: {
+    NORMAL: 0x8C33FF,
+    HOVER: 0xb2d926,
+    PULSE: 0x8C33FF
+  },
+  
+  PULSE_ANIMATION: {
+    DURATION: 800,
+    SCALE: 1.5,
+    OPACITY: 0.8
+  },
+  
+  // Focal distances for each hotspot
+  HOTSPOT_FOCAL_DISTANCES: {
+    "Hotspot_geo_accent_wall": 8,
+    "Hotspot_geo_backsplash": 5,
+    "Hotspot_geo_kitchen_cabinet": 5,
+    "Hotspot_geo_bath_countertop": 5,
+    "Hotspot_geo_floor": 10,
+    "Hotspot_geo_fireplace": 12,
+    "Hotspot_geo_coffee_table": 5,
+    "Hotspot_geo_kitchen_countertop": 5,
+    "Hotspot_geo_island": 5,
+    "Hotspot_geo_shelves": 5,
+  },
+  
+  // Hotspot category mapping for display labels
+  HOTSPOT_CATEGORIES: {
+    "Hotspot_geo_shelves": "Furniture",
+    "Hotspot_geo_accent_wall": "Accent Wall",
+    "Hotspot_geo_bath_countertop": "Bath Countertops",
+    "Hotspot_geo_kitchen_cabinet": "Kitchen Cabinets",
+    "Hotspot_geo_fireplace": "Fireplaces",
+    "Hotspot_geo_floor": "Floors",
+    "Hotspot_geo_kitchen_countertop": "Kitchen Countertops",
+    "Hotspot_geo_coffee_table": "Furniture",
+    "Hotspot_geo_island": "Kitchen Islands",
+    "Hotspot_geo_backsplash": "Kitchen Backsplashes",
+    "Hotspot_geo_bathroom_walls": "Bathroom Walls"
+  },
+  
+  // Default camera path data
+  DEFAULT_CAMERA_POINTS: [
+    new THREE.Vector3(20, 5, 0),
+    new THREE.Vector3(-8, 6.5, 2),
+    new THREE.Vector3(-14, 6.75, 7),
+    new THREE.Vector3(-8, 7, 24),
+    new THREE.Vector3(-4, 7, 30),
+    new THREE.Vector3(-2, 7.25, 32),
+    new THREE.Vector3(12, 7.5, 32),
+    new THREE.Vector3(20, 8, 25),
+    new THREE.Vector3(16, 8, 0),
+  ],
+  
+  DEFAULT_LOOK_AT_TARGETS: [
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(4, 3, 0),
+    new THREE.Vector3(6, 4, 0),
+    new THREE.Vector3(7, 5, 30),
+    new THREE.Vector3(10, 6, 50),
+    new THREE.Vector3(20, 7, 60),
+    new THREE.Vector3(30, 8, 40),
+    new THREE.Vector3(30, 8, 20),
+    new THREE.Vector3(0, 8, -40),
+  ],
+  
+  // Path visuals debug settings
+  SHOW_CAMERA_PATH: false,
+  SHOW_WAYPOINTS: false,
+  SHOW_LOOKUP_TARGETS: false,
+  
+  // API settings
+  API_HOTSPOT_KEY_ALIASES: {
+    'bathroom_countertop': 'bath_countertop',
+    'bathroom_countertops': 'bath_countertop',
+    'kitchen_countertops': 'kitchen_countertop',
+    'backsplashes': 'backsplash',
+    'islands': 'island',
+    'cabinets': 'kitchen_cabinet',
+    'coffee_tables': 'coffee_table',
+  },
+
+  // Marker panel progress ranges
+  MARKER_PANELS: [
+    { 
+      name: 'floor', 
+      progress: "0-10%", 
+      content: 'floor'
+    },
+    { 
+      name: 'kitchenIsland', 
+      progress: "10-20%", 
+      content: 'kitchenIsland'
+    },
+    { 
+      name: 'kitchenBacksplash', 
+      progress: "20-30%", 
+      content: 'kitchenBacksplash'
+    },
+    { 
+      name: 'kitchenCabinet', 
+      progress: "30-40%", 
+      content: 'kitchenCabinet'
+    },
+    { 
+      name: 'kitchenCountertop', 
+      progress: "40-47%", 
+      content: 'kitchenCountertop'
+    },
+    { 
+      name: 'bathCountertop', 
+      progress: "47-75%", 
+      content: 'bathCountertop'
+    },
+    { 
+      name: 'coffeeTable', 
+      progress: "75-80%", 
+      content: 'coffeeTable'
+    },
+    { 
+      name: 'fireplace', 
+      progress: "80-88%", 
+      content: 'fireplace'
+    },
+    { 
+      name: 'shelves', 
+      progress: "88-95%", 
+      content: 'shelves'
+    },
+    { 
+      name: 'accentWall', 
+      progress: "95-100%", 
+      content: 'accentWall'
+    }
+  ]
+} as const;
+
+/**
+ * Get camera path data for a specific model
+ * Now supports user-specific configurations from the database
+ */
+export async function getCameraPathData(modelPath: string = SCENE_CONFIG.DEFAULT_MODEL_PATH, userId?: string, user?: any) {
+  console.log('🎬 getCameraPathData called with userId:', userId ? 'present' : 'none');
+  
+  if (userId) {
+    try {
+      console.log('🔍 Attempting to load user-specific camera path data from Supabase...');
+      const sceneConfigService = SceneConfigService.getInstance();
+      sceneConfigService.setUser(user || { id: userId });
+      
+      // Try to get user's default config first
+      let userConfig = await sceneConfigService.getDefaultConfig();
+      console.log('📊 User config found:', userConfig ? 'yes' : 'no');
+      
+      // If no default config exists, return default data without creating DB entry
+      if (!userConfig) {
+        console.log('🔄 No user config found, using default data without creating DB entry');
+        console.log('📋 LOADING DEFAULT CAMERA PATH');
+        return {
+          cameraPoints: SCENE_CONFIG.DEFAULT_CAMERA_POINTS.map(point => point.clone()),
+          lookAtTargets: SCENE_CONFIG.DEFAULT_LOOK_AT_TARGETS.map(target => target.clone())
+        };
+      }
+      
+      if (userConfig) {
+        // Prefer an active follow path when present; fallback to embedded camera_points
+        try {
+          const activePath = await sceneConfigService.getActiveFollowPathForConfig(userConfig.id as unknown as string)
+          if (activePath && Array.isArray(activePath.camera_points) && activePath.camera_points.length > 0) {
+            console.log('🎯 Using active follow path camera data:', activePath.camera_points.length)
+            console.log('📋 LOADING CAMERA PATH FROM DB (active follow path)')
+            return {
+              cameraPoints: activePath.camera_points.map((p: any) => {
+                const x = typeof p.x === 'number' ? p.x : 0;
+                const y = typeof p.y === 'number' ? p.y : 0;
+                const z = typeof p.z === 'number' ? p.z : 0;
+                return new THREE.Vector3(x, y, z);
+              }),
+              lookAtTargets: (activePath.look_at_targets || []).map((t: any) => {
+                const x = typeof t.x === 'number' ? t.x : 0;
+                const y = typeof t.y === 'number' ? t.y : 0;
+                const z = typeof t.z === 'number' ? t.z : 0;
+                return new THREE.Vector3(x, y, z);
+              })
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ Could not load active follow path, falling back to config camera_points:', e)
+        }
+
+        console.log('🎯 Using config-embedded camera data:');
+        console.log('  - Camera points:', userConfig.camera_points?.length || 0);
+        console.log('  - Look at targets:', userConfig.look_at_targets?.length || 0);
+        
+        // Check if userConfig has valid camera data, otherwise use defaults
+        const hasValidCameraData = userConfig.camera_points && Array.isArray(userConfig.camera_points) && userConfig.camera_points.length > 0;
+        const hasValidLookAtData = userConfig.look_at_targets && Array.isArray(userConfig.look_at_targets) && userConfig.look_at_targets.length > 0;
+        
+        if (hasValidCameraData && hasValidLookAtData) {
+          console.log('📋 LOADING CAMERA PATH FROM DB (user config embedded data)')
+          return {
+            cameraPoints: userConfig.camera_points.map((point: any) => {
+              const x = typeof point.x === 'number' ? point.x : 0;
+              const y = typeof point.y === 'number' ? point.y : 0;
+              const z = typeof point.z === 'number' ? point.z : 0;
+              return new THREE.Vector3(x, y, z);
+            }),
+            lookAtTargets: userConfig.look_at_targets.map((target: any) => {
+              const x = typeof target.x === 'number' ? target.x : 0;
+              const y = typeof target.y === 'number' ? target.y : 0;
+              const z = typeof target.z === 'number' ? target.z : 0;
+              return new THREE.Vector3(x, y, z);
+            })
+          };
+        } else {
+          console.log('🔄 User config has no valid camera data, using defaults');
+          console.log('📋 LOADING DEFAULT CAMERA PATH');
+          return {
+            cameraPoints: SCENE_CONFIG.DEFAULT_CAMERA_POINTS.map(point => point.clone()),
+            lookAtTargets: SCENE_CONFIG.DEFAULT_LOOK_AT_TARGETS.map(target => target.clone())
+          };
+        }
+      }
+    } catch (error) {
+      console.warn('❌ Failed to load user config, falling back to default:', error);
+      console.log('📋 LOADING DEFAULT CAMERA PATH (error fallback)');
+    }
+  }
+  
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔄 Using default camera path data (no userId or Supabase error)');
+  }
+  console.log('📋 LOADING DEFAULT CAMERA PATH (no userId)');
+  // Fallback to default data
+  return {
+    cameraPoints: SCENE_CONFIG.DEFAULT_CAMERA_POINTS.map(point => point.clone()),
+    lookAtTargets: SCENE_CONFIG.DEFAULT_LOOK_AT_TARGETS.map(target => target.clone())
+  };
+}
+
+/**
+ * Get hotspot settings for a specific model/user combination
+ * Now supports user-specific configurations from the database
+ */
+export async function getHotspotSettings(modelPath: string = SCENE_CONFIG.DEFAULT_MODEL_PATH, userId?: string, user?: any) {
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🎨 getHotspotSettings called with userId:', userId ? 'present' : 'none');
+  }
+  
+  if (userId) {
+    try {
+      console.log('🔍 Attempting to load user-specific hotspot settings from Supabase...');
+      const sceneConfigService = SceneConfigService.getInstance();
+      sceneConfigService.setUser(user || { id: userId });
+      
+      // Try to get user's default config first
+      let userConfig = await sceneConfigService.getDefaultConfig();
+      console.log('📊 User config found:', userConfig ? 'yes' : 'no');
+      
+      // If no default config exists, return default data without creating DB entry
+      if (!userConfig) {
+        console.log('🔄 No user config found, using default data without creating DB entry');
+        return {
+          colors: SCENE_CONFIG.HOTSPOT_COLORS,
+          pulseAnimation: SCENE_CONFIG.PULSE_ANIMATION,
+          focalDistances: SCENE_CONFIG.HOTSPOT_FOCAL_DISTANCES,
+          categories: SCENE_CONFIG.HOTSPOT_CATEGORIES
+        };
+      }
+      
+      if (userConfig) {
+        console.log('🎯 Using Supabase hotspot data:');
+        console.log('  - Colors:', userConfig.hotspot_colors);
+        console.log('  - Pulse animation:', userConfig.pulse_animation);
+        console.log('  - Focal distances:', Object.keys(userConfig.hotspot_focal_distances || {}).length);
+        console.log('  - Categories:', Object.keys(userConfig.hotspot_categories || {}).length);
+        
+        return {
+          colors: userConfig.hotspot_colors,
+          pulseAnimation: userConfig.pulse_animation,
+          focalDistances: userConfig.hotspot_focal_distances,
+          categories: userConfig.hotspot_categories
+        };
+      }
+    } catch (error) {
+      console.warn('❌ Failed to load user config, falling back to default:', error);
+    }
+  }
+  
+  console.log('🔄 Using default hotspot settings (no userId or Supabase error)');
+  // Fallback to default settings
+  return {
+    colors: SCENE_CONFIG.HOTSPOT_COLORS,
+    pulseAnimation: SCENE_CONFIG.PULSE_ANIMATION,
+    focalDistances: SCENE_CONFIG.HOTSPOT_FOCAL_DISTANCES,
+    categories: SCENE_CONFIG.HOTSPOT_CATEGORIES
+  };
+}
+
+/**
+ * Get complete scene configuration for a user
+ * This is the main function to use for getting user-specific scene configs
+ */
+export async function getUserSceneConfig(userId?: string, user?: any) {
+  if (userId) {
+    try {
+      const sceneConfigService = SceneConfigService.getInstance();
+      sceneConfigService.setUser(user || { id: userId });
+      
+      // Try to get user's default config first
+      let userConfig = await sceneConfigService.getDefaultConfig();
+      
+      // If no default config exists, return default config without creating DB entry
+      if (!userConfig) {
+        console.log('🔄 No user config found, returning default config without creating DB entry');
+        return SCENE_CONFIG;
+      }
+      
+      if (userConfig) {
+        console.log('🎯 [getUserSceneConfig] Converting user config to scene config');
+        return sceneConfigService.convertToSceneConfig(userConfig);
+      }
+    } catch (error) {
+      console.warn('Failed to load user config, falling back to default:', error);
+    }
+  }
+  
+  // Fallback to default configuration
+  return SCENE_CONFIG;
+}

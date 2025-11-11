@@ -13,6 +13,7 @@ dist-ssr
 *.local
 
 
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -28,9 +29,68 @@ dist-ssr
 .env
 .env.*
 
+# Temporary environment files (security risk)
+env-local.txt
+supabase-env.txt
+*-env.txt
+
+# Scripts with sensitive keys (security risk)
+scripts/create-users-properly.js
+scripts/test-login.js
+scripts/create-test-users.js
+scripts/verify-users.js
+scripts/sync-user-uuids.sh
+scripts/sync-user-uuids-proper.sh
+
+public/uploads
+public/models/scanned-rooms/
+
 frontend/tsconfig.tsbuildinfo
 frontend/tsconfig.tsbuildinfo
 .qodo
 
 # pnpm
 .pnpm-store/
+
+# Next.js
+.next/
+
+# Supabase
+
+# Supabase secrets and local volumes
+# The .env file in the `supabase` directory holds local database
+# credentials and the local JWT secret. It should never be committed.
+supabase/.env
+
+# The `volumes` directory contains the binary files of your local
+# Postgres database. Committing this will lead to a bloated repository
+# and data conflicts among developers.
+supabase/volumes/
+
+# Supabase branch state
+# The `.branches` directory holds metadata about the linked project
+# branches for the CLI. It's automatically generated and should be ignored.
+supabase/.branches
+
+# Supabase Edge Function environment variables
+# If you use environment variables for your Edge Functions,
+# the corresponding .env files should be ignored.
+supabase/functions/.env*
+
+# MCP Configuration (contains sensitive tokens)
+.cursor/mcp.json
+
+# Test coverage and reports
+coverage/
+coverage-local/
+.nyc_output/
+*.lcov
+htmlcov/
+.coverage
+coverage.xml
+coverage.json
+playwright-report/
+playwright/.cache/
+test-results/
+.vitest/
+*.spec.js.snap

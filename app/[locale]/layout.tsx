@@ -26,8 +26,10 @@ export default async function LocaleLayout({
   const { locale } = await params;
   const messages = await getMessages();
   
-  console.log('🏗️ [Layout] Locale:', locale);
-  console.log('📦 [Layout] Messages keys:', Object.keys(messages));
+  if (process.env.NODE_ENV === 'development') {
+    // Minimal debug only in dev; remove noisy logs
+    // console.log('Locale:', locale)
+  }
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>

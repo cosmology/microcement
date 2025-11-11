@@ -1,0 +1,2 @@
+ - [ ] Sync production Supabase schema (run Liquibase migrations).
+ - [ ] Seed production exports data (if needed for scanned rooms).

@@ -1,5 +1,6 @@
 "use client"
 import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
 interface GeoLocationParams {
   country?: string;
@@ -10,7 +11,7 @@ interface GeoLocationParams {
   languages?: string;
 }
 
-export function GeoLocationSection() {
+function GeoLocationContent() {
   const params = useSearchParams();
   // Defensive: fallback to empty string if params is null
   const getParam = (key: keyof GeoLocationParams) => params?.get(key) || '';
@@ -32,5 +33,13 @@ export function GeoLocationSection() {
       {currencyCode && <span> &middot; {currencySymbol} ({currencyCode})</span>}
       {languages && <span> &middot; {languages}</span>}
     </div>
+  );
+}
+
+export function GeoLocationSection() {
+  return (
+    <Suspense fallback={<div style={{ fontSize: '0.75rem', color: '#888', marginLeft: '1rem' }}>Loading...</div>}>
+      <GeoLocationContent />
+    </Suspense>
   );
 } 

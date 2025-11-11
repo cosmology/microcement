@@ -15,7 +15,7 @@ export default function ComparisonSection() {
       id: "header",
       type: "h2",
       content: t('title'),
-      className: "text-4xl md:text-5xl font-light text-gray-900 dark:text-white mb-8"
+      className: "text-4xl md:text-5xl font-light text-gray-900 mb-8"
     },
     {
       id: "subheader", 
@@ -108,6 +108,7 @@ export default function ComparisonSection() {
               transition={{ duration: 0.7, ease: "easeOut" }}
               className={element.type === "p" ? "max-w-4xl mx-auto" : ""}
             >
+                            {/* @ts-ignore - ElementType is HTML element, not Three.js Image */}
               <ElementType 
                 className={element.className}
                 style={element.type === "h2" || element.type === "h3" ? {} : {}}

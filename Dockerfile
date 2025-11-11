@@ -1,15 +1,78 @@
-# Use the official Node.js runtime as the base image
-FROM node:18-alpine AS base
+# Use the official Node.js runtime as the base image (Debian-based for Playwright compatibility)
+FROM node:20-slim AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
+# Install Playwright browser dependencies using apt-get
+# These are required for Chromium, Firefox, and WebKit to run properly
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    fonts-liberation \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libatspi2.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libgbm1 \
+    libgtk-3-0 \
+    libgtk-4-1 \
+    libnspr4 \
+    libnss3 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxkbcommon0 \
+    libxrandr2 \
+    libxshmfence1 \
+    libxss1 \
+    libxtst6 \
+    xdg-utils \
+    # WebKit dependencies will be installed via 'playwright install-deps webkit'
+    # This ensures we get the exact packages needed for the installed WebKit version
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
 COPY package.json pnpm-lock.yaml* ./
 RUN npm install -g pnpm && pnpm install --no-frozen-lockfile
+
+# Install Playwright browsers during Docker build (so they're available from the start)
+# Install chromium, firefox, and webkit (all work on Debian)
+RUN echo "Installing Playwright browsers..." && \
+    pnpm exec playwright install chromium firefox webkit && \
+    echo "✅ Playwright browsers installed" && \
+    echo "Installing WebKit system dependencies..." && \
+    pnpm exec playwright install-deps webkit && \
+    echo "✅ WebKit dependencies installed"
+
+# Verify browsers are installed and accessible
+RUN CHROMIUM_DIR=$(ls -d /root/.cache/ms-playwright/chromium-* 2>/dev/null | head -1) && \
+    if [ -n "$CHROMIUM_DIR" ] && [ -f "$CHROMIUM_DIR/chrome-linux/chrome" ]; then \
+        echo "✅ Chromium verified: $CHROMIUM_DIR"; \
+    else \
+        echo "❌ Chromium installation failed"; \
+        exit 1; \
+    fi
+RUN FIREFOX_DIR=$(ls -d /root/.cache/ms-playwright/firefox-* 2>/dev/null | head -1) && \
+    if [ -n "$FIREFOX_DIR" ]; then \
+        echo "✅ Firefox verified: $FIREFOX_DIR"; \
+    else \
+        echo "❌ Firefox installation failed"; \
+        exit 1; \
+    fi
+RUN WEBKIT_DIR=$(ls -d /root/.cache/ms-playwright/webkit-* 2>/dev/null | head -1) && \
+    if [ -n "$WEBKIT_DIR" ]; then \
+        echo "✅ WebKit verified: $WEBKIT_DIR"; \
+    else \
+        echo "❌ WebKit installation failed"; \
+        exit 1; \
+    fi
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -35,8 +98,8 @@ ENV NODE_ENV production
 # Uncomment the following line in case you want to disable telemetry during runtime.
 ENV NEXT_TELEMETRY_DISABLED 1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs
+RUN useradd --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
 

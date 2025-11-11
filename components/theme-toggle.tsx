@@ -2,18 +2,30 @@
 
 import { useTheme } from "next-themes"
 import { motion } from "framer-motion"
+import { useEffect } from "react"
+import { useThemeStore } from "@/lib/stores/themeStore"
 
 export function ThemeToggle() {
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const { setResolvedTheme } = useThemeStore();
+
+  // Sync next-themes with Zustand store
+  useEffect(() => {
+    if (resolvedTheme) {
+      setResolvedTheme(resolvedTheme as 'light' | 'dark');
+    }
+  }, [resolvedTheme, setResolvedTheme]);
 
   const toggleTheme = () => {
-    setTheme((resolvedTheme === "dark" ? "light" : "dark"));
+    const newTheme = resolvedTheme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    setResolvedTheme(newTheme as 'light' | 'dark');
   };
 
   return (
     <motion.button
       onClick={toggleTheme}
-      className="relative p-2 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 border border-gray-200 dark:border-gray-600"
+      className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 text-gray-700 dark:text-gray-200 hover:text-purple-600 dark:hover:text-purple-400"
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       title={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -21,7 +33,7 @@ export function ThemeToggle() {
       <div className="relative w-5 h-5">
         {/* Sun icon */}
         <motion.svg
-          className="absolute inset-0 w-5 h-5 text-gray-700"
+          className="absolute inset-0 w-5 h-5 text-current"
           fill="currentColor"
           viewBox="0 0 24 24"
           initial={false}
@@ -35,7 +47,7 @@ export function ThemeToggle() {
         </motion.svg>
         {/* Moon icon */}
         <motion.svg
-          className="absolute inset-0 w-5 h-5 text-blue-400"
+          className="absolute inset-0 w-5 h-5 text-current"
           fill="currentColor"
           viewBox="0 0 24 24"
           initial={false}

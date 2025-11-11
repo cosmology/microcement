@@ -1,7 +1,9 @@
 {
   "Index": {
     "title": "Microcemento - Transforma Espacios de Forma Sostenible",
-    "description": "Soluciones innovadoras de micro-cemento para espacios modernos. Instalación sostenible, elegante y rápida."
+    "description": "Soluciones innovadoras de micro-cemento para espacios modernos. Instalación sostenible, elegante y rápida.",
+    "loadingUserProfile": "Cargando Perfil de Usuario...",
+    "pleaseWaitAccountInfo": "Por favor espere mientras cargamos la información de su cuenta"
   },
   "Navigation": {
     "ecoFriendly": "Ecológico",
@@ -13,10 +15,22 @@
     "beforeAfter": "Antes y Después",
     "featured": "Destacados",
     "textures": "Texturas",
-    "upload": "Subir"
+    "upload": "Subir",
+    "showcaseArea": "Área de Exhibición",
+    "bathroom": "Baño",
+    "kitchen": "Cocina",
+    "livingRoom": "Sala",
+    "living_room": "Sala",
+    "bedroomArea": "Área del Dormitorio",
+    "officeSpace": "Espacio de Oficina",
+    "default_path": "Ruta Predeterminada",
+    "Default Path": "Ruta Predeterminada",
+    "Default Orbital Path": "Ruta Orbital Predeterminada",
+    "collaborative_path": "Ruta Colaborativa"
   },
   "Hero": {
-    "line1": "Transforma Espacios",
+    "header1": "Transforma",
+    "header2": "Espacios",
     "line2": "Sosteniblemente",
     "line3": "Elegantemente",
     "line4": "Rápidamente",
@@ -235,5 +249,197 @@
   "Upload": {
     "title": "Subir una Imagen",
     "description": "Usa el formulario de abajo para subir una imagen. Tamaño máximo: 200kB. Formatos aceptados: jpg, jpeg, png, webp, gif."
+  },
+  "UploadModal": {
+    "title": "Enviar Brief del Proyecto",
+    "description": "Proporcione los detalles del proyecto, tipo de área, metraje cuadrado y suba su archivo de modelo 3D.",
+    "projectName": "Nombre del Proyecto",
+    "projectNamePlaceholder": "Remodelación de Cocina 2025",
+    "projectDescription": "Descripción del Proyecto",
+    "projectDescriptionPlaceholder": "Describa los objetivos del proyecto, preferencias de estilo y requisitos específicos...",
+    "areaType": "Tipo de Área",
+    "squareFootage": "Metraje Cuadrado",
+    "squareFootagePlaceholder": "50",
+    "squareFootageHelper": "Ingrese el área en metros cuadrados",
+    "selectArchitect": "Seleccionar Arquitecto",
+    "selectArchitectPlaceholder": "Elija un arquitecto...",
+    "modelFile": "Archivo de Modelo 3D",
+    "fileHelper": "Máximo 50MB. Permitido: .glb, .gltf, .png, .jpg, .webp",
+    "uploading": "Subiendo…",
+    "uploadButton": "Subir",
+    "uploadSuccess": "Subido. URL:",
+    "required": "*"
+  },
+  "MarkerPanels": {
+    "floor": {
+      "name": "Piso",
+      "content": "Pisos duraderos y sin costuras perfectos para áreas de alto tráfico."
+    },
+    "kitchenIsland": {
+      "name": "Isla de Cocina",
+      "content": "Superficie sin costuras y resistente al calor, pieza central de tu cocina."
+    },
+    "kitchenBacksplash": {
+      "name": "Respaldo de Cocina",
+      "content": "Protección de pared impermeable y resistente a manchas con atractivo moderno."
+    },
+    "kitchenCabinet": {
+      "name": "Gabinete de Cocina",
+      "content": "Acabados de gabinetes sin costuras para un diseño de cocina cohesivo y moderno."
+    },
+    "kitchenCountertop": {
+      "name": "Encimera de Cocina",
+      "content": "Superficies resistentes al calor y a las manchas perfectas para la creatividad culinaria."
+    },
+    "bathCountertop": {
+      "name": "Encimera de Baño",
+      "content": "Superficies impermeables e higiénicas ideales para ambientes de baño."
+    },
+    "coffeeTable": {
+      "name": "Mesa de Centro",
+      "content": "Piezas de muebles personalizados con acabados de micro-cemento sin costuras y duraderos."
+    },
+    "fireplace": {
+      "name": "Chimenea",
+      "content": "Rodeos resistentes al calor que complementan cualquier estilo arquitectónico."
+    },
+    "shelves": {
+      "name": "Estantes",
+      "content": "Estantes flotantes con integración sin costuras y estética moderna."
+    },
+    "accentWall": {
+      "name": "Pared de Acento",
+      "content": "Paredes de declaración que transforman espacios con textura y color."
+    }
+  },
+  "NoDesignAvailable": {
+    "title": "Estudio de Diseño",
+    "subtitle": "Soluciones Premium de Interiores",
+    "description": "Acabados finos con tecnología avanzada para espacios sofisticados y cómodos en tiempo mínimo.",
+    "loggedInMessage": "Tu estudio de diseño se está preparando.",
+    "notLoggedInMessage": "Accede a tu experiencia de diseño personalizada.",
+    "features": {
+      "latestTech": "Tecnología Avanzada",
+      "sophisticatedDesign": "Diseño Sofisticado",
+      "minimalTime": "Tiempo Mínimo",
+      "premiumQuality": "Calidad Premium",
+      "customVisualization": "Visualización Personalizada",
+      "brandedExperience": "Experiencia de Marca"
+    },
+    "signInButton": "Entrar al Estudio",
+    "signUpPrompt": "¿Listo para transformar tu espacio?",
+    "loggedInPrompt": "Tu estudio se está preparando.",
+    "contactPrompt": "Contacta a nuestros especialistas para configurar tu experiencia.",
+    "signOutButton": "Cerrar Sesión"
+  },
+  "Dock": {
+    "adminPanel": "Panel de Administración",
+    "architectPortal": "Portal Arquitectónico", 
+    "myProjects": "Proyectos",
+    "cameraControls": "Controles de Cámara",
+    "cameraEditor": "Editor de Cámara",
+    "birdView": "Vista de Pájaro",
+    "editor": "Editor",
+    "lookAtTargets": "Objetivos de Mirada",
+    "heightPanel": "Panel de Altura",
+    "lockBirdView": "Bloquear Vista de Pájaro",
+    "showMeasurements": "Mostrar Medidas",
+    "hideMeasurements": "Ocultar Medidas",
+    "rotateModel": "Rotar Modelo 90°",
+    "clearScene": "Limpiar Escena",
+    "resetScene": "Restablecer Escena",
+    "scannedRooms": "Habitaciones Escaneadas",
+    "roomScanner": "Escáner de Habitación",
+    "Upload Models": "Subir Modelos",
+    "uploadModels": "Subir Modelos",
+    "All Models": "Todos los Modelos",
+    "allModels": "Todos los Modelos",
+    "My Uploads": "Mis Subidas",
+    "myUploads": "Mis Subidas",
+    "uploads": "Subidas",
+    "User Management": "Gestión de Usuarios",
+    "userManagement": "Gestión de Usuarios",
+    "System Settings": "Configuración del Sistema",
+    "systemSettings": "Configuración del Sistema",
+    "Client Models": "Modelos de Cliente",
+    "clientModels": "Modelos de Cliente",
+    "Upload Model": "Subir Modelo",
+    "uploadModel": "Subir Modelo",
+    "Upload Project": "Enviar Brief",
+    "uploadProject": "Enviar Brief",
+    "My Models": "Modelos",
+    "myModels": "Modelos",
+    "videoCapture": "Captura de Video",
+    "clientProjectsSubtitle": "Proyectos y modelos de clientes",
+    "noClientsFound": "No se encontraron clientes activos",
+    "defaultModel": "Predeterminado",
+    "loadingModels": "Cargando modelos",
+    "retry": "Reintentar",
+    "noModelsAvailable": "No hay modelos disponibles",
+    "contactArchitect": "Contacta a tu arquitecto para comenzar",
+    "untitledProject": "Proyecto Sin Título",
+    "architect": "Arquitecto",
+    "status": "Estado",
+    "modelLoaded": "Modelo cargado",
+    "collaboratingWith": "Colaborando con"
+  },
+  "UserProfile": {
+    "signInTooltip": "Inicia sesión en tu cuenta",
+    "authenticated": "Autenticado",
+    "profileDetails": "Detalles del Perfil:",
+    "name": "Nombre",
+    "company": "Empresa",
+    "notSet": "No establecido",
+    "active": "Activo",
+    "yes": "Sí",
+    "no": "No",
+    "created": "Creado",
+    "accountSettings": "Configuración de Cuenta",
+    "loading": "Cargando...",
+    "followPath": "Seguir Ruta",
+    "signOut": "Cerrar Sesión"
+  },
+  "DockedNavigation": {
+    "menu": "Menú",
+    "models": "Modelos",
+    "uploads": "Subidas",
+    "cameraControls": "Controles de Cámara",
+    "closePanel": "Cerrar panel"
+  },
+  "CameraPathEditor": {
+    "switchToOrbital": "Cambiar a Cámara Orbital",
+    "switchToPath": "Cambiar a Cámara de Ruta",
+    "birdView": "Vista de Pájaro",
+    "cameraView": "Vista de Cámara",
+    "switchToBirdView": "Cambiar a Vista de Pájaro",
+    "switchToCameraView": "Cambiar a Vista de Cámara",
+    "lockBirdView": "Bloquear Vista de Pájaro",
+    "unlockBirdView": "Desbloquear Vista de Pájaro",
+    "enableEditor": "Habilitar Editor de Puntos",
+    "disableEditor": "Deshabilitar Editor de Puntos",
+    "showLookAtTargets": "Mostrar Objetivos de Vista",
+    "hideLookAtTargets": "Ocultar Objetivos de Vista",
+    "editHeight": "Editar Altura (Seleccione un punto primero)",
+    "pointHeight": "Altura del Punto {index}",
+    "close": "Cerrar",
+    "waypoint": "Punto de Ruta",
+    "lookAt": "Objetivo de Vista"
+  },
+  "VideoCapture": {
+    "readyToScan": "Listo para Escanear tu Espacio",
+    "scanInstructions": "Muévete lentamente alrededor de la habitación en un movimiento circular. Captura todos los ángulos para la mejor reconstrucción 3D.",
+    "startRecording": "Iniciar Grabación",
+    "stopAndUpload": "Detener y Subir",
+    "recordingInstructions": "Grabando... Muévete lentamente y captura todos los ángulos",
+    "uploadingVideo": "Subiendo video al servidor...",
+    "processingVideo": "Procesando video en modelo 3D...",
+    "processingComplete": "✅ ¡Modelo 3D generado exitosamente!",
+    "cameraAccessError": "No se puede acceder a la cámara. Por favor verifica los permisos.",
+    "uploadError": "Subida fallida. Por favor intenta nuevamente.",
+    "tipsTitle": "💡 Consejos de Escaneo:",
+    "tip1": "Muévete lentamente en un movimiento circular suave",
+    "tip2": "Mantén la cámara estable y evita movimientos bruscos",
+    "tip3": "Asegura buena iluminación en toda la habitación",
+    "tip4": "Graba por 30-60 segundos para mejores resultados"
   }
 } 

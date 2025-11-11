@@ -1,7 +1,9 @@
 {
   "Index": {
     "title": "Mikrocement - Transformišite Prostore Održivo",
-    "description": "Inovativna mikro-cementna rešenja za moderne prostore. Održiva, elegantna i brza instalacija."
+    "description": "Inovativna mikro-cementna rešenja za moderne prostore. Održiva, elegantna i brza instalacija.",
+    "loadingUserProfile": "Учитавање Корисничког Профила...",
+    "pleaseWaitAccountInfo": "Молимо сачекајте док учитавамо информације о вашем налогу"
   },
   "Navigation": {
     "ecoFriendly": "Ekološki",
@@ -13,10 +15,22 @@
     "beforeAfter": "Pre i Posle",
     "featured": "Istaknuti",
     "textures": "Teksture",
-    "upload": "Otpremi"
+    "upload": "Otpremi",
+    "showcaseArea": "Zona Prikaza",
+    "bathroom": "Kupatilo",
+    "kitchen": "Kuhinja",
+    "livingRoom": "Dnevna Soba",
+    "living_room": "Dnevna Soba",
+    "bedroomArea": "Zona Spavaće Sobe",
+    "officeSpace": "Prostor za Kancelariju",
+    "default_path": "Podrazumevana Putanja",
+    "Default Path": "Podrazumevana Putanja",
+    "Default Orbital Path": "Podrazumevana Orbitalna Putanja",
+    "collaborative_path": "Kolektivna Putanja"
   },
   "Hero": {
-    "line1": "Transformišite Prostore",
+    "header1": "Transformišite",
+    "header2": "Prostore",
     "line2": "Održivo",
     "line3": "Elegantno",
     "line4": "Brzo",
@@ -235,5 +249,197 @@
   "Upload": {
     "title": "Otpremite Sliku",
     "description": "Koristite formular ispod da otpremite sliku. Maksimalna veličina: 200kB. Prihvaćeni formati: jpg, jpeg, png, webp, gif."
+  },
+  "UploadModal": {
+    "title": "Pošalji Brief Projekta",
+    "description": "Navedite detalje projekta, tip prostora, kvadraturu i otpremite 3D model fajl.",
+    "projectName": "Naziv Projekta",
+    "projectNamePlaceholder": "Renoviranje Kuhinje 2025",
+    "projectDescription": "Opis Projekta",
+    "projectDescriptionPlaceholder": "Opišite ciljeve projekta, stilske preferencije i specifične zahteve...",
+    "areaType": "Tip Prostora",
+    "squareFootage": "Kvadratura",
+    "squareFootagePlaceholder": "50",
+    "squareFootageHelper": "Unesite površinu u kvadratnim metrima",
+    "selectArchitect": "Izaberite Arhitektu",
+    "selectArchitectPlaceholder": "Odaberite arhitektu...",
+    "modelFile": "3D Model Fajl",
+    "fileHelper": "Maksimalno 50MB. Dozvoljeno: .glb, .gltf, .png, .jpg, .webp",
+    "uploading": "Otpremanje…",
+    "uploadButton": "Otpremi",
+    "uploadSuccess": "Otpremljeno. URL:",
+    "required": "*"
+  },
+  "MarkerPanels": {
+    "floor": {
+      "name": "Podovi",
+      "content": "Izdržljivi, bezšavni podovi savršeni za prostorije sa velikim protokom."
+    },
+    "kitchenIsland": {
+      "name": "Kuhinjski Ostrvo",
+      "content": "Bezšavna površina, otporna na toplotu, centralni deo vaše kuhinje."
+    },
+    "kitchenBacksplash": {
+      "name": "Kuhinjski Zidovi",
+      "content": "Vodootporna, flekootporna zaštita zida sa modernim privlačnostima."
+    },
+    "kitchenCabinet": {
+      "name": "Kuhinjski Kabineti",
+      "content": "Bezšavni završni radovi ormara za kohezivni, moderni dizajn kuhinje."
+    },
+    "kitchenCountertop": {
+      "name": "Kuhinjske Radne Ploce",
+      "content": "Površine otporne na toplotu i fleke, savršene za kulinarsku kreativnost."
+    },
+    "bathCountertop": {
+      "name": "Kupatilske Ploce",
+      "content": "Vodootporne, higijenske površine idealne za kupatilski prostor."
+    },
+    "coffeeTable": {
+      "name": "Sto za Kafu",
+      "content": "Prilagođeni komadi nameštaja sa bezšavnim, izdržljivim mikrocementnim završnim radovima."
+    },
+    "fireplace": {
+      "name": "Kamini",
+      "content": "Otporni na toplotu okviri koji se uklapaju u bilo koji arhitektonski stil."
+    },
+    "shelves": {
+      "name": "Police",
+      "content": "Plutajuće police sa bezšavnom integracijom i modernom estetikom."
+    },
+    "accentWall": {
+      "name": "Akcentni Zid",
+      "content": "Zidovi koji transformišu prostore sa teksturom, reljefom, patternom i bojom."
+    }
+  },
+  "NoDesignAvailable": {
+    "title": "Dizajn Studio",
+    "subtitle": "Premium Rešenja za Enterijer",
+    "description": "Najfiniji završni radovi sa najnovijom tehnologijom za sofisticirane, udobne prostore u minimalnom vremenu.",
+    "loggedInMessage": "Vaš dizajn studio se priprema.",
+    "notLoggedInMessage": "Pristupite vašoj personalizovanoj dizajn iskustvu.",
+    "features": {
+      "latestTech": "Najnovija Tehnologija",
+      "sophisticatedDesign": "Sofisticirani Dizajn",
+      "minimalTime": "Minimalno Vreme",
+      "premiumQuality": "Premium Kvalitet",
+      "customVisualization": "Prilagođena Vizuelizacija",
+      "brandedExperience": "Brendirano Iskustvo"
+    },
+    "signInButton": "Uđi u Studio",
+    "signUpPrompt": "Spremni da transformišete svoj prostor?",
+    "loggedInPrompt": "Vaš studio se priprema.",
+    "contactPrompt": "Kontaktirajte naše specijaliste da konfigurišete vaše iskustvo.",
+    "signOutButton": "Odjavi Se"
+  },
+  "Dock": {
+    "adminPanel": "Admin Panel",
+    "architectPortal": "Arhitektonski Portal",
+    "myProjects": "Projekti",
+    "cameraControls": "Kontrole Kamere",
+    "cameraEditor": "Editor Kamere",
+    "birdView": "Ptičija Perspektiva",
+    "editor": "Editor",
+    "lookAtTargets": "Tačke Pogleda",
+    "heightPanel": "Panel Visine",
+    "lockBirdView": "Zaključaj Ptičiji Pogled",
+    "showMeasurements": "Prikaži Merenja",
+    "hideMeasurements": "Sakrij Merenja",
+    "rotateModel": "Rotiraj Model 90°",
+    "clearScene": "Očisti Scenu",
+    "resetScene": "Resetuj Scenu",
+    "scannedRooms": "Skenirane Sobe",
+    "roomScanner": "Skeniranje Sobe",
+    "Upload Models": "Otpremi Modele",
+    "uploadModels": "Otpremi Modele",
+    "All Models": "Svi Modeli",
+    "allModels": "Svi Modeli",
+    "My Uploads": "Moja Otpremanja",
+    "myUploads": "Moja Otpremanja",
+    "uploads": "Otpremanja",
+    "User Management": "Upravljanje Korisnicima",
+    "userManagement": "Upravljanje Korisnicima",
+    "System Settings": "Podešavanja Sistema",
+    "systemSettings": "Podešavanja Sistema",
+    "Client Models": "Modeli Klijenata",
+    "clientModels": "Modeli Klijenata",
+    "Upload Model": "Otpremi Model",
+    "uploadModel": "Otpremi Model",
+    "Upload Project": "Pošalji Brief",
+    "uploadProject": "Pošalji Brief",
+    "My Models": "Modeli",
+    "myModels": "Modeli",
+    "videoCapture": "Snimanje Videa",
+    "clientProjectsSubtitle": "Klijentski projekti i modeli",
+    "noClientsFound": "Nema aktivnih klijenata",
+    "defaultModel": "Podrazumevano",
+    "loadingModels": "Učitavam modele",
+    "retry": "Pokušaj ponovo",
+    "noModelsAvailable": "Nema dostupnih modela",
+    "contactArchitect": "Kontaktiraj svog arhitektu da počneš",
+    "untitledProject": "Projekat bez naziva",
+    "architect": "Arhitekta",
+    "status": "Status",
+    "modelLoaded": "Model učitan",
+    "collaboratingWith": "Sarađujem sa"
+  },
+  "UserProfile": {
+    "signInTooltip": "Prijavite se na svoj nalog",
+    "authenticated": "Autentifikovan",
+    "profileDetails": "Detalji profila:",
+    "name": "Ime",
+    "company": "Kompanija",
+    "notSet": "Nije postavljeno",
+    "active": "Aktivan",
+    "yes": "Da",
+    "no": "Ne",
+    "created": "Kreiran",
+    "accountSettings": "Podešavanja naloga",
+    "loading": "Učitavam...",
+    "followPath": "Prati putanju",
+    "signOut": "Odjavi se"
+  },
+  "DockedNavigation": {
+    "menu": "Meni",
+    "models": "Modeli",
+    "uploads": "Otpremanja",
+    "cameraControls": "Kontrole Kamere",
+    "closePanel": "Zatvori panel"
+  },
+  "CameraPathEditor": {
+    "switchToOrbital": "Prebaci na Orbitalnu Kameru",
+    "switchToPath": "Prebaci na Kameru Putanje",
+    "birdView": "Pogled Odozgo",
+    "cameraView": "Pogled Kamere",
+    "switchToBirdView": "Prebaci na Pogled Odozgo",
+    "switchToCameraView": "Prebaci na Pogled Kamere",
+    "lockBirdView": "Zaključaj Pogled Odozgo",
+    "unlockBirdView": "Otključaj Pogled Odozgo",
+    "enableEditor": "Omogući Editor Tačaka",
+    "disableEditor": "Onemogući Editor Tačaka",
+    "showLookAtTargets": "Prikaži Ciljeve Pogleda",
+    "hideLookAtTargets": "Sakrij Ciljeve Pogleda",
+    "editHeight": "Uredi Visinu (Izaberite tačku prvo)",
+    "pointHeight": "Visina Tačke {index}",
+    "close": "Zatvori",
+    "waypoint": "Tačka Putanje",
+    "lookAt": "Cilj Pogleda"
+  },
+  "VideoCapture": {
+    "readyToScan": "Spremno za Skeniranje Prostora",
+    "scanInstructions": "Krećite se polako oko sobe u kružnom kretanju. Snimite sve uglove za najbolju 3D rekonstrukciju.",
+    "startRecording": "Počni Snimanje",
+    "stopAndUpload": "Zaustavi i Otpremi",
+    "recordingInstructions": "Snimanje... Krećite se polako i snimite sve uglove",
+    "uploadingVideo": "Otpremanje videa na server...",
+    "processingVideo": "Obrada videa u 3D model...",
+    "processingComplete": "✅ 3D model uspešno generisan!",
+    "cameraAccessError": "Nije moguće pristupiti kameri. Molimo proverite dozvole.",
+    "uploadError": "Otpremanje neuspešno. Molimo pokušajte ponovo.",
+    "tipsTitle": "💡 Saveti za Skeniranje:",
+    "tip1": "Krećite se polako u glatkom kružnom pokretu",
+    "tip2": "Držite kameru stabilno i izbegavajte nagle pokrete",
+    "tip3": "Obezbedite dobro osvetljenje u celoj prostoriji",
+    "tip4": "Snimajte 30-60 sekundi za najbolje rezultate"
   }
 } 

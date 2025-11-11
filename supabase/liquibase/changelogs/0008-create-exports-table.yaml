@@ -1,0 +1,84 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0008-create-exports-table
+      author: system
+      changes:
+        - createTable:
+            tableName: exports
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  defaultValueComputed: gen_random_uuid()
+              - column:
+                  name: user_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: scene_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: usdz_path
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: glb_path
+                  type: varchar(500)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: status
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+                  defaultValue: queued
+              - column:
+                  name: error
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: now()
+              - column:
+                  name: updated_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: now()
+        - createIndex:
+            tableName: exports
+            indexName: idx_exports_user_id
+            columns:
+              - column:
+                  name: user_id
+        - createIndex:
+            tableName: exports
+            indexName: idx_exports_status
+            columns:
+              - column:
+                  name: status
+        - createIndex:
+            tableName: exports
+            indexName: idx_exports_created_at
+            columns:
+              - column:
+                  name: created_at
+        - sql:
+            sql: |
+              CREATE OR REPLACE FUNCTION notify_export_ready(export_id uuid, glb_url text)
+              RETURNS void
+              LANGUAGE plpgsql
+              AS 'BEGIN
+                PERFORM pg_notify(''export_channel'', json_build_object(''exportId'', export_id, ''glbUrl'', glb_url)::text);
+              END;';

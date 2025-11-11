@@ -1,0 +1,38 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appID": "79JP2DBQYU.com.ivanprokic.roomplan",
+        "components": [
+          {
+            "#": "no_universal_links",
+            "exclude": true,
+            "comment": "Matches any URL whose fragment equals no_universal_links and instructs the system not to open it as a universal link"
+          },
+          {
+            "/": "/uploads/*",
+            "comment": "Matches any URL whose path starts with /uploads/"
+          },
+          {
+            "/": "/help/website/*",
+            "exclude": true,
+            "comment": "Matches any URL whose path starts with /help/website/ and instructs the system not to open it as a universal link"
+          },
+          {
+            "/": "/help/*",
+            "?": { "articleNumber": "????" },
+            "comment": "Matches any URL whose path starts with /help/ and that has a query item with name 'articleNumber' and a value of exactly 4 characters"
+          },
+          {
+            "/": "/scanner/*",
+            "comment": "Matches any URL whose path starts with /scanner/ for room scanner functionality"
+          },
+          {
+            "/": "/room-scanner/*",
+            "comment": "Matches any URL whose path starts with /room-scanner/ for room scanner functionality"
+          }
+        ]
+      }
+    ]
+  }
+}

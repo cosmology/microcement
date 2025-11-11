@@ -2,8 +2,10 @@
 
 import { motion } from "framer-motion"
 import { useRef, useEffect, useState, useMemo } from "react"
+import { createPortal } from "react-dom"
 import Image from "next/image"
 import { useTranslations } from 'next-intl';
+import { useThemeStore } from '@/lib/stores/themeStore';
 
 export default function GallerySection() {
   const sectionRef = useRef<HTMLDivElement>(null)
@@ -11,6 +13,7 @@ export default function GallerySection() {
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [selectedImage, setSelectedImage] = useState<any>(null)
   const t = useTranslations('Gallery');
+  const { resolvedTheme } = useThemeStore();
 
   // Use useMemo to prevent recreation of arrays on every render
   const galleryItems = useMemo(() => [
@@ -18,57 +21,36 @@ export default function GallerySection() {
       id: 1,
       title: t('items.kitchen.title'),
       category: t('categories.kitchen'),
-      image: "/images/gallery/kitchen-countertops.png",
+      image: "/images/gallery/kitchen/kitchen-countertops/kitchen-countertop-1.png",
       description: t('items.kitchen.description'),
     },
     {
       id: 2,
-      title: t('items.bathroom.title'),
-      category: t('categories.bathroom'),
-      image: "/images/gallery/bathroom-walls.png",
-      description: t('items.bathroom.description'),
-    },
-    {
-      id: 3,
-      title: t('items.living.title'),
-      category: t('categories.livingSpace'),
-      image: "/images/gallery/living-room-floor.png",
-      description: t('items.living.description'),
-    },
-    {
-      id: 4,
       title: t('items.retail.title'),
       category: t('categories.commercial'),
-      image: "/images/gallery/retail-wall.png",
+      image: "/images/gallery/living-area/walls/accent-wall-sunset-1.jpg",
       description: t('items.retail.description'),
     },
     {
-      id: 5,
+      id: 3,
       title: t('items.restaurant.title'),
       category: t('categories.commercial'),
       image: "/images/gallery/restaurant-bar.png",
       description: t('items.restaurant.description'),
     },
     {
-      id: 6,
+      id: 4,
       title: t('items.staircase.title'),
       category: t('categories.architectural'),
       image: "/images/gallery/staircase.png",
       description: t('items.staircase.description'),
     },
     {
-      id: 7,
+      id: 5,
       title: t('items.patio.title'),
       category: t('categories.exterior'),
       image: "/images/gallery/outdoor-patio.png",
       description: t('items.patio.description'),
-    },
-    {
-      id: 8,
-      title: t('items.furniture.title'),
-      category: t('categories.furniture'),
-      image: "/images/gallery/custom-furniture.png",
-      description: t('items.furniture.description'),
     },
   ], [t]);
 
@@ -88,7 +70,7 @@ export default function GallerySection() {
       id: "header",
       type: "h2",
       content: t('title'),
-      className: "text-4xl md:text-5xl font-light text-center text-gray-900 dark:text-white mb-4"
+      className: "text-4xl md:text-5xl font-light text-center text-gray-900 mb-4"
     },
     {
       id: "subheader",
@@ -174,6 +156,7 @@ export default function GallerySection() {
               animate={getAnim(elementsStates[index], forceIntro)}
               transition={{ duration: 0.7, ease: "easeOut" }}
             >
+              {/* @ts-ignore - ElementType is HTML element, not Three.js Image */}
               <ElementType 
                 className={element.className}
                 style={element.type === "h2" ? {} : {}}
@@ -190,7 +173,7 @@ export default function GallerySection() {
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-6 py-2 rounded-full font-medium transition-all duration-300 ${
+              className={`px-6 py-2 rounded-full font-medium transition-all    duration-100 ${
                 selectedCategory === category
                   ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-lg"
                   : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600"
@@ -223,11 +206,11 @@ export default function GallerySection() {
                   className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110"
                   priority={index < 4} // Prioritize loading for first 4 images
                 />
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all    duration-100 flex items-center justify-center">
                   <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
                     whileHover={{ opacity: 1, scale: 1 }}
-                    className="text-white font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                    className="text-white opacity-0 group-hover:opacity-100 transition-opacity    duration-100"
                   >
                     {t('viewDetails')}
                   </motion.div>
@@ -237,27 +220,35 @@ export default function GallerySection() {
                 <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-sm rounded-full mb-3">
                   {item.category}
                 </span>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{item.title}</h3>
+                <h3 className="text-lg text-gray-900 mb-2">{item.title}</h3>
                 <p className="text-gray-600 dark:text-gray-300 text-sm">{item.description}</p>
               </div>
             </motion.div>
           ))}
         </motion.div>
 
-        {/* Modal for enlarged image */}
-        {selectedImage && (
+        {/* Modal for enlarged image - rendered via Portal */}
+        {selectedImage && typeof document !== 'undefined' && document.getElementById('gallery-modal-root') && createPortal(
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4"
+            className={`fixed inset-0 z-[99999] flex items-center justify-center p-4 ${
+              resolvedTheme === 'light' 
+                ? 'bg-white/95 backdrop-blur-sm' 
+                : 'bg-black/80 backdrop-blur-md'
+            }`}
             onClick={() => setSelectedImage(null)}
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
-              className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl max-h-[90vh] overflow-hidden"
+              className={`rounded-lg max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl ${
+                resolvedTheme === 'light'
+                  ? 'bg-white border border-gray-200'
+                  : 'bg-gray-800 border border-gray-700'
+              }`}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="relative">
@@ -270,7 +261,11 @@ export default function GallerySection() {
                 />
                 <button
                   onClick={() => setSelectedImage(null)}
-                  className="absolute top-4 right-4 bg-white dark:bg-gray-700 bg-opacity-90 hover:bg-opacity-100 rounded-full p-2 transition-all duration-200 text-gray-900 dark:text-white"
+                  className={`absolute top-4 right-4 rounded-full p-2 transition-all duration-200 ${
+                    resolvedTheme === 'light'
+                      ? 'bg-white/90 hover:bg-white text-gray-900 shadow-lg'
+                      : 'bg-gray-700/90 hover:bg-gray-700 text-white'
+                  }`}
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -278,14 +273,23 @@ export default function GallerySection() {
                 </button>
               </div>
               <div className="p-6">
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{selectedImage.title}</h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-4">{selectedImage.description}</p>
-                <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-sm rounded-full">
+                <h3 className={`text-2xl font-bold mb-2 ${
+                  resolvedTheme === 'light' ? 'text-gray-900' : 'text-white'
+                }`}>{selectedImage.title}</h3>
+                <p className={`mb-4 ${
+                  resolvedTheme === 'light' ? 'text-gray-600' : 'text-gray-300'
+                }`}>{selectedImage.description}</p>
+                <span className={`inline-block px-3 py-1 text-sm rounded-full ${
+                  resolvedTheme === 'light'
+                    ? 'bg-gray-100 text-gray-700'
+                    : 'bg-gray-600 text-gray-300'
+                }`}>
                   {selectedImage.category}
                 </span>
               </div>
             </motion.div>
-          </motion.div>
+          </motion.div>,
+          document.getElementById('gallery-modal-root')!
         )}
       </div>
     </section>

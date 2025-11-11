@@ -1,0 +1,97 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-user-assets-table
+      author: microcement-dev
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE IF NOT EXISTS public.user_assets (
+                id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+                owner_id uuid NOT NULL,
+                scene_config_id uuid NULL,
+                bucket text NOT NULL DEFAULT 'app-uploads',
+                object_path text NOT NULL,
+                content_type text NULL,
+                file_size bigint NULL,
+                project_name text NULL,
+                architect_id uuid NULL,
+                metadata jsonb NULL,
+                created_at timestamptz NOT NULL DEFAULT now(),
+                updated_at timestamptz NOT NULL DEFAULT now(),
+                CONSTRAINT fk_user_assets_owner FOREIGN KEY (owner_id) REFERENCES public.user_profiles(user_id) ON DELETE CASCADE,
+                CONSTRAINT fk_user_assets_scene FOREIGN KEY (scene_config_id) REFERENCES public.scene_design_configs(id) ON DELETE SET NULL
+              );
+
+              CREATE INDEX IF NOT EXISTS idx_user_assets_owner ON public.user_assets(owner_id);
+              CREATE INDEX IF NOT EXISTS idx_user_assets_scene ON public.user_assets(scene_config_id);
+              CREATE INDEX IF NOT EXISTS idx_user_assets_bucket_path ON public.user_assets(bucket, object_path);
+
+              ALTER TABLE public.user_assets ENABLE ROW LEVEL SECURITY;
+
+              -- RLS: owners can manage their own assets
+              DO $$ BEGIN
+                IF NOT EXISTS (
+                  SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='user_assets' AND policyname='user_assets_select_own_or_architect'
+                ) THEN
+                  EXECUTE 'CREATE POLICY user_assets_select_own_or_architect ON public.user_assets FOR SELECT TO authenticated USING (
+                    owner_id = auth.uid() OR
+                    EXISTS (SELECT 1 FROM public.user_profiles up WHERE up.user_id = auth.uid() AND up.role = ''admin'') OR
+                    EXISTS (SELECT 1 FROM public.architect_clients ac WHERE ac.architect_id = auth.uid() AND ac.client_id = public.user_assets.owner_id)
+                  )';
+                END IF;
+              END $$;
+
+              DO $$ BEGIN
+                IF NOT EXISTS (
+                  SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='user_assets' AND policyname='user_assets_insert_own_or_architect'
+                ) THEN
+                  EXECUTE 'CREATE POLICY user_assets_insert_own_or_architect ON public.user_assets FOR INSERT TO authenticated WITH CHECK (
+                    owner_id = auth.uid() OR
+                    EXISTS (SELECT 1 FROM public.user_profiles up WHERE up.user_id = auth.uid() AND up.role = ''admin'') OR
+                    EXISTS (SELECT 1 FROM public.architect_clients ac WHERE ac.architect_id = auth.uid() AND ac.client_id = public.user_assets.owner_id)
+                  )';
+                END IF;
+              END $$;
+
+              DO $$ BEGIN
+                IF NOT EXISTS (
+                  SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='user_assets' AND policyname='user_assets_update_own_or_architect'
+                ) THEN
+                  EXECUTE 'CREATE POLICY user_assets_update_own_or_architect ON public.user_assets FOR UPDATE TO authenticated USING (
+                    owner_id = auth.uid() OR
+                    EXISTS (SELECT 1 FROM public.user_profiles up WHERE up.user_id = auth.uid() AND up.role = ''admin'') OR
+                    EXISTS (SELECT 1 FROM public.architect_clients ac WHERE ac.architect_id = auth.uid() AND ac.client_id = public.user_assets.owner_id)
+                  ) WITH CHECK (
+                    owner_id = auth.uid() OR
+                    EXISTS (SELECT 1 FROM public.user_profiles up WHERE up.user_id = auth.uid() AND up.role = ''admin'') OR
+                    EXISTS (SELECT 1 FROM public.architect_clients ac WHERE ac.architect_id = auth.uid() AND ac.client_id = public.user_assets.owner_id)
+                  )';
+                END IF;
+              END $$;
+
+              DO $$ BEGIN
+                IF NOT EXISTS (
+                  SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='user_assets' AND policyname='user_assets_delete_own_or_architect'
+                ) THEN
+                  EXECUTE 'CREATE POLICY user_assets_delete_own_or_architect ON public.user_assets FOR DELETE TO authenticated USING (
+                    owner_id = auth.uid() OR
+                    EXISTS (SELECT 1 FROM public.user_profiles up WHERE up.user_id = auth.uid() AND up.role = ''admin'') OR
+                    EXISTS (SELECT 1 FROM public.architect_clients ac WHERE ac.architect_id = auth.uid() AND ac.client_id = public.user_assets.owner_id)
+                  )';
+                END IF;
+              END $$;
+
+  - changeSet:
+      id: grants-user-assets
+      author: microcement-dev
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              DO $$ BEGIN
+                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+                  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.user_assets TO service_role;
+                END IF;
+              END $$;
+

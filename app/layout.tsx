@@ -3,6 +3,7 @@ import "./globals.css"
 // import { ThemeProvider } from "@/components/theme-provider"
 import { ThemeProvider } from "next-themes"
 import { Roboto } from 'next/font/google'
+// import ContentProgress from './components/ContentProgress'
 
 const roboto = Roboto({
   subsets: ['latin'],
@@ -29,8 +30,13 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          {/* <ContentProgress /> */}
           {children}
         </ThemeProvider>
+        {/* Portal root for gallery modal - renders outside all other containers */}
+        <div id="gallery-modal-root"></div>
+        {/* Portal root for loader overlay - renders outside all other containers */}
+        <div id="loader-modal-root"></div>
       </body>
     </html>
   )

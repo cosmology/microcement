@@ -1,7 +1,9 @@
 {
   "Index": {
     "title": "Microcement - Transform Spaces Sustainably",
-    "description": "Innovative micro-cement solutions for modern spaces. Sustainable, stylish, and fast installation."
+    "description": "Innovative micro-cement solutions for modern spaces. Sustainable, stylish, and fast installation.",
+    "loadingUserProfile": "Loading User Profile...",
+    "pleaseWaitAccountInfo": "Please wait while we load your account information"
   },
   "Navigation": {
     "ecoFriendly": "Eco Friendly",
@@ -13,10 +15,22 @@
     "beforeAfter": "Before & After",
     "featured": "Featured",
     "textures": "Textures",
-    "upload": "Upload"
+    "upload": "Upload",
+    "showcaseArea": "Showcase Area",
+    "bathroom": "Bathroom",
+    "kitchen": "Kitchen",
+    "livingRoom": "Living Room",
+    "living_room": "Living Room",
+    "bedroomArea": "Bedroom Area",
+    "officeSpace": "Office Space",
+    "default_path": "Default Path",
+    "Default Path": "Default Path",
+    "Default Orbital Path": "Default Orbital Path",
+    "collaborative_path": "Collaborative Path"
   },
   "Hero": {
-    "line1": "Transform Spaces",
+    "header1": "Transform",
+    "header2": "Spaces",
     "line2": "Sustainably",
     "line3": "Stylishly",
     "line4": "Fast",
@@ -235,5 +249,197 @@
   "Upload": {
     "title": "Upload an Image",
     "description": "Use the form below to upload an image. Max file size: 200kB. Accepted formats: jpg, jpeg, png, webp, gif."
+  },
+  "UploadModal": {
+    "title": "Submit Project Brief",
+    "description": "Provide your project details, area type, square footage, and upload your 3D model file.",
+    "projectName": "Project Name",
+    "projectNamePlaceholder": "Kitchen Remodel 2025",
+    "projectDescription": "Project Description",
+    "projectDescriptionPlaceholder": "Describe your project goals, style preferences, and any specific requirements...",
+    "areaType": "Area Type",
+    "squareFootage": "Square Footage",
+    "squareFootagePlaceholder": "500",
+    "squareFootageHelper": "Enter the area in square feet",
+    "selectArchitect": "Select Architect",
+    "selectArchitectPlaceholder": "Choose an architect...",
+    "modelFile": "3D Model File",
+    "fileHelper": "Max 50MB. Allowed: .glb, .gltf, .png, .jpg, .webp",
+    "uploading": "Uploading…",
+    "uploadButton": "Upload",
+    "uploadSuccess": "Uploaded. URL:",
+    "required": "*"
+  },
+  "MarkerPanels": {
+    "floor": {
+      "name": "Floor",
+      "content": "Durable, seamless floors perfect for high-traffic areas."
+    },
+    "kitchenIsland": {
+      "name": "Kitchen Island",
+      "content": "Seamless surface, heat-resistant centerpiece for your kitchen."
+    },
+    "kitchenBacksplash": {
+      "name": "Kitchen Backsplash",
+      "content": "Waterproof, stain-resistant wall protection with modern appeal."
+    },
+    "kitchenCabinet": {
+      "name": "Kitchen Cabinet",
+      "content": "Seamless cabinet finishes for cohesive, modern kitchen design."
+    },
+    "kitchenCountertop": {
+      "name": "Kitchen Countertop",
+      "content": "Heat-resistant, stain-proof surfaces perfect for culinary creativity."
+    },
+    "bathCountertop": {
+      "name": "Bath Countertop",
+      "content": "Waterproof, hygienic surfaces ideal for bathroom environments."
+    },
+    "coffeeTable": {
+      "name": "Coffee Table",
+      "content": "Custom furniture pieces with seamless, durable micro-cement finishes."
+    },
+    "fireplace": {
+      "name": "Fireplace",
+      "content": "Heat-resistant surrounds that complement any architectural style."
+    },
+    "shelves": {
+      "name": "Shelves",
+      "content": "Floating shelves with seamless integration and modern aesthetics."
+    },
+    "accentWall": {
+      "name": "Accent Wall",
+      "content": "Statement walls that transform spaces with texture and color."
+    }
+  },
+  "NoDesignAvailable": {
+    "title": "Design Studio",
+    "subtitle": "Premium Interior Solutions",
+    "description": "Finest finishings with latest technology for sophisticated, comfortable spaces in minimal time.",
+    "loggedInMessage": "Your design studio is being prepared.",
+    "notLoggedInMessage": "Access your personalized design experience.",
+    "features": {
+      "latestTech": "Latest Technology",
+      "sophisticatedDesign": "Sophisticated Design", 
+      "minimalTime": "Minimal Time",
+      "premiumQuality": "Premium Quality",
+      "customVisualization": "Custom Visualization",
+      "brandedExperience": "Branded Experience"
+    },
+    "signInButton": "Enter Studio",
+    "signUpPrompt": "Ready to transform your space?",
+    "loggedInPrompt": "Your studio is being prepared.",
+    "contactPrompt": "Contact our specialists to configure your experience.",
+    "signOutButton": "Sign Out"
+  },
+  "Dock": {
+    "adminPanel": "Admin Panel",
+    "architectPortal": "Architectural Portal",
+    "myProjects": "Projects",
+    "cameraControls": "Camera Controls",
+    "cameraEditor": "Camera Editor",
+    "birdView": "Bird View",
+    "editor": "Editor",
+    "lookAtTargets": "Look At Targets",
+    "heightPanel": "Height Panel",
+    "lockBirdView": "Lock Bird View",
+    "rotateModel": "Rotate Model 90°",
+    "clearScene": "Clear Scene",
+    "resetScene": "Reset Scene",
+    "showMeasurements": "Show Measurements",
+    "hideMeasurements": "Hide Measurements",
+    "roomScanner": "Room Scanner",
+  "scannedRooms": "Scanned Rooms",
+    "Upload Models": "Upload Models",
+    "uploadModels": "Upload Models",
+    "All Models": "All Models",
+    "allModels": "All Models",
+    "My Uploads": "My Uploads",
+    "myUploads": "My Uploads",
+    "uploads": "Uploads",
+    "videoCapture": "Video Capture",
+    "User Management": "User Management",
+    "userManagement": "User Management",
+    "System Settings": "System Settings",
+    "systemSettings": "System Settings",
+    "Client Models": "Client Models",
+    "clientModels": "Client Models",
+    "Upload Model": "Upload Model",
+    "uploadModel": "Upload Model",
+    "Upload Project": "Submit Brief",
+    "uploadProject": "Submit Brief",
+    "My Models": "Models",
+    "myModels": "Models",
+    "clientProjectsSubtitle": "Client projects and models",
+    "noClientsFound": "No active clients found",
+    "defaultModel": "Default",
+    "loadingModels": "Loading models",
+    "retry": "Retry",
+    "noModelsAvailable": "No models available",
+    "contactArchitect": "Contact your architect to get started",
+    "untitledProject": "Untitled Project",
+    "architect": "Architect",
+    "status": "Status",
+    "modelLoaded": "Model loaded",
+    "collaboratingWith": "Collaborating with"
+  },
+  "UserProfile": {
+    "signInTooltip": "Sign in to your account",
+    "authenticated": "Authenticated",
+    "profileDetails": "Profile Details:",
+    "name": "Name",
+    "company": "Company",
+    "notSet": "Not set",
+    "active": "Active",
+    "yes": "Yes",
+    "no": "No",
+    "created": "Created",
+    "accountSettings": "Account Settings",
+    "loading": "Loading...",
+    "followPath": "Follow Path",
+    "signOut": "Sign Out"
+  },
+  "DockedNavigation": {
+    "menu": "Menu",
+    "models": "Models",
+    "uploads": "Uploads",
+    "cameraControls": "Camera Controls",
+    "closePanel": "Close panel"
+  },
+  "CameraPathEditor": {
+    "switchToOrbital": "Switch to Orbital Camera",
+    "switchToPath": "Switch to Path Camera",
+    "birdView": "Bird View",
+    "cameraView": "Camera View",
+    "switchToBirdView": "Switch to Bird View",
+    "switchToCameraView": "Switch to Camera View",
+    "lockBirdView": "Lock Bird View",
+    "unlockBirdView": "Unlock Bird View",
+    "enableEditor": "Enable Waypoint Editor",
+    "disableEditor": "Disable Waypoint Editor",
+    "showLookAtTargets": "Show LookAt Targets",
+    "hideLookAtTargets": "Hide LookAt Targets",
+    "editHeight": "Edit Height (Select a point first)",
+    "pointHeight": "Point {index} Height",
+    "close": "Close",
+    "waypoint": "Waypoint",
+    "lookAt": "LookAt Target"
+  },
+  "VideoCapture": {
+    "readyToScan": "Ready to Scan Your Space",
+    "scanInstructions": "Move slowly around the room in a circular motion. Capture all angles for the best 3D reconstruction.",
+    "startRecording": "Start Recording",
+    "stopAndUpload": "Stop & Upload",
+    "recordingInstructions": "Recording... Move slowly and capture all angles",
+    "uploadingVideo": "Uploading video to server...",
+    "processingVideo": "Processing video into 3D model...",
+    "processingComplete": "✅ 3D model generated successfully!",
+    "cameraAccessError": "Unable to access camera. Please check permissions.",
+    "uploadError": "Upload failed. Please try again.",
+    "tipsTitle": "💡 Scanning Tips:",
+    "tip1": "Move slowly in a smooth circular motion",
+    "tip2": "Keep the camera steady and avoid sudden movements",
+    "tip3": "Ensure good lighting throughout the room",
+    "tip4": "Record for 30-60 seconds for best results"
   }
 } 
