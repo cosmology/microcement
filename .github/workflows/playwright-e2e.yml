@@ -5,7 +5,11 @@ on:
 
 jobs:
   e2e:
-    name: Run Playwright suite
+    name: Run Playwright suite (shard ${{ matrix.shard_index }}/2)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard_index: [1, 2]
     runs-on: ubuntu-latest
     env:
       NODE_ENV: test
@@ -21,9 +25,20 @@ jobs:
       SERVICE_ROLE_KEY: ${{ secrets.SERVICE_ROLE_KEY != '' && secrets.SERVICE_ROLE_KEY || 'changeme-service-role-key' }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY != '' && secrets.SUPABASE_SERVICE_ROLE_KEY || 'changeme-service-role-key' }}
       PLAYWRIGHT_SUPABASE_URL: ${{ secrets.PLAYWRIGHT_SUPABASE_URL }}
+      PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report.json
+      PLAYWRIGHT_MINIMUM_COVERAGE: "0.75"
+      PLAYWRIGHT_SHARD_TOTAL: "2"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Restore pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v3
@@ -38,6 +53,14 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Restore Next.js cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-next-cache-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-next-cache-${{ hashFiles('pnpm-lock.yaml') }}-
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps
@@ -64,23 +87,34 @@ jobs:
           fi
 
       - name: Run Playwright tests
-        run: pnpm run test:e2e
+        run: pnpm run test:e2e -- --reporter=line --reporter=html --reporter=json --shard=${{ matrix.shard_index }}/2
+
+      - name: Enforce Playwright coverage threshold
+        run: pnpm run check:playwright:coverage
 
       - name: Upload Playwright report
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-shard-${{ matrix.shard_index }}
           path: playwright-report/
           if-no-files-found: ignore
 
       - name: Upload Playwright traces
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-traces
+          name: playwright-traces-shard-${{ matrix.shard_index }}
           path: test-results/
           if-no-files-found: ignore
+
+      - name: Upload Next.js server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-dev-log-shard-${{ matrix.shard_index }}
+          path: .next-dev.log
+          if-no-files-found: warn
 
       - name: Stop Next.js dev server
         if: always()
