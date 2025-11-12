@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import path from 'path';
 
 /**
  * Read environment variables from file.
@@ -23,7 +24,15 @@ export default defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { outputFolder: '/tmp/playwright/html-report', open: 'never' }],
-    ['json', { outputFile: '/tmp/playwright/html-report/results.json' }],
+    [
+      'json',
+      {
+        outputFile: path.join(
+          'test-results',
+          process.env.PLAYWRIGHT_JSON_OUTPUT_NAME ?? 'playwright-report.json'
+        ),
+      },
+    ],
     ['list'],
     ...(process.env.CI ? [['github'] as const] : []),
   ],
