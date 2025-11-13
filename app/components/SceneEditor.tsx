@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { gsap } from "gsap";
 import SwiperGallery, { GalleryImage } from './SwiperGallery';
 import LoaderOverlay from './LoaderOverlay';
+import RotationControl3D from './RotationControl3D';
 import { isMobile, getThemeColors, cssColorToHex } from '../../lib/utils';
 import { ModelLoader, SCENE_CONFIG, getCameraPathData, getHotspotSettings, getUserSceneConfig } from '@/lib/services';
 import { SceneConfigService } from '@/lib/services/SceneConfigService';
@@ -82,6 +83,7 @@ export default function SceneEditor({
     setRoomPlanMetadata,
     modelPath,
     setModelPath,
+    worldRotation,
   } = useSceneStore((state) => ({
     showMeasurements: state.showMeasurements,
     roomPlanJsonPath: state.roomPlanJsonPath,
@@ -89,6 +91,7 @@ export default function SceneEditor({
     setRoomPlanMetadata: state.setRoomPlanMetadata,
     modelPath: state.modelPath,
     setModelPath: state.setModelPath,
+    worldRotation: state.worldRotation,
   }));
   
   const [hasUserConfig, setHasUserConfig] = useState(false);
@@ -4220,6 +4223,25 @@ export default function SceneEditor({
   };
 
 
+  // Apply world rotation to scene
+  useEffect(() => {
+    if (sceneRef.current) {
+      console.log('🌍 [SceneEditor] Applying world rotation to scene:', {
+        x: (worldRotation.x * 180 / Math.PI).toFixed(1) + '°',
+        y: (worldRotation.y * 180 / Math.PI).toFixed(1) + '°',
+        z: (worldRotation.z * 180 / Math.PI).toFixed(1) + '°',
+      });
+      sceneRef.current.rotation.x = worldRotation.x;
+      sceneRef.current.rotation.y = worldRotation.y;
+      sceneRef.current.rotation.z = worldRotation.z;
+      
+      // Force render to show rotation immediately
+      if (rendererRef.current && cameraRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
+    }
+  }, [worldRotation, sceneRef, rendererRef, cameraRef]);
+
   // Theme change listener
   useEffect(() => {
     const handleThemeChange = () => {
@@ -6646,6 +6668,9 @@ export default function SceneEditor({
       )}
 
       {/* CameraPathEditor3D now integrated into DockedNavigation panel */}
+      
+      {/* RotationControl3D - World rotation controls */}
+      <RotationControl3D sceneRef={sceneRef} />
       
       {/* Loader Overlay Portal - Shows real loading progress */}
       {showLoader && (
