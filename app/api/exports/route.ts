@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createExport } from '@/lib/services/ExportService';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { sceneId, usdzPath, userId, jsonPath } = body;
 
+    // Use dynamic import to avoid bundling server-only modules on client-side
+    // This prevents 'fs/promises' and other Node.js modules from being included in client bundles
+    const { createExport } = await import('@/lib/services/ExportService');
+    
     // Use shared service function to create export
     // This ensures consistent behavior and avoids code duplication
     const result = await createExport({

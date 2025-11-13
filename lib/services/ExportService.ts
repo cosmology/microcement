@@ -1,5 +1,4 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { convertExport } from './ConvertService';
 
 export interface CreateExportParams {
   sceneId: string;
@@ -17,6 +16,8 @@ export interface CreateExportResult {
  * Creates an export record in the database and triggers background conversion.
  * This is a shared service function that calls the conversion logic directly,
  * avoiding HTTP calls that may be blocked by Vercel Deployment Protection.
+ * 
+ * NOTE: Uses dynamic import to avoid bundling Node.js-only modules on client-side
  */
 export async function createExport(params: CreateExportParams): Promise<CreateExportResult> {
   const { sceneId, usdzPath, userId, jsonPath } = params;
@@ -52,10 +53,16 @@ export async function createExport(params: CreateExportParams): Promise<CreateEx
   }
 
   // Trigger background conversion directly (no HTTP call needed)
+  // Use dynamic import to avoid bundling Node.js-only modules on client-side
   // This avoids Vercel Deployment Protection issues
-  convertExport(data.id).catch((e) => {
-    console.error('Background conversion failed:', e);
-    // Don't throw - export is still created and can be retried later
+  import('./ConvertService').then(({ convertExport }) => {
+    convertExport(data.id).catch((e) => {
+      console.error('Background conversion failed:', e);
+      // Don't throw - export is still created and can be retried later
+    });
+  }).catch((e) => {
+    console.error('Failed to load ConvertService:', e);
+    // Don't throw - export is still created and can be processed later
   });
 
   return {

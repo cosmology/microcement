@@ -1,3 +1,7 @@
+// Server-only module - uses Node.js-only APIs (fs/promises, path, crypto)
+// This file should only be imported in server-side code (API routes, server components)
+// Next.js webpack config excludes Node.js modules (fs, path, crypto) from client bundles
+
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import path from 'path';
