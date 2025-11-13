@@ -903,17 +903,25 @@ export default function SceneEditor({
       showMeasurements,
       hasRoomPlanMetadata: !!roomPlanMetadata,
       hasModelPath: !!modelPath,
+      measurementGroupExists: !!measurementGroupRef.current,
+      timestamp: new Date().toISOString(),
     });
 
     if (!showMeasurements || !roomPlanMetadata) {
       if (!showMeasurements) {
         console.log('📐 [SceneEditor] Measurements hidden (showMeasurements = false)');
+        console.log('   → Hiding measurements UI');
       } else {
         console.log('📐 [SceneEditor] Measurements hidden (no roomPlanMetadata)');
+        console.log('   → Cannot show measurements without RoomPlan metadata');
       }
       // Note: Measurements already removed at top of useEffect (lines 894-897)
+      if (measurementGroupRef.current) {
+        console.log('📐 [SceneEditor] Removing measurement group from scene');
+      }
       if (rendererRef.current && cameraRef.current && sceneRef.current) {
         rendererRef.current.render(sceneRef.current, cameraRef.current);
+        console.log('📐 [SceneEditor] Scene re-rendered after hiding measurements');
       }
       return;
     }
@@ -925,7 +933,11 @@ export default function SceneEditor({
       doorsCount: roomPlanMetadata.doors?.length || 0,
       hasWindows: !!roomPlanMetadata.windows,
       windowsCount: roomPlanMetadata.windows?.length || 0,
+      hasObjects: !!roomPlanMetadata.objects,
+      objectsCount: roomPlanMetadata.objects?.length || 0,
+      totalSurfaceArea: roomPlanMetadata.totalSurfaceArea || 'not calculated',
     });
+    console.log('📐 [SceneEditor] → Starting measurement visualization creation');
 
     const scene = sceneRef.current;
     const model = modelRef.current ?? scene?.getObjectByName('floorPlan') ?? null;
@@ -941,18 +953,34 @@ export default function SceneEditor({
     const modelSize = modelBox.getSize(new THREE.Vector3());
     const modelCenter = modelBox.getCenter(new THREE.Vector3());
 
-    const measurementGroup = createRoomMeasurements(roomPlanMetadata, true, 1);
+    // Get theme for dimension labels (theme-aware colors)
+    const themeColors = getThemeColors();
+    const isDarkMode = themeColors.isDark;
+
+    const measurementGroup = createRoomMeasurements(roomPlanMetadata, true, 1, isDarkMode);
     measurementGroupRef.current = measurementGroup;
+    console.log('📐 [SceneEditor] Measurement group created:', {
+      childrenCount: measurementGroup.children.length,
+      groupName: measurementGroup.name,
+    });
 
     const metadataBox = new THREE.Box3().setFromObject(measurementGroup);
     if (metadataBox.isEmpty()) {
       console.warn('📐 [Measurements] Metadata bounding box is empty, skipping overlay');
+      console.warn('   → This usually means no valid wall/door/window data was found');
       measurementGroupRef.current = null;
       return;
     }
 
     const metadataSize = metadataBox.getSize(new THREE.Vector3());
     const metadataCenter = metadataBox.getCenter(new THREE.Vector3());
+
+    console.log('📐 [SceneEditor] Model and metadata bounding boxes:', {
+      modelSize: { x: modelSize.x.toFixed(2), y: modelSize.y.toFixed(2), z: modelSize.z.toFixed(2) },
+      modelCenter: { x: modelCenter.x.toFixed(2), y: modelCenter.y.toFixed(2), z: modelCenter.z.toFixed(2) },
+      metadataSize: { x: metadataSize.x.toFixed(2), y: metadataSize.y.toFixed(2), z: metadataSize.z.toFixed(2) },
+      metadataCenter: { x: metadataCenter.x.toFixed(2), y: metadataCenter.y.toFixed(2), z: metadataCenter.z.toFixed(2) },
+    });
 
     const scaleX = metadataSize.x !== 0 ? modelSize.x / metadataSize.x : 1;
     const scaleY = metadataSize.y !== 0 ? modelSize.y / metadataSize.y : scaleX;
@@ -962,6 +990,15 @@ export default function SceneEditor({
       ? (scaleX + scaleZ) / 2
       : model.scale.x;
     const verticalScale = Number.isFinite(scaleY) && scaleY > 0 ? scaleY : uniformHorizontalScale;
+
+    console.log('📐 [SceneEditor] Calculating alignment scales:', {
+      scaleX: scaleX.toFixed(4),
+      scaleY: scaleY.toFixed(4),
+      scaleZ: scaleZ.toFixed(4),
+      uniformHorizontalScale: uniformHorizontalScale.toFixed(4),
+      verticalScale: verticalScale.toFixed(4),
+      modelScale: { x: model.scale.x.toFixed(4), y: model.scale.y.toFixed(4), z: model.scale.z.toFixed(4) },
+    });
 
     const toOrigin = new THREE.Matrix4().makeTranslation(-metadataCenter.x, -metadataCenter.y, -metadataCenter.z);
     measurementGroup.applyMatrix4(toOrigin);
@@ -973,15 +1010,24 @@ export default function SceneEditor({
     measurementGroup.updateMatrixWorld(true);
 
     scene.add(measurementGroup);
-    console.log('📐 [Measurements] Overlay aligned', {
+    console.log('📐 [SceneEditor] Measurement overlay aligned and added to scene:', {
+      finalPosition: {
+        x: measurementGroup.position.x.toFixed(2),
+        y: measurementGroup.position.y.toFixed(2),
+        z: measurementGroup.position.z.toFixed(2),
+      },
+      finalScale: {
+        x: measurementGroup.scale.x.toFixed(4),
+        y: measurementGroup.scale.y.toFixed(4),
+        z: measurementGroup.scale.z.toFixed(4),
+      },
       modelSize,
       metadataSize,
-      uniformHorizontalScale,
-      verticalScale,
     });
 
     if (rendererRef.current && cameraRef.current) {
       rendererRef.current.render(scene, cameraRef.current);
+      console.log('📐 [SceneEditor] Scene re-rendered with measurements visible');
     }
 
     return () => {

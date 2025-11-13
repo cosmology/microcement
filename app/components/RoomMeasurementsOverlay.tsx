@@ -4,6 +4,7 @@
  */
 
 import * as THREE from 'three';
+import { createWallDimensionLabel } from '@/lib/utils/wallDimensionLabels';
 
 export interface Wall {
   dimensions: [number, number, number]; // [width, height, depth] in meters
@@ -33,11 +34,13 @@ export interface RoomPlanMetadata {
  * @param metadata - RoomPlan metadata with walls, doors, windows
  * @param visible - Whether measurements should be visible
  * @param measurementScale - Scale factor to apply to measurements (multiply dimensions by this value)
+ * @param isDarkMode - Whether dark mode is active (for theme-aware labels)
  */
 export function createRoomMeasurements(
   metadata: RoomPlanMetadata | null,
   visible: boolean = false,
-  measurementScale: number = 1.0
+  measurementScale: number = 1.0,
+  isDarkMode: boolean = false
 ): THREE.Group {
   const group = new THREE.Group();
   group.name = 'room-measurements';
@@ -134,6 +137,37 @@ export function createRoomMeasurements(
         box.name = `wall-${i}`;
         group.add(box);
         console.log(`✅ [Measurements] Created wall ${i} with dimensions: ${width.toFixed(2)}x${height.toFixed(2)}x${actualDepth.toFixed(2)}`);
+        
+        // Create dimension label (SketchUp style)
+        try {
+          const dimensionLabel = createWallDimensionLabel({
+            width,
+            height,
+            position: scaledPosition,
+            rotation,
+            measurementScale,
+            isDarkMode,
+            labelOffset: 0.05,
+            extensionLineLength: 0.2,
+          });
+
+          // Add text sprite
+          group.add(dimensionLabel.textSprite);
+          console.log(`📐 [Measurements] Added dimension label for wall ${i}: ${width.toFixed(2)}m × ${height.toFixed(2)}m`);
+
+          // Add extension lines
+          dimensionLabel.extensionLines.forEach((line) => {
+            group.add(line);
+          });
+
+          // Add corner markers
+          dimensionLabel.cornerMarkers.forEach((marker) => {
+            group.add(marker);
+          });
+        } catch (labelError) {
+          console.warn(`⚠️ [Measurements] Failed to create dimension label for wall ${i}:`, labelError);
+          // Don't fail wall creation if label creation fails
+        }
       } catch (error) {
         console.error(`❌ [Measurements] Error creating wall ${i}:`, error);
       }
