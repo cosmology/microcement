@@ -124,33 +124,22 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Automatically trigger the export pipeline
-    let exportId = null;
-    const baseUrlEnv = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL || 'http://localhost:3000';
-    const exportsEndpoint = `${(baseUrlEnv.startsWith('http') ? baseUrlEnv : `https://${baseUrlEnv}`).replace(/\/+$/, '')}/api/exports`;
+    // Automatically trigger the export pipeline using shared service
+    // This avoids HTTP calls that may be blocked by Vercel Deployment Protection
+    let exportId: string | null = null;
     try {
-      const exportResponse = await fetch(exportsEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          sceneId: finalSceneId,
-          usdzPath: usdzUri,
-          userId,
-          jsonPath: jsonUri
-        }),
+      const { createExport } = await import('@/lib/services/ExportService');
+      const exportResult = await createExport({
+        sceneId: finalSceneId,
+        usdzPath: usdzUri,
+        userId,
+        jsonPath: jsonUri
       });
-
-      if (exportResponse.ok) {
-        const exportData = await exportResponse.json();
-        console.log('Export pipeline triggered successfully:', exportData);
-        exportId = exportData.id;
-      } else {
-        console.error('Failed to trigger export pipeline:', await exportResponse.text());
-      }
+      console.log('Export pipeline triggered successfully:', exportResult);
+      exportId = exportResult.id;
     } catch (error) {
       console.error('Error triggering export pipeline:', error);
+      // Don't fail the upload if export creation fails - the export can be created manually later
     }
     
     // Return success with file URL and export ID

@@ -2,6 +2,7 @@
 export { ModelLoader } from './ModelLoader';
 export { UserLoader } from './UserLoader';
 export { AuthService } from './AuthService';
+export { createExport } from './ExportService';
 export type { 
   ModelLoadResult, 
   ModelLoadOptions, 
@@ -13,6 +14,10 @@ export type {
   UserLoadResult, 
   HotspotSettings 
 } from './UserLoader';
+export type {
+  CreateExportParams,
+  CreateExportResult
+} from './ExportService';
 
 // Configuration
 export { SCENE_CONFIG, getCameraPathData, getHotspotSettings, getUserSceneConfig } from '../config/sceneConfig';
