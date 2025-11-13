@@ -68,6 +68,9 @@ export async function convertExport(exportId: string): Promise<ConvertExportResu
   const startTime = Date.now();
   try {
     console.log(`🔄 [ConvertService] Starting conversion for export ID: ${exportId}`);
+    const adminUrl = process.env.SUPABASE_SERVER_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    console.log(`🌐 [ConvertService] Supabase admin URL: ${adminUrl}`);
+    console.log(`🔐 [ConvertService] Supabase service role key present: ${process.env.SUPABASE_SERVICE_ROLE_KEY ? 'yes' : (process.env.SERVICE_ROLE_KEY ? 'fallback yes' : 'no')}`);
 
     // Update status to processing
     console.log(`📝 [ConvertService] Updating export ${exportId} status -> processing`);
