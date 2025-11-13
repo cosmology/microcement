@@ -16,6 +16,12 @@ interface ScannedRoom {
   error: string | null;
   created_at: string;
   updated_at: string;
+  usdz_public_url?: string | null;
+  usdz_signed_url?: string | null;
+  glb_public_url?: string | null;
+  glb_signed_url?: string | null;
+  json_public_url?: string | null;
+  json_signed_url?: string | null;
 }
 
 interface ScannedRoomsListProps {
@@ -23,9 +29,17 @@ interface ScannedRoomsListProps {
 }
 
 export default function ScannedRoomsList({ userId }: ScannedRoomsListProps) {
+  const getAccessibleUrl = (...urls: Array<string | null | undefined>) => {
+    for (const url of urls) {
+      if (url && typeof url === 'string') {
+        return url;
+      }
+    }
+    return null;
+  };
+
   const t = useTranslations('Dock');
   const setRoomPlanJsonPath = useSceneStore(state => state.setRoomPlanJsonPath);
-  const setRoomPlanMetadata = useSceneStore(state => state.setRoomPlanMetadata);
   const { setModelLoadingProgress } = useSceneStore();
   const [scannedRooms, setScannedRooms] = useState<ScannedRoom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,14 +76,15 @@ export default function ScannedRoomsList({ userId }: ScannedRoomsListProps) {
     console.log('🏠 [ScannedRoomsPanel] Load button clicked for room:', room.scene_id);
     
     // Check if GLB file exists
-    if (!room.glb_path) {
+    const modelUrl = getAccessibleUrl(room.glb_signed_url, room.glb_public_url, room.glb_path);
+    if (!modelUrl) {
       console.error('❌ [ScannedRoomsPanel] GLB file not available for room:', room.scene_id);
       alert('GLB file not available. The conversion may still be processing or failed.');
       return;
     }
 
     console.log('🏠 [ScannedRoomsPanel] Dispatching load-uploaded-model event with:', {
-      modelPath: room.glb_path,
+      modelPath: modelUrl,
       projectName: room.scene_id,
       roomId: room.id
     });
@@ -79,7 +94,7 @@ export default function ScannedRoomsList({ userId }: ScannedRoomsListProps) {
     setModelLoadingProgress(0);
 
     // Get JSON path directly from room object
-    const jsonPath = room.json_path;
+    const jsonPath = getAccessibleUrl(room.json_signed_url, room.json_public_url, room.json_path);
     
     // Store JSON path in Zustand store for SceneEditor to use
     setRoomPlanJsonPath(jsonPath);
@@ -89,13 +104,14 @@ export default function ScannedRoomsList({ userId }: ScannedRoomsListProps) {
     try {
       const event = new CustomEvent('load-uploaded-model', {
         detail: {
-          modelPath: room.glb_path,
+          modelPath: modelUrl,
           projectName: room.scene_id,
           roomId: room.id,
-          jsonPath: jsonPath,
+          jsonPath,
           metadata: {
             scene_id: room.scene_id,
             usdz_path: room.usdz_path,
+            usdz_public_url: getAccessibleUrl(room.usdz_signed_url, room.usdz_public_url, room.usdz_path),
             json_path: jsonPath,
             status: room.status,
             created_at: room.created_at
@@ -120,14 +136,15 @@ export default function ScannedRoomsList({ userId }: ScannedRoomsListProps) {
 
   const handleDownloadRoom = (room: ScannedRoom) => {
     // Check if GLB file exists
-    if (!room.glb_path) {
+    const downloadUrl = getAccessibleUrl(room.glb_signed_url, room.glb_public_url, room.glb_path);
+    if (!downloadUrl) {
       alert('GLB file not available. The conversion may still be processing or failed.');
       return;
     }
 
     // Download the GLB file
     const link = document.createElement('a');
-    link.href = room.glb_path;
+    link.href = downloadUrl;
     link.download = `${room.scene_id}.glb`;
     document.body.appendChild(link);
     link.click();
@@ -293,7 +310,9 @@ export default function ScannedRoomsList({ userId }: ScannedRoomsListProps) {
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredRooms.map((room) => (
+          {filteredRooms.map((room) => {
+            const glbAvailable = Boolean(getAccessibleUrl(room.glb_signed_url, room.glb_public_url, room.glb_path));
+            return (
           <div key={room.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-all cursor-pointer">
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
@@ -317,7 +336,7 @@ export default function ScannedRoomsList({ userId }: ScannedRoomsListProps) {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  {room.glb_path && (
+                  {glbAvailable && (
                     <button
                       onClick={() => handleLoadRoom(room)}
                       disabled={loadingRoomId === room.id}
@@ -336,7 +355,7 @@ export default function ScannedRoomsList({ userId }: ScannedRoomsListProps) {
                       )}
                     </button>
                   )}
-                  {room.glb_path && (
+                  {glbAvailable && (
                     <button
                       onClick={() => handleDownloadRoom(room)}
                       className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded text-xs hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
@@ -355,7 +374,7 @@ export default function ScannedRoomsList({ userId }: ScannedRoomsListProps) {
               </div>
             </div>
           </div>
-        ))}
+        )})}
         </div>
       )}
     </div>

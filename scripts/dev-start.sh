@@ -9,6 +9,32 @@ SUPABASE_DIR="$ROOT_DIR/supabase"
 
 echo "[start] Project root: $ROOT_DIR"
 
+# Basic CLI args: allow overriding supabase mode
+SUPABASE_MODE="${SUPABASE_MODE:-local}"
+case "${1:-}" in
+  --remote|remote|--hosted|hosted)
+    SUPABASE_MODE="remote"
+    shift || true
+    ;;
+  --local|local)
+    SUPABASE_MODE="local"
+    shift || true
+    ;;
+  --help|-h)
+    cat <<'HELP'
+Usage: bash scripts/dev-start.sh [--local|--remote]
+
+  --local   Force the app to target the local Supabase stack (default).
+  --remote  Leave Supabase URLs exactly as defined in your env files.
+
+Environment variables:
+  SUPABASE_MODE=local|remote   Same as the flags above.
+  FORCE_LOCAL_SUPABASE=1       Override any Supabase URLs with http://localhost:8000.
+HELP
+    exit 0
+    ;;
+esac
+
 # Ensure .env is loaded from project root for docker compose
 if [ -f "$ROOT_DIR/.env" ]; then
   echo "[start] Loading environment from .env in project root."
@@ -19,6 +45,36 @@ if [ -f "$ROOT_DIR/.env" ]; then
 else
   echo "[start] WARNING: No .env in project root. Copy env.example to .env and set values."
 fi
+
+# Allow overrides from .env.local if present
+if [ -f "$ROOT_DIR/.env.local" ]; then
+  echo "[start] Loading overrides from .env.local."
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT_DIR/.env.local"
+  set +a
+fi
+
+# Decide which Supabase instance the app should target.
+LOCAL_BROWSER_SUPABASE_URL="http://localhost:8000"
+LOCAL_SERVER_SUPABASE_URL="http://host.docker.internal:8000"
+if [ "$SUPABASE_MODE" = "local" ]; then
+  if [ "${FORCE_LOCAL_SUPABASE:-0}" = "1" ] || [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ]; then
+    NEXT_PUBLIC_SUPABASE_URL="$LOCAL_BROWSER_SUPABASE_URL"
+  fi
+  if [ "${FORCE_LOCAL_SUPABASE:-0}" = "1" ] || [ -z "${SUPABASE_SERVER_URL:-}" ]; then
+    SUPABASE_SERVER_URL="$LOCAL_SERVER_SUPABASE_URL"
+  fi
+  if [ -z "${PLAYWRIGHT_SUPABASE_URL:-}" ]; then
+    PLAYWRIGHT_SUPABASE_URL="http://host.docker.internal:8000"
+  fi
+  SUPABASE_TARGET_URL="${NEXT_PUBLIC_SUPABASE_URL:-$LOCAL_BROWSER_SUPABASE_URL} (server -> ${SUPABASE_SERVER_URL})"
+else
+  SUPABASE_TARGET_URL="${SUPABASE_SERVER_URL:-${NEXT_PUBLIC_SUPABASE_URL:-unknown}}"
+fi
+
+export NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVER_URL PLAYWRIGHT_SUPABASE_URL
+echo "[start] Supabase mode: $SUPABASE_MODE (target: ${SUPABASE_TARGET_URL})"
 
 echo "[start] Bringing up Supabase stack (arm64 default if on Apple Silicon)"
 (
@@ -259,6 +315,11 @@ echo "[start] Quick verification - testing login..."
 
 echo ""
 echo "[start] ✅ All services started successfully!"
-echo "[start] Visit http://localhost:3000 and Supabase Studio at http://localhost:8000"
+echo "[start] Visit http://localhost:3000 to access the app."
+if [ "$SUPABASE_MODE" = "local" ]; then
+  echo "[start] Supabase Studio: http://localhost:8081  (API proxy: $SUPABASE_TARGET_URL)"
+else
+  echo "[start] Supabase API target: $SUPABASE_TARGET_URL"
+fi
 
 

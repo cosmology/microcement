@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { ExportRecord } from '@/lib/supabaseAdmin';
+import { resolveToPublicUrl } from '@/lib/storage/utils';
 
 export interface ExportStatus {
   id: string;
@@ -39,7 +40,7 @@ export function useExportStatus(exportId?: string) {
         setExportStatus({
           id: data.id,
           status: data.status,
-          glbPath: data.glb_path ?? undefined,
+          glbPath: resolveToPublicUrl(data.glb_path) ?? undefined,
           error: data.error ?? undefined,
           createdAt: data.created_at,
           updatedAt: data.updated_at
@@ -70,7 +71,7 @@ export function useExportStatus(exportId?: string) {
           setExportStatus({
             id: newData.id,
             status: newData.status,
-            glbPath: newData.glb_path ?? undefined,
+            glbPath: resolveToPublicUrl(newData.glb_path) ?? undefined,
             error: newData.error ?? undefined,
             createdAt: newData.created_at,
             updatedAt: newData.updated_at

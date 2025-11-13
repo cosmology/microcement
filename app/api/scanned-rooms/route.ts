@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { resolveStorageUrls } from '@/lib/storage/server';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -21,25 +22,40 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ [ScannedRooms] Found ${exports?.length || 0} ready exports in ${Date.now() - startTime}ms`);
 
-    // Convert to display format with JSON path
-    const rooms = exports?.map(exportItem => {
-      const jsonPath = exportItem.usdz_path 
-        ? exportItem.usdz_path.replace('-Room.usdz', '-room.json').replace('.usdz', '-room.json')
-        : null;
-      
-      return {
-        id: exportItem.id,
-        user_id: exportItem.user_id,
-        scene_id: exportItem.scene_id,
-        usdz_path: exportItem.usdz_path,
-        glb_path: exportItem.glb_path,
-        status: exportItem.status,
-        error: exportItem.error,
-        created_at: exportItem.created_at,
-        updated_at: exportItem.updated_at,
-        json_path: jsonPath
-      };
-    }) || [];
+    const rooms = await Promise.all(
+      (exports || []).map(async (exportItem) => {
+        const existingJsonPath =
+          (exportItem as any).json_path ??
+          (exportItem.usdz_path && !exportItem.usdz_path.startsWith('supabase://')
+            ? exportItem.usdz_path.replace('-Room.usdz', '-room.json').replace('.usdz', '-room.json')
+            : null);
+
+        const [usdzUrls, glbUrls, jsonUrls] = await Promise.all([
+          resolveStorageUrls(exportItem.usdz_path ?? null),
+          resolveStorageUrls(exportItem.glb_path ?? null),
+          resolveStorageUrls(existingJsonPath ?? null),
+        ]);
+
+        return {
+          id: exportItem.id,
+          user_id: exportItem.user_id,
+          scene_id: exportItem.scene_id,
+          usdz_path: exportItem.usdz_path,
+          glb_path: exportItem.glb_path,
+          status: exportItem.status,
+          error: exportItem.error,
+          created_at: exportItem.created_at,
+          updated_at: exportItem.updated_at,
+          json_path: existingJsonPath,
+          usdz_public_url: usdzUrls.publicUrl,
+          usdz_signed_url: usdzUrls.signedUrl,
+          glb_public_url: glbUrls.publicUrl,
+          glb_signed_url: glbUrls.signedUrl,
+          json_public_url: jsonUrls.publicUrl,
+          json_signed_url: jsonUrls.signedUrl,
+        };
+      })
+    );
 
     const duration = Date.now() - startTime;
     console.log(`✅ [ScannedRooms] Returning ${rooms.length} rooms in ${duration}ms`);

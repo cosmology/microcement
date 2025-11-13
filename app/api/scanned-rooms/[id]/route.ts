@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { unlink, rmdir } from 'fs/promises';
 import path from 'path';
+import { parseSupabaseUri } from '@/lib/storage/utils';
+import { deleteStorageObjects } from '@/lib/storage/server';
 
 export async function DELETE(
   request: NextRequest,
@@ -52,7 +54,20 @@ export async function DELETE(
 
     const deletionResults = {
       database: { exports: false, user_assets: false },
-      filesystem: { usdz: false, glb: false, directories: [] as string[] }
+      filesystem: { usdz: false, glb: false, directories: [] as string[] },
+      storage: { usdz: false, glb: false, json: false, paths: [] as string[] }
+    };
+    const storageDeletes = new Map<string, { path: string; type: 'usdz' | 'glb' | 'json' }[]>();
+
+    const queueStorageDeletion = (rawPath: string | null | undefined, type: 'usdz' | 'glb' | 'json') => {
+      const parsed = parseSupabaseUri(rawPath ?? undefined);
+      if (!parsed) {
+        return false;
+      }
+      const entries = storageDeletes.get(parsed.bucket) ?? [];
+      entries.push({ path: parsed.path, type });
+      storageDeletes.set(parsed.bucket, entries);
+      return true;
     };
 
     try {
@@ -95,31 +110,32 @@ export async function DELETE(
     }
 
     try {
-      // Step 4: Delete files from filesystem
+      // Step 4: Delete files from storage or filesystem
       const filesToDelete: string[] = [];
       const directoriesToCleanup: string[] = [];
 
-      // Add USDZ file to deletion list
       if (exportData.usdz_path) {
-        const usdzFullPath = path.join(process.cwd(), 'public', exportData.usdz_path);
-        filesToDelete.push(usdzFullPath);
-        
-        // Extract directory for cleanup
-        const usdzDir = path.dirname(usdzFullPath);
-        directoriesToCleanup.push(usdzDir);
+        const queued = queueStorageDeletion(exportData.usdz_path, 'usdz');
+        if (!queued) {
+          const usdzFullPath = path.join(process.cwd(), 'public', exportData.usdz_path);
+          filesToDelete.push(usdzFullPath);
+          directoriesToCleanup.push(path.dirname(usdzFullPath));
+        }
       }
 
-      // Add GLB file to deletion list
       if (exportData.glb_path) {
-        const glbFullPath = path.join(process.cwd(), 'public', exportData.glb_path);
-        filesToDelete.push(glbFullPath);
-        
-        // Extract directory for cleanup
-        const glbDir = path.dirname(glbFullPath);
-        directoriesToCleanup.push(glbDir);
+        const queued = queueStorageDeletion(exportData.glb_path, 'glb');
+        if (!queued) {
+          const glbFullPath = path.join(process.cwd(), 'public', exportData.glb_path);
+          filesToDelete.push(glbFullPath);
+          directoriesToCleanup.push(path.dirname(glbFullPath));
+        }
       }
 
-      // Delete individual files
+      if ((exportData as any).json_path) {
+        queueStorageDeletion((exportData as any).json_path, 'json');
+      }
+
       for (const filePath of filesToDelete) {
         try {
           await unlink(filePath);
@@ -131,11 +147,21 @@ export async function DELETE(
           }
         } catch (fileError) {
           console.warn('Failed to delete file:', filePath, fileError);
-          // Continue with other files even if one fails
         }
       }
 
-      // Clean up empty directories (from unique set)
+      for (const [bucket, entries] of storageDeletes.entries()) {
+        try {
+          await deleteStorageObjects(bucket, entries.map((entry) => entry.path));
+          entries.forEach((entry) => {
+            deletionResults.storage[entry.type] = true;
+            deletionResults.storage.paths.push(`${bucket}/${entry.path}`);
+          });
+        } catch (storageError) {
+          console.warn('Failed to delete objects from storage bucket:', bucket, storageError);
+        }
+      }
+
       const uniqueDirs = [...new Set(directoriesToCleanup)];
       for (const dirPath of uniqueDirs) {
         try {
@@ -143,15 +169,12 @@ export async function DELETE(
           console.log('Successfully removed directory:', dirPath);
           deletionResults.filesystem.directories.push(dirPath);
         } catch (dirError) {
-          // Directory might not be empty or might not exist - this is okay
           console.log('Could not remove directory (may not be empty or may not exist):', dirPath);
         }
       }
-
-    } catch (fsError) {
-      console.error('Filesystem cleanup error:', fsError);
-      // Don't fail the entire operation if filesystem cleanup fails
-      console.warn('Filesystem cleanup failed, but database deletion succeeded');
+    } catch (cleanupError) {
+      console.error('Cleanup error:', cleanupError);
+      console.warn('Cleanup failed, but database deletion succeeded');
     }
 
     // Step 5: Return comprehensive deletion results
@@ -168,6 +191,7 @@ export async function DELETE(
           databaseRecordsDeleted: deletionResults.database.exports ? 1 : 0,
           associatedRecordsDeleted: deletionResults.database.user_assets ? 1 : 0,
           filesDeleted: (deletionResults.filesystem.usdz ? 1 : 0) + (deletionResults.filesystem.glb ? 1 : 0),
+          storageObjectsDeleted: deletionResults.storage.paths.length,
           directoriesRemoved: deletionResults.filesystem.directories.length
         }
       }
