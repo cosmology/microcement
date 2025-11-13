@@ -52,6 +52,30 @@ export async function POST(request: NextRequest) {
   let exportId: string | undefined;
   
   try {
+    // Verify this is an internal service call (bypasses Vercel Deployment Protection)
+    // Check for service role key in header or environment
+    const serviceRoleHeader = request.headers.get('x-service-role');
+    const expectedServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
+    const internalApiKey = request.headers.get('x-internal-api-key');
+    const expectedInternalKey = process.env.INTERNAL_API_KEY;
+    
+    // Allow if service role matches OR internal API key matches OR we're in local dev
+    const isLocalDev = !process.env.VERCEL;
+    const isAuthenticated = 
+      isLocalDev ||
+      (expectedServiceRole && serviceRoleHeader === expectedServiceRole) ||
+      (expectedInternalKey && internalApiKey === expectedInternalKey);
+    
+    if (!isAuthenticated) {
+      console.warn('Background conversion endpoint called without authentication');
+      // In production with Vercel Deployment Protection, this may still be blocked at the edge
+      // Log a warning but don't fail - the conversion can be triggered via cron or manual retry
+      return NextResponse.json(
+        { error: 'Unauthorized. This endpoint requires internal service authentication.' },
+        { status: 401 }
+      );
+    }
+
     // Validate request body
     let body: any;
     try {
