@@ -908,12 +908,7 @@ export default function SceneEditor({
       } else {
         console.log('📐 [SceneEditor] Measurements hidden (no roomPlanMetadata)');
       }
-      // Remove existing measurements if hidden
-      if (measurementGroupRef.current && measurementGroupRef.current.parent) {
-        measurementGroupRef.current.parent.remove(measurementGroupRef.current);
-        measurementGroupRef.current = null;
-        console.log('📐 [SceneEditor] Removed existing measurements group');
-      }
+      // Note: Measurements already removed at top of useEffect (lines 894-897)
       if (rendererRef.current && cameraRef.current && sceneRef.current) {
         rendererRef.current.render(sceneRef.current, cameraRef.current);
       }
