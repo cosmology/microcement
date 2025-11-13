@@ -151,18 +151,23 @@ export default function HomeClient() {
             if (exportData.status === 'ready' && exportData.glb_path) {
               console.log('✅ [HomeClient] Export is ready, saving to Zustand store');
               
-              // Save model path to store - SceneEditor will watch this and load automatically
-              setModelPath(exportData.glb_path);
-              console.log('✅ [HomeClient] Set modelPath in store:', exportData.glb_path);
+              // Use resolved public/signed URLs instead of Supabase URIs
+              // Priority: signed URL > public URL > raw path
+              const modelUrl = exportData.glb_signed_url || exportData.glb_public_url || exportData.glb_path;
+              const jsonUrl = exportData.json_signed_url || exportData.json_public_url || exportData.json_path;
               
-              // Save JSON path to store
-              if (exportData.json_path) {
-                setRoomPlanJsonPath(exportData.json_path);
-                console.log('✅ [HomeClient] Set roomPlanJsonPath in store:', exportData.json_path);
+              // Save model path to store - SceneEditor will watch this and load automatically
+              setModelPath(modelUrl);
+              console.log('✅ [HomeClient] Set modelPath in store:', modelUrl);
+              
+              // Save JSON path to store (use resolved URL)
+              if (jsonUrl) {
+                setRoomPlanJsonPath(jsonUrl);
+                console.log('✅ [HomeClient] Set roomPlanJsonPath in store:', jsonUrl);
                 
                 // Load and save JSON metadata
                 try {
-                  const jsonResponse = await fetch(exportData.json_path);
+                  const jsonResponse = await fetch(jsonUrl);
                   if (jsonResponse.ok) {
                     const roomPlanJson = await jsonResponse.json();
                     setRoomPlanMetadata(roomPlanJson);
