@@ -182,7 +182,6 @@ export async function POST(request: NextRequest) {
         : null,
       fileUrl: fileAccessibleUrl,
       jsonFileUrl: jsonAccessibleUrl,
-      userId,
     };
 
     return NextResponse.json(response, { status: 200 });

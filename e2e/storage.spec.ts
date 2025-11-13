@@ -68,7 +68,14 @@ test.describe('Supabase storage integration', () => {
       .download(objectPath);
 
     expect(data).toBeNull();
-    expect(error?.status).toBe(404);
+    expect(error).toBeTruthy();
+    // Check that error indicates object not found (404)
+    const errorMessage = error?.message?.toLowerCase() || '';
+    expect(
+      errorMessage.includes('not found') ||
+      errorMessage.includes('404') ||
+      (error as any)?.statusCode === 404
+    ).toBe(true);
   });
 });
 

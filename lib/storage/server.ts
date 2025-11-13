@@ -8,16 +8,31 @@ async function ensureBucketExists(bucket: string): Promise<void> {
 
   const { error } = await supabaseAdmin.storage.getBucket(bucket);
   if (error) {
-    if (error.status === 404) {
+    // Check if bucket doesn't exist (404) or is not found
+    const isNotFound = error.message?.toLowerCase().includes('not found') || 
+                      error.message?.toLowerCase().includes('404') ||
+                      (error as any).statusCode === 404;
+    
+    if (isNotFound) {
       const { error: createError } = await supabaseAdmin.storage.createBucket(bucket, {
         public: true,
         fileSizeLimit: '52428800', // 50MB
       });
-      if (createError && createError.status !== 409) {
+      // Ignore 409 (already exists) errors when creating
+      const isConflict = createError?.message?.toLowerCase().includes('already exists') ||
+                        createError?.message?.toLowerCase().includes('409') ||
+                        (createError as any)?.statusCode === 409;
+      if (createError && !isConflict) {
         throw createError;
       }
-    } else if (error.status !== 409) {
-      throw error;
+    } else {
+      // Ignore 409 (already exists) errors when getting
+      const isConflict = error.message?.toLowerCase().includes('already exists') ||
+                        error.message?.toLowerCase().includes('409') ||
+                        (error as any).statusCode === 409;
+      if (!isConflict) {
+        throw error;
+      }
     }
   }
 
