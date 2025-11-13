@@ -74,31 +74,61 @@ export async function convertExport(exportId: string): Promise<ConvertExportResu
 
     // Update status to processing
     console.log(`📝 [ConvertService] Updating export ${exportId} status -> processing`);
-    const { error: processingUpdateError } = await supabaseAdmin
-      .from('exports')
-      .update({ 
-        status: 'processing', 
-        updated_at: new Date().toISOString() 
-      })
-      .eq('id', exportId);
+    try {
+      const { error: processingUpdateError } = await supabaseAdmin
+        .from('exports')
+        .update({ 
+          status: 'processing', 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', exportId);
 
-    if (processingUpdateError) {
-      console.error(`❌ [ConvertService] Failed to mark export ${exportId} as processing:`, processingUpdateError);
-      throw new Error(`Failed to mark export as processing: ${processingUpdateError.message}`);
+      if (processingUpdateError) {
+        console.error(`❌ [ConvertService] Failed to mark export ${exportId} as processing:`, processingUpdateError);
+        console.error(`   Error code: ${processingUpdateError.code}`);
+        console.error(`   Error message: ${processingUpdateError.message}`);
+        console.error(`   Error details:`, JSON.stringify(processingUpdateError, null, 2));
+        throw new Error(`Failed to mark export as processing: ${processingUpdateError.message}`);
+      }
+      console.log(`✅ [ConvertService] Export ${exportId} status updated to processing`);
+    } catch (updateError) {
+      console.error(`❌ [ConvertService] Exception during status update:`, updateError);
+      throw updateError;
     }
-    console.log(`✅ [ConvertService] Export ${exportId} status updated to processing`);
 
     // Fetch export row
-    const { data: row, error: fetchError } = await supabaseAdmin
-      .from('exports')
-      .select('*')
-      .eq('id', exportId)
-      .single();
-    
-    console.log('Fetch result:', { hasRow: !!row, error: fetchError, exportId });
+    console.log(`🔍 [ConvertService] Fetching export row for ${exportId}`);
+    let row: any;
+    try {
+      const { data, error: fetchError } = await supabaseAdmin
+        .from('exports')
+        .select('*')
+        .eq('id', exportId)
+        .single();
+      
+      if (fetchError) {
+        console.error(`❌ [ConvertService] Failed to fetch export ${exportId}:`, fetchError);
+        console.error(`   Error code: ${fetchError.code}`);
+        console.error(`   Error message: ${fetchError.message}`);
+        throw new Error(`Failed to fetch export record: ${fetchError.message}`);
+      }
 
-    if (fetchError || !row) {
-      throw new Error('Export record not found');
+      if (!data) {
+        console.error(`❌ [ConvertService] Export ${exportId} not found in database`);
+        throw new Error('Export record not found');
+      }
+
+      row = data;
+      console.log(`✅ [ConvertService] Export row fetched:`, {
+        id: row.id,
+        usdz_path: row.usdz_path,
+        json_path: row.json_path,
+        scene_id: row.scene_id,
+        status: row.status
+      });
+    } catch (fetchErr) {
+      console.error(`❌ [ConvertService] Exception during fetch:`, fetchErr);
+      throw fetchErr;
     }
 
     console.log('Processing export:', {
