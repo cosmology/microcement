@@ -70,13 +70,20 @@ export async function convertExport(exportId: string): Promise<ConvertExportResu
     console.log(`🔄 [ConvertService] Starting conversion for export ID: ${exportId}`);
 
     // Update status to processing
-    await supabaseAdmin
+    console.log(`📝 [ConvertService] Updating export ${exportId} status -> processing`);
+    const { error: processingUpdateError } = await supabaseAdmin
       .from('exports')
       .update({ 
         status: 'processing', 
         updated_at: new Date().toISOString() 
       })
       .eq('id', exportId);
+
+    if (processingUpdateError) {
+      console.error(`❌ [ConvertService] Failed to mark export ${exportId} as processing:`, processingUpdateError);
+      throw new Error(`Failed to mark export as processing: ${processingUpdateError.message}`);
+    }
+    console.log(`✅ [ConvertService] Export ${exportId} status updated to processing`);
 
     // Fetch export row
     const { data: row, error: fetchError } = await supabaseAdmin
