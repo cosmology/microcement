@@ -10,6 +10,21 @@ export interface CreateExportParams {
 export interface CreateExportResult {
   id: string;
   status: string;
+  completed?: boolean; // true if conversion completed during the await period
+  conversionResult?: {
+    success: boolean;
+    glbPath?: string;
+    glbUrl?: string;
+    glbSignedUrl?: string;
+    error?: string;
+  };
+}
+
+/**
+ * Creates a promise that resolves after a delay (for timeout purposes)
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**
@@ -126,5 +141,85 @@ export async function createExport(params: CreateExportParams): Promise<CreateEx
     id: data.id,
     status: data.status
   };
+}
+
+/**
+ * Creates an export and awaits conversion with a timeout.
+ * This is designed for Vercel Hobby plan (10-second maxDuration limit).
+ * 
+ * @param params Export creation parameters
+ * @param timeoutMs Maximum time to wait for conversion (default: 8000ms for Hobby plan)
+ * @returns Export result with conversion status if completed within timeout
+ */
+export async function createExportAndAwait(
+  params: CreateExportParams,
+  timeoutMs: number = 8000 // 8 seconds (leaving 2s buffer for Hobby's 10s limit)
+): Promise<CreateExportResult> {
+  // First, create the export record
+  const exportData = await createExport(params);
+  const exportId = exportData.id;
+  
+  console.log(`🚀 [ExportService] Starting conversion with timeout (${timeoutMs}ms) for export ${exportId}`);
+  
+  // Import ConvertService and start conversion
+  const conversionPromise = import('./ConvertService')
+    .then(({ convertExport }) => {
+      return convertExport(exportId).then((conversionResult) => {
+        return { exportId, conversionResult, completed: true };
+      });
+    })
+    .catch((e) => {
+      console.error('❌ [ExportService] Error during awaitable conversion:', e);
+      return {
+        exportId,
+        conversionResult: {
+          success: false,
+          error: e instanceof Error ? e.message : String(e)
+        },
+        completed: false
+      };
+    });
+
+  // Timeout promise
+  const timeoutPromise = sleep(timeoutMs).then(() => {
+    return { exportId, timedOut: true, completed: false };
+  });
+
+  try {
+    // Race between conversion completion and timeout
+    const raceResult = await Promise.race([conversionPromise, timeoutPromise]);
+    
+    // Check if conversion completed
+    if ('conversionResult' in raceResult && raceResult.completed) {
+      const { exportId: id, conversionResult } = raceResult;
+      console.log(`✅ [ExportService] Conversion completed within timeout for export ${id}`);
+      return {
+        id,
+        status: conversionResult.success ? 'ready' : 'failed',
+        completed: true,
+        conversionResult
+      };
+    }
+    
+    // Timeout occurred - conversion still running in background (may be killed by Vercel)
+    console.log(`⏱️ [ExportService] Conversion timeout after ${timeoutMs}ms for export ${exportId}`);
+    console.log(`   Conversion continues in background (may be killed by Vercel function termination)`);
+    console.log(`   Client should poll export status or use Realtime to get notified when ready`);
+    
+    // Note: Conversion is still running, but may be killed when function returns
+    // Fallback: Use the GET /api/background/convert endpoint manually or with a cron job
+    return {
+      id: exportId,
+      status: 'processing',
+      completed: false
+    };
+  } catch (error) {
+    console.error(`❌ [ExportService] Error in awaitable export creation:`, error);
+    return {
+      id: exportId,
+      status: 'queued', // Export was created, will be processed later
+      completed: false
+    };
+  }
 }
 

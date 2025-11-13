@@ -1,10 +1,4 @@
 {
   "installCommand": "pnpm install",
-  "framework": "nextjs",
-  "crons": [
-    {
-      "path": "/api/background/convert",
-      "schedule": "*/5 * * * *"
-    }
-  ]
+  "framework": "nextjs"
 }

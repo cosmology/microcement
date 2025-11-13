@@ -124,19 +124,40 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Automatically trigger the export pipeline using shared service
-    // This avoids HTTP calls that may be blocked by Vercel Deployment Protection
+    // Automatically trigger the export pipeline with timeout
+    // This awaits conversion up to 8 seconds (Vercel Hobby plan has 10s maxDuration limit)
+    // If conversion completes within timeout, we return success. Otherwise, it continues in background.
     let exportId: string | null = null;
+    let conversionCompleted = false;
+    let conversionResult: any = null;
+    
     try {
-      const { createExport } = await import('@/lib/services/ExportService');
-      const exportResult = await createExport({
+      const { createExportAndAwait } = await import('@/lib/services/ExportService');
+      const exportResult = await createExportAndAwait({
         sceneId: finalSceneId,
         usdzPath: usdzUri,
         userId,
         jsonPath: jsonUri
+      }, 8000); // 8 second timeout (leaving 2s buffer for function overhead)
+      
+      console.log('Export pipeline result:', {
+        exportId: exportResult.id,
+        status: exportResult.status,
+        completed: exportResult.completed
       });
-      console.log('Export pipeline triggered successfully:', exportResult);
+      
       exportId = exportResult.id;
+      conversionCompleted = exportResult.completed || false;
+      conversionResult = exportResult.conversionResult;
+      
+      if (conversionCompleted && exportResult.conversionResult?.success) {
+        console.log('✅ Conversion completed successfully during upload!');
+        console.log(`   GLB Path: ${exportResult.conversionResult.glbPath}`);
+        console.log(`   GLB URL: ${exportResult.conversionResult.glbUrl}`);
+      } else if (!conversionCompleted) {
+        console.log('⏱️ Conversion started but did not complete within timeout');
+        console.log('   Client can poll export status or use Realtime to get notified when ready');
+      }
     } catch (error) {
       console.error('Error triggering export pipeline:', error);
       // Don't fail the upload if export creation fails - the export can be created manually later
@@ -147,10 +168,22 @@ export async function POST(request: NextRequest) {
     const jsonAccessibleUrl = jsonUrls?.publicUrl || jsonUrls?.signedUrl || jsonUri || null;
 
     const response = {
-      message: 'File uploaded successfully and export pipeline started',
+      message: conversionCompleted 
+        ? 'File uploaded successfully and conversion completed'
+        : 'File uploaded successfully and conversion started',
       userId,
       sceneId: finalSceneId,
       exportId,
+      conversion: {
+        completed: conversionCompleted,
+        status: conversionCompleted 
+          ? (conversionResult?.success ? 'ready' : 'failed')
+          : 'processing',
+        glbPath: conversionResult?.glbPath,
+        glbUrl: conversionResult?.glbUrl,
+        glbSignedUrl: conversionResult?.glbSignedUrl,
+        error: conversionResult?.error,
+      },
       file: {
         storagePath: usdzUri,
         path: fileAccessibleUrl,
