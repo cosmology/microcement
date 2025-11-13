@@ -847,11 +847,18 @@ export default function SceneEditor({
         });
         
         if (!response.ok) {
-          console.warn('⚠️ [SceneEditor] Failed to load metadata:', {
+          console.error('❌ [SceneEditor] Failed to load RoomPlan metadata:', {
             status: response.status,
             statusText: response.statusText,
             url: roomPlanJsonPath?.substring(0, 100),
+            fullUrl: roomPlanJsonPath,
+            responseHeaders: Object.fromEntries(response.headers.entries()),
           });
+          // Don't silently fail - set metadata to null explicitly so measurements know it failed
+          if (!cancelled) {
+            setRoomPlanMetadata(null);
+            console.warn('⚠️ [SceneEditor] Set roomPlanMetadata to null due to fetch failure');
+          }
           return;
         }
         
@@ -878,7 +885,14 @@ export default function SceneEditor({
           error: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
           url: roomPlanJsonPath?.substring(0, 100),
+          fullUrl: roomPlanJsonPath,
+          errorType: error?.constructor?.name || typeof error,
         });
+        // Set metadata to null on error so measurements don't try to show with invalid data
+        if (!cancelled) {
+          setRoomPlanMetadata(null);
+          console.warn('⚠️ [SceneEditor] Set roomPlanMetadata to null due to error');
+        }
       }
     };
 
@@ -914,6 +928,23 @@ export default function SceneEditor({
       } else {
         console.log('📐 [SceneEditor] Measurements hidden (no roomPlanMetadata)');
         console.log('   → Cannot show measurements without RoomPlan metadata');
+        console.log('   → Debug info:', {
+          hasRoomPlanJsonPath: !!roomPlanJsonPath,
+          roomPlanJsonPath: roomPlanJsonPath?.substring(0, 100) || 'null',
+          modelPath: modelPath?.substring(0, 100) || 'null',
+          hasModelRef: !!modelRef.current,
+          hasScene: !!sceneRef.current,
+        });
+        // Helpful message: If JSON path exists but metadata is null, the fetch might have failed
+        if (roomPlanJsonPath) {
+          console.warn('⚠️ [SceneEditor] RoomPlan JSON path exists but metadata is null.');
+          console.warn('   → This might indicate the JSON file failed to load.');
+          console.warn('   → Check the browser console for fetch errors related to:', roomPlanJsonPath.substring(0, 100));
+        } else {
+          console.warn('⚠️ [SceneEditor] No RoomPlan JSON path available.');
+          console.warn('   → Measurements require RoomPlan metadata JSON file.');
+          console.warn('   → Ensure the scanned room includes RoomPlan JSON metadata.');
+        }
       }
       // Note: Measurements already removed at top of useEffect (lines 894-897)
       if (measurementGroupRef.current) {
