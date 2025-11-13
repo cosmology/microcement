@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 import { randomUUID } from 'crypto';
+import {
+  storageConfig,
+  sanitizeSegment,
+  toSupabaseUri,
+} from '@/lib/storage/utils';
+import {
+  uploadBufferToStorage,
+  buildIosUploadPath,
+  buildJsonMetadataPath,
+  resolveStorageUrls,
+} from '@/lib/storage/server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,46 +67,78 @@ export async function POST(request: NextRequest) {
 
     console.log('All validations passed, processing files...');
 
-    const uploadDir = path.join(process.cwd(), 'public', 'models', 'scanned-rooms', userId);
-    await mkdir(uploadDir, { recursive: true });
+    const sanitizedUserId = sanitizeSegment(userId);
+    const finalSceneId = sceneId || `room-scan-${Date.now()}`;
+    const sanitizedSceneId = sanitizeSegment(finalSceneId);
+
+    const makeFilename = (original: string, extension: string) => {
+      const base = original.replace(/\.[^/.]+$/, '');
+      const sanitizedBase = sanitizeSegment(base) || 'room';
+      return `${randomUUID()}-${sanitizedBase}.${extension}`;
+    };
 
     // Process USDZ file
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const filename = `${randomUUID()}-${file.name}`;
-    const filePath = path.join(uploadDir, filename);
-    await writeFile(filePath, buffer);
-    const fileUrl = `/models/scanned-rooms/${userId}/${filename}`;
-    
-    console.log('USDZ file saved:', { filePath, fileUrl });
+    const usdzBuffer = Buffer.from(await file.arrayBuffer());
+    const usdzFilename = makeFilename(file.name, 'usdz');
+    const usdzObjectPath = buildIosUploadPath(sanitizedUserId, sanitizedSceneId, usdzFilename);
+
+    await uploadBufferToStorage(
+      storageConfig.bucket,
+      usdzObjectPath,
+      usdzBuffer,
+      file.type || 'model/vnd.usdz+zip'
+    );
+
+    const usdzUri = toSupabaseUri(storageConfig.bucket, usdzObjectPath);
+    const usdzUrls = await resolveStorageUrls(usdzUri);
+
+    console.log('USDZ file uploaded:', {
+      bucket: storageConfig.bucket,
+      objectPath: usdzObjectPath,
+      publicUrl: usdzUrls.publicUrl,
+    });
 
     // Process JSON metadata file if provided
-    let jsonFilePath: string | null = null;
-    let jsonFileUrl: string | null = null;
+    let jsonUri: string | null = null;
+    let jsonUrls: Awaited<ReturnType<typeof resolveStorageUrls>> | null = null;
+
     if (jsonFile) {
-      // Generate matching filename for JSON: {UUID}-room-{originalName}.json
-      const jsonFilename = filename.replace('-Room.usdz', '-room.json').replace('.usdz', '-room.json');
-      jsonFilePath = path.join(uploadDir, jsonFilename);
       const jsonBuffer = Buffer.from(await jsonFile.arrayBuffer());
-      await writeFile(jsonFilePath, jsonBuffer);
-      jsonFileUrl = `/models/scanned-rooms/${userId}/${jsonFilename}`;
-      console.log('JSON file saved:', { jsonFilePath, jsonFileUrl });
+      const jsonFilename = makeFilename(jsonFile.name || file.name, 'json');
+      const jsonObjectPath = buildJsonMetadataPath(sanitizedUserId, sanitizedSceneId, jsonFilename);
+
+      await uploadBufferToStorage(
+        storageConfig.bucket,
+        jsonObjectPath,
+        jsonBuffer,
+        jsonFile.type || 'application/json'
+      );
+
+      jsonUri = toSupabaseUri(storageConfig.bucket, jsonObjectPath);
+      jsonUrls = await resolveStorageUrls(jsonUri);
+
+      console.log('JSON metadata uploaded:', {
+        bucket: storageConfig.bucket,
+        objectPath: jsonObjectPath,
+        publicUrl: jsonUrls.publicUrl,
+      });
     }
 
-    const finalSceneId = sceneId || `room-scan-${Date.now()}`;
-    
     // Automatically trigger the export pipeline
     let exportId = null;
+    const baseUrlEnv = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL || 'http://localhost:3000';
+    const exportsEndpoint = `${(baseUrlEnv.startsWith('http') ? baseUrlEnv : `https://${baseUrlEnv}`).replace(/\/+$/, '')}/api/exports`;
     try {
-      const exportResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/exports`, {
+      const exportResponse = await fetch(exportsEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           sceneId: finalSceneId,
-          usdzPath: fileUrl,
+          usdzPath: usdzUri,
           userId,
-          jsonPath: jsonFileUrl
+          jsonPath: jsonUri
         }),
       });
 
@@ -113,13 +154,34 @@ export async function POST(request: NextRequest) {
     }
     
     // Return success with file URL and export ID
+    const fileAccessibleUrl = usdzUrls.publicUrl || usdzUrls.signedUrl || usdzUri;
+    const jsonAccessibleUrl = jsonUrls?.publicUrl || jsonUrls?.signedUrl || jsonUri || null;
+
     const response = {
       message: 'File uploaded successfully and export pipeline started',
-      fileUrl,
-      jsonFileUrl,
       userId,
       sceneId: finalSceneId,
-      exportId
+      exportId,
+      file: {
+        storagePath: usdzUri,
+        path: fileAccessibleUrl,
+        publicUrl: usdzUrls.publicUrl,
+        signedUrl: usdzUrls.signedUrl,
+        bucket: usdzUrls.bucket ?? storageConfig.bucket,
+        objectPath: usdzUrls.objectPath,
+      },
+      json: jsonUri
+        ? {
+            storagePath: jsonUri,
+            path: jsonAccessibleUrl,
+            publicUrl: jsonUrls?.publicUrl ?? null,
+            signedUrl: jsonUrls?.signedUrl ?? null,
+            bucket: jsonUrls?.bucket ?? storageConfig.bucket,
+            objectPath: jsonUrls?.objectPath ?? null,
+          }
+        : null,
+      fileUrl: fileAccessibleUrl,
+      jsonFileUrl: jsonAccessibleUrl,
     };
 
     return NextResponse.json(response, { status: 200 });

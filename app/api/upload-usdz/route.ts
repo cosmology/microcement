@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
+import { randomUUID } from 'crypto'
+import {
+  storageConfig,
+  sanitizeSegment,
+  toSupabaseUri,
+} from '@/lib/storage/utils'
+import {
+  uploadBufferToStorage,
+  buildIosUploadPath,
+  resolveStorageUrls,
+} from '@/lib/storage/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,22 +32,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid file type. Only USDZ files are allowed.' }, { status: 400 })
     }
 
-    // Create directory structure for scanned rooms
+    const sanitizedUserId = sanitizeSegment(userId)
+    const sanitizedSceneId = sanitizeSegment(type || 'upload')
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-    const fileName = `${source}-${timestamp}-${file.name}`
-    const uploadDir = join(process.cwd(), 'public', 'models', 'scanned-rooms', userId)
-    
-    // Ensure directory exists
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true })
-    }
+    const sanitizedSource = sanitizeSegment(source || 'web')
+    const sanitizedBase = sanitizeSegment(file.name.replace(/\.[^/.]+$/, '')) || 'room'
+    const fileName = `${sanitizedSource}-${timestamp}-${sanitizedBase}.usdz`
 
-    const filePath = join(uploadDir, fileName)
+    const objectPath = buildIosUploadPath(sanitizedUserId, sanitizedSceneId, `${randomUUID()}-${fileName}`)
 
-    // Convert file to buffer and save
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
+
+    await uploadBufferToStorage(
+      storageConfig.bucket,
+      objectPath,
+      buffer,
+      file.type || 'model/vnd.usdz+zip'
+    )
+
+    const storageUri = toSupabaseUri(storageConfig.bucket, objectPath)
+    const urls = await resolveStorageUrls(storageUri)
 
     // Return success response with file info
     return NextResponse.json({
@@ -47,7 +60,12 @@ export async function POST(request: NextRequest) {
       message: 'USDZ file uploaded successfully',
       file: {
         name: fileName,
-        path: `/models/scanned-rooms/${userId}/${fileName}`,
+        storagePath: storageUri,
+        path: urls.publicUrl || urls.signedUrl || storageUri,
+        publicUrl: urls.publicUrl,
+        signedUrl: urls.signedUrl,
+        bucket: urls.bucket ?? storageConfig.bucket,
+        objectPath,
         size: file.size,
         type: file.type,
         uploadedAt: new Date().toISOString(),

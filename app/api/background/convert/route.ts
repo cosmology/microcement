@@ -2,42 +2,50 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import path from 'path';
-import { convertUsdzToGlb, CONVERSION_ERRORS, USER_ERROR_MESSAGES } from '@/lib/convertUsdzToGlb';
 import { randomUUID } from 'crypto';
+import { convertUsdzToGlb } from '@/lib/convertUsdzToGlb';
+import {
+  storageConfig,
+  parseSupabaseUri,
+  toSupabaseUri,
+  sanitizeSegment,
+} from '@/lib/storage/utils';
+import {
+  downloadBufferFromStorage,
+  uploadBufferToStorage,
+  buildGlbPath,
+  resolveStorageUrls,
+} from '@/lib/storage/server';
 
+async function downloadUsdFile(usdzPath: string) {
+  const parsed = parseSupabaseUri(usdzPath);
+  if (parsed) {
+    return downloadBufferFromStorage(parsed.bucket, parsed.path);
+  }
 
-// USDZ to GLB conversion using the robust conversion module
-async function performUsdzConversion(usdzBuffer: Buffer, fileName: string): Promise<Buffer> {
-  console.log('Starting USDZ to GLB conversion...');
-  console.log('USDZ file:', fileName, 'Size:', usdzBuffer.length, 'bytes');
-  
-  // Use the robust conversion module
-  const result = await convertUsdzToGlb({
-    usdzBuffer,
-    fileName,
-    maxFileSize: 50 * 1024 * 1024, // 50MB limit
-    enableFallback: true // Enable fallback for working conversion
-  });
-  
-  if (!result.success) {
-    console.error('USDZ conversion failed:', result.error);
-    if (result.warning) {
-      console.warn('Conversion warning:', result.warning);
+  const usdzFilePath = path.join(process.cwd(), 'public', usdzPath);
+  return readFile(usdzFilePath);
+}
+
+async function downloadJsonMetadata(jsonPath?: string | null) {
+  if (!jsonPath) return null;
+  const parsed = parseSupabaseUri(jsonPath);
+  if (parsed) {
+    try {
+      return await downloadBufferFromStorage(parsed.bucket, parsed.path);
+    } catch (error) {
+      console.warn('Failed to download RoomPlan metadata from storage:', error);
+      return null;
     }
-    
-    // Provide user-friendly error message
-    const userMessage = result.error && USER_ERROR_MESSAGES[result.error as keyof typeof USER_ERROR_MESSAGES] 
-      ? USER_ERROR_MESSAGES[result.error as keyof typeof USER_ERROR_MESSAGES]
-      : result.error || 'USDZ conversion failed';
-    
-    throw new Error(`USDZ conversion failed: ${userMessage}`);
   }
-  
-  console.log('USDZ conversion successful, GLB size:', result.glbBuffer!.length);
-  if (result.warning) {
-    console.warn('Conversion warning:', result.warning);
+
+  try {
+    const jsonFilePath = path.join(process.cwd(), 'public', jsonPath);
+    return await readFile(jsonFilePath);
+  } catch (error) {
+    console.warn('Failed to read RoomPlan metadata from filesystem:', error);
+    return null;
   }
-  return result.glbBuffer!;
 }
 
 export async function POST(request: NextRequest) {
@@ -104,34 +112,20 @@ export async function POST(request: NextRequest) {
       scene_id: row.scene_id
     });
 
-    // Read USDZ file from local filesystem (public folder)
-    const usdzFilePath = path.join(process.cwd(), 'public', row.usdz_path);
-    console.log('Reading USDZ from local file:', usdzFilePath);
-    
-    let usdzBuffer: Buffer;
-    try {
-      usdzBuffer = await readFile(usdzFilePath);
-      console.log('Read USDZ file, size:', usdzBuffer.length);
-    } catch (fileError: any) {
-      throw new Error(`Failed to read USDZ file: ${fileError.message}`);
-    }
+    // Read USDZ buffer from storage or filesystem
+    const usdzBuffer = await downloadUsdFile(row.usdz_path);
+    console.log('USDZ buffer loaded, size:', usdzBuffer.length);
 
-    // Read RoomPlan JSON if available
-    let roomPlanJsonPath: string | undefined;
-    if ((row as any).json_path) {
-      roomPlanJsonPath = path.join(process.cwd(), 'public', (row as any).json_path);
-      console.log('RoomPlan JSON available:', roomPlanJsonPath);
+    // Read RoomPlan JSON metadata if available
+    const roomPlanBuffer = await downloadJsonMetadata((row as any).json_path);
+    if (roomPlanBuffer) {
+      console.log('RoomPlan metadata buffer loaded, size:', roomPlanBuffer.length);
     } else {
-      console.log('No RoomPlan JSON metadata available (json_path not in schema)');
+      console.log('No RoomPlan metadata available');
     }
 
     // Prepare GLB output paths
-    const glbFilename = `${randomUUID()}-${row.scene_id}.glb`;
-    const glbUploadDir = path.join(process.cwd(), 'public', 'models', 'scanned-rooms', row.user_id || 'anonymous');
-    const glbFilePath = path.join(glbUploadDir, glbFilename);
-    
-    // Ensure the directory exists
-    await mkdir(glbUploadDir, { recursive: true });
+    const glbFilename = `${randomUUID()}-${sanitizeSegment(row.scene_id || 'scene')}.glb`;
 
     // Convert USDZ to GLB using JavaScript parser
     console.log('Converting USDZ to GLB via JavaScript parser...');
@@ -141,27 +135,63 @@ export async function POST(request: NextRequest) {
       usdzBuffer: usdzBuffer,
       fileName: glbFilename,
       enableFallback: true,
-      roomPlanJson: roomPlanJsonPath ? { path: roomPlanJsonPath } : undefined
+      roomPlanJson: roomPlanBuffer ? { buffer: roomPlanBuffer } : undefined
     });
     
     if (!conversionResult.success || !conversionResult.glbBuffer) {
       throw new Error(conversionResult.error || 'Conversion failed');
     }
     
-    // Write GLB file to filesystem
-    await writeFile(glbFilePath, conversionResult.glbBuffer);
-    console.log('GLB file written successfully');
-    console.log('Conversion complete');
-    
-    const glbUrl = `/models/scanned-rooms/${row.user_id || 'anonymous'}/${glbFilename}`;
-    console.log('GLB saved locally to:', glbUrl);
+    let glbStoragePath: string;
+    let glbStorageUri: string;
+    let glbUrls = {
+      publicUrl: null as string | null,
+      signedUrl: null as string | null,
+    };
+
+    const uploadToStorage = parseSupabaseUri(row.usdz_path) || parseSupabaseUri(row.glb_path);
+
+    if (uploadToStorage) {
+      const sanitizedUserId = sanitizeSegment(row.user_id || 'anonymous');
+      const storagePath = buildGlbPath(sanitizedUserId, sanitizeSegment(row.scene_id || 'scene'), glbFilename);
+
+      await uploadBufferToStorage(
+        storageConfig.bucket,
+        storagePath,
+        conversionResult.glbBuffer,
+        'model/gltf-binary'
+      );
+
+      glbStoragePath = storagePath;
+      glbStorageUri = toSupabaseUri(storageConfig.bucket, storagePath);
+      const resolved = await resolveStorageUrls(glbStorageUri);
+      glbUrls.publicUrl = resolved.publicUrl;
+      glbUrls.signedUrl = resolved.signedUrl;
+
+      console.log('GLB uploaded to storage:', {
+        bucket: storageConfig.bucket,
+        objectPath: storagePath,
+        publicUrl: glbUrls.publicUrl,
+      });
+    } else {
+      const glbUploadDir = path.join(process.cwd(), 'public', 'models', 'scanned-rooms', row.user_id || 'anonymous');
+      await mkdir(glbUploadDir, { recursive: true });
+      const glbFilePath = path.join(glbUploadDir, glbFilename);
+      await writeFile(glbFilePath, conversionResult.glbBuffer);
+
+      glbStoragePath = `/models/scanned-rooms/${row.user_id || 'anonymous'}/${glbFilename}`;
+      glbStorageUri = glbStoragePath;
+      glbUrls.publicUrl = glbStoragePath;
+
+      console.log('GLB saved to filesystem:', glbFilePath);
+    }
 
     // Update database with success
     await supabaseAdmin
       .from('exports')
       .update({
         status: 'ready',
-        glb_path: glbUrl,
+        glb_path: glbStorageUri,
         updated_at: new Date().toISOString()
       })
       .eq('id', exportId);
@@ -170,7 +200,7 @@ export async function POST(request: NextRequest) {
     try {
       await supabaseAdmin.rpc('notify_export_ready', {
         export_id: exportId,
-        glb_url: glbUrl
+        glb_url: glbUrls.publicUrl || glbStorageUri
       });
     } catch (notifyError) {
       console.warn('Failed to send notification:', notifyError);
@@ -179,10 +209,11 @@ export async function POST(request: NextRequest) {
 
     console.log('Export completed successfully:', exportId);
 
-    return NextResponse.json({ 
-      success: true, 
-      glbPath: glbUrl,
-      glbUrl: glbUrl 
+    return NextResponse.json({
+      success: true,
+      glbPath: glbStorageUri,
+      glbUrl: glbUrls.publicUrl || glbStorageUri,
+      glbSignedUrl: glbUrls.signedUrl,
     });
 
   } catch (error: any) {

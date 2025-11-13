@@ -46,8 +46,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Trigger background convert function
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL || 'http://localhost:3000';
-    const bgUrl = `${baseUrl}/api/background/convert`;
+    const baseUrlEnv = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL || 'http://localhost:3000';
+    const baseUrl = baseUrlEnv.startsWith('http') ? baseUrlEnv : `https://${baseUrlEnv}`;
+    const bgUrl = `${baseUrl.replace(/\/+$/, '')}/api/background/convert`;
 
     // Fire-and-forget: don't await the background function
     fetch(bgUrl, {

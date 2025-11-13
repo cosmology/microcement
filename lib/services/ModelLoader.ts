@@ -108,7 +108,8 @@ export class ModelLoader {
       dracoLoader.setDecoderConfig({ type: 'js' });
       gltfLoader.setDRACOLoader(dracoLoader);
       
-      const modelUrl = `${modelPath}?cb=${Date.now()}`;
+      const separator = modelPath.includes('?') ? '&' : '?';
+      const modelUrl = `${modelPath}${separator}cb=${Date.now()}`;
 
       // Get total bytes for progress tracking
       let totalBytes = 0;
