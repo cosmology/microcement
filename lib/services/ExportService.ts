@@ -145,26 +145,31 @@ export async function createExport(params: CreateExportParams): Promise<CreateEx
 
 /**
  * Creates an export and awaits conversion with a timeout.
- * This is designed for Vercel Hobby plan (10-second maxDuration limit).
  * 
  * @param params Export creation parameters
- * @param timeoutMs Maximum time to wait for conversion (default: 8000ms for Hobby plan)
+ * @param timeoutMs Maximum time to wait for conversion (default: 240000ms = 4 minutes for Pro plan)
  * @returns Export result with conversion status if completed within timeout
  */
 export async function createExportAndAwait(
   params: CreateExportParams,
-  timeoutMs: number = 8000 // 8 seconds (leaving 2s buffer for Hobby's 10s limit)
+  timeoutMs: number = 240000 // 4 minutes (leaving 1 minute buffer for Pro plan's 5 minute maxDuration)
 ): Promise<CreateExportResult> {
   // First, create the export record
   const exportData = await createExport(params);
   const exportId = exportData.id;
   
-  console.log(`🚀 [ExportService] Starting conversion with timeout (${timeoutMs}ms) for export ${exportId}`);
+  const timeoutSeconds = Math.round(timeoutMs / 1000);
+  console.log(`🚀 [ExportService] Starting conversion with ${timeoutSeconds}s timeout (${timeoutMs}ms) for export ${exportId}`);
+  console.log(`   Note: Pro plan allows up to 5 minutes. Timeout set to ${timeoutSeconds}s to leave buffer for function overhead.`);
   
   // Import ConvertService and start conversion
+  const conversionStartTime = Date.now();
   const conversionPromise = import('./ConvertService')
     .then(({ convertExport }) => {
+      console.log(`⏱️ [ExportService] Conversion started at ${new Date().toISOString()}`);
       return convertExport(exportId).then((conversionResult) => {
+        const conversionDuration = Date.now() - conversionStartTime;
+        console.log(`⏱️ [ExportService] Conversion completed in ${conversionDuration}ms (${(conversionDuration / 1000).toFixed(2)}s)`);
         return { exportId, conversionResult, completed: true };
       });
     })
@@ -202,9 +207,13 @@ export async function createExportAndAwait(
     }
     
     // Timeout occurred - conversion still running in background (may be killed by Vercel)
-    console.log(`⏱️ [ExportService] Conversion timeout after ${timeoutMs}ms for export ${exportId}`);
-    console.log(`   Conversion continues in background (may be killed by Vercel function termination)`);
+    const timeoutSeconds = Math.round(timeoutMs / 1000);
+    const actualDuration = Date.now() - conversionStartTime;
+    console.log(`⏱️ [ExportService] Conversion timeout after ${timeoutSeconds}s (${timeoutMs}ms) for export ${exportId}`);
+    console.log(`   Actual duration: ${actualDuration}ms (${(actualDuration / 1000).toFixed(2)}s)`);
+    console.log(`   Conversion continues in background (may be killed by Vercel function termination at 5 minutes)`);
     console.log(`   Client should poll export status or use Realtime to get notified when ready`);
+    console.log(`   💡 Tip: Very large scans may take longer than ${timeoutSeconds}s. Check back later or use GET /api/background/convert to manually process.`);
     
     // Note: Conversion is still running, but may be killed when function returns
     // Fallback: Use the GET /api/background/convert endpoint manually or with a cron job

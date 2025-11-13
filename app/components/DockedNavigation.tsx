@@ -276,7 +276,14 @@ export default function DockedNavigation({ role, userWithRole }: DockedNavigatio
                   {/* Toggle Measurements */}
                   <li className="group/menu-item relative">
                     <a 
-                      onClick={() => toggleMeasurements()} 
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('📐 [DockedNav] Toggling measurements, current state:', showMeasurements);
+                        toggleMeasurements();
+                        // Note: State update is asynchronous, check console for actual state after toggle
+                      }}
                       className="flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer group"
                     >
                       <div className="flex items-center justify-center shrink-0">

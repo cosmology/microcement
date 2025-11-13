@@ -190,10 +190,22 @@ export default function RoomScanner({ userId, onComplete }: RoomScannerProps) {
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
           {t('roomScanner')}
         </h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
           Scan rooms using the Room Plan Scanner app and upload USDZ files
         </p>
         
+        {/* Scan Size Information */}
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+          <p className="text-xs text-blue-800 dark:text-blue-300 mb-1">
+            <strong>💡 Scan Size Tips:</strong>
+          </p>
+          <ul className="text-xs text-blue-700 dark:text-blue-400 text-left space-y-1 list-disc list-inside">
+            <li>Typical room scans (5-10 MB): Process in 5-10 seconds</li>
+            <li>Large scans (10-20 MB): May take 1-2 minutes</li>
+            <li>Very large scans (&gt;20 MB): May take up to 4 minutes</li>
+            <li>For best results, scan rooms one at a time</li>
+          </ul>
+        </div>
       </div>
 
       {/* Status Display */}

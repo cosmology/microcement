@@ -125,11 +125,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Automatically trigger the export pipeline with timeout
-    // This awaits conversion up to 8 seconds (Vercel Hobby plan has 10s maxDuration limit)
+    // This awaits conversion up to 4 minutes (Vercel Pro plan has 5 minute maxDuration limit)
     // If conversion completes within timeout, we return success. Otherwise, it continues in background.
     let exportId: string | null = null;
     let conversionCompleted = false;
     let conversionResult: any = null;
+    const startTime = Date.now();
     
     try {
       const { createExportAndAwait } = await import('@/lib/services/ExportService');
@@ -138,7 +139,10 @@ export async function POST(request: NextRequest) {
         usdzPath: usdzUri,
         userId,
         jsonPath: jsonUri
-      }, 8000); // 8 second timeout (leaving 2s buffer for function overhead)
+      }, 240000); // 4 minute timeout (leaving 1 minute buffer for Pro plan's 5 minute maxDuration)
+      
+      const conversionDuration = Date.now() - startTime;
+      console.log(`⏱️ [Upload API] Conversion attempt completed in ${conversionDuration}ms`);
       
       console.log('Export pipeline result:', {
         exportId: exportResult.id,
@@ -167,10 +171,16 @@ export async function POST(request: NextRequest) {
     const fileAccessibleUrl = usdzUrls.publicUrl || usdzUrls.signedUrl || usdzUri;
     const jsonAccessibleUrl = jsonUrls?.publicUrl || jsonUrls?.signedUrl || jsonUri || null;
 
+    // Calculate file size for user messaging
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+    const isLargeFile = file.size > 10 * 1024 * 1024; // > 10MB
+    
     const response = {
       message: conversionCompleted 
-        ? 'File uploaded successfully and conversion completed'
-        : 'File uploaded successfully and conversion started',
+        ? `File uploaded successfully (${fileSizeMB} MB) and conversion completed in ${((Date.now() - startTime) / 1000).toFixed(1)}s`
+        : isLargeFile 
+          ? `File uploaded successfully (${fileSizeMB} MB). Large scan detected - conversion may take a few minutes. Please wait and check back shortly.`
+          : `File uploaded successfully (${fileSizeMB} MB) and conversion started. This usually takes 5-10 seconds for typical room scans.`,
       userId,
       sceneId: finalSceneId,
       exportId,
@@ -183,6 +193,13 @@ export async function POST(request: NextRequest) {
         glbUrl: conversionResult?.glbUrl,
         glbSignedUrl: conversionResult?.glbSignedUrl,
         error: conversionResult?.error,
+        durationMs: Date.now() - startTime,
+        fileSizeMB: parseFloat(fileSizeMB),
+        note: !conversionCompleted && isLargeFile 
+          ? 'Large scans (>10MB) may take up to 4 minutes to process. Please be patient or check back later.'
+          : !conversionCompleted 
+            ? 'Conversion is processing in the background. Check back in a few moments.'
+            : null,
       },
       file: {
         storagePath: usdzUri,

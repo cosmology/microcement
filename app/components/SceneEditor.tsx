@@ -896,12 +896,38 @@ export default function SceneEditor({
       measurementGroupRef.current = null;
     }
 
+    console.log('📐 [SceneEditor] Measurements useEffect triggered:', {
+      showMeasurements,
+      hasRoomPlanMetadata: !!roomPlanMetadata,
+      hasModelPath: !!modelPath,
+    });
+
     if (!showMeasurements || !roomPlanMetadata) {
+      if (!showMeasurements) {
+        console.log('📐 [SceneEditor] Measurements hidden (showMeasurements = false)');
+      } else {
+        console.log('📐 [SceneEditor] Measurements hidden (no roomPlanMetadata)');
+      }
+      // Remove existing measurements if hidden
+      if (measurementGroupRef.current && measurementGroupRef.current.parent) {
+        measurementGroupRef.current.parent.remove(measurementGroupRef.current);
+        measurementGroupRef.current = null;
+        console.log('📐 [SceneEditor] Removed existing measurements group');
+      }
       if (rendererRef.current && cameraRef.current && sceneRef.current) {
         rendererRef.current.render(sceneRef.current, cameraRef.current);
       }
       return;
     }
+
+    console.log('📐 [SceneEditor] Showing measurements - roomPlanMetadata:', {
+      hasWalls: !!roomPlanMetadata.walls,
+      wallsCount: roomPlanMetadata.walls?.length || 0,
+      hasDoors: !!roomPlanMetadata.doors,
+      doorsCount: roomPlanMetadata.doors?.length || 0,
+      hasWindows: !!roomPlanMetadata.windows,
+      windowsCount: roomPlanMetadata.windows?.length || 0,
+    });
 
     const scene = sceneRef.current;
     const model = modelRef.current ?? scene?.getObjectByName('floorPlan') ?? null;

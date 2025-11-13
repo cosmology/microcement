@@ -1,20 +1,28 @@
-# Vercel Hobby Plan - USDZ to GLB Conversion Solution
+# Vercel Plan - USDZ to GLB Conversion Solution
 
-## Problem
+## Current Configuration (Pro Plan)
 
-Vercel Hobby plan has strict limitations:
-- **maxDuration**: 10 seconds maximum per serverless function
-- **Cron Jobs**: Only 2 cron jobs that run once per day (not suitable for frequent processing)
-
-The original approach of using background promises in serverless functions fails because Vercel kills background promises when the function returns, causing conversions to be interrupted.
+We're using **Vercel Pro plan** which allows:
+- **maxDuration**: Up to 5 minutes per serverless function
+- **Timeout**: 4 minutes (240 seconds) - leaving 1 minute buffer for function overhead
+- **Typical conversion time**: 5-10 seconds for small rooms, 1-2 minutes for large scans
 
 ## Solution: Awaitable Conversion with Timeout
 
 We've implemented a solution that:
 1. Starts conversion immediately when an export is created
-2. Awaits conversion completion up to 8 seconds (leaving 2s buffer for Hobby's 10s limit)
+2. Awaits conversion completion up to 4 minutes (leaving 1 minute buffer for Pro plan's 5 minute maxDuration limit)
 3. If conversion completes within timeout, returns success immediately
-4. If timeout occurs, returns immediately with "processing" status and conversion continues in background (though it may be killed by Vercel)
+4. If timeout occurs, returns immediately with "processing" status and conversion continues in background (though it may be killed by Vercel at 5 minutes)
+
+### Previous Configuration (Hobby Plan)
+
+**Note**: The previous configuration was for Hobby plan (10 second limit):
+- **maxDuration**: 10 seconds maximum per serverless function
+- **Cron Jobs**: Only 2 cron jobs that run once per day (not suitable for frequent processing)
+- **Timeout**: 8 seconds (leaving 2s buffer)
+
+The original approach of using background promises in serverless functions fails because Vercel kills background promises when the function returns, causing conversions to be interrupted.
 
 ### Implementation
 
