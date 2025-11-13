@@ -85,17 +85,24 @@ export async function createExport(params: CreateExportParams): Promise<CreateEx
       console.error('   Error message:', e instanceof Error ? e.message : String(e));
       console.error('   Error stack:', e instanceof Error ? e.stack : 'No stack trace');
       // Update export status to failed in database
-      supabaseAdmin
-        .from('exports')
-        .update({ 
-          status: 'failed', 
-          error: e instanceof Error ? e.message : String(e),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', data.id)
-        .catch((dbError) => {
-          console.error(`❌ [ExportService] Failed to update error status in database:`, dbError);
-        });
+      (async () => {
+        try {
+          const { error: dbError } = await supabaseAdmin
+            .from('exports')
+            .update({ 
+              status: 'failed', 
+              error: e instanceof Error ? e.message : String(e),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', data.id);
+          
+          if (dbError) {
+            console.error(`❌ [ExportService] Failed to update error status in database:`, dbError);
+          }
+        } catch (dbError) {
+          console.error(`❌ [ExportService] Exception updating error status in database:`, dbError);
+        }
+      })();
       // Don't throw - export is still created and can be retried later
     })
     .catch((importError) => {
