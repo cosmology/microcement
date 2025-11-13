@@ -825,18 +825,57 @@ export default function SceneEditor({
 
     const loadMetadata = async () => {
       try {
-        console.log('📐 [Measurements] Fetching RoomPlan metadata from', roomPlanJsonPath);
+        console.log('📐 [SceneEditor] RoomPlan JSON path changed in Zustand store:', {
+          jsonPath: roomPlanJsonPath?.substring(0, 100) + (roomPlanJsonPath?.length > 100 ? '...' : ''),
+          pathType: roomPlanJsonPath?.startsWith('https://') ? 'public/signed URL ✅' : 
+                    roomPlanJsonPath?.startsWith('supabase://') ? 'Supabase URI ⚠️ (will fail)' : 
+                    roomPlanJsonPath?.startsWith('/') ? 'relative path' : 'unknown',
+          pathLength: roomPlanJsonPath?.length || 0,
+        });
+        
+        console.log('📐 [SceneEditor] Fetching RoomPlan metadata from resolved URL...');
         const response = await fetch(roomPlanJsonPath);
+        
+        console.log('📐 [SceneEditor] JSON fetch response:', {
+          ok: response.ok,
+          status: response.status,
+          statusText: response.statusText,
+          contentType: response.headers.get('content-type'),
+        });
+        
         if (!response.ok) {
-          console.warn('⚠️ [Measurements] Failed to load metadata:', response.status);
+          console.warn('⚠️ [SceneEditor] Failed to load metadata:', {
+            status: response.status,
+            statusText: response.statusText,
+            url: roomPlanJsonPath?.substring(0, 100),
+          });
           return;
         }
+        
         const data: RoomPlanMetadata = await response.json();
+        console.log('✅ [SceneEditor] JSON metadata parsed successfully:', {
+          hasWalls: !!data.walls,
+          wallsCount: data.walls?.length || 0,
+          hasDoors: !!data.doors,
+          doorsCount: data.doors?.length || 0,
+          hasWindows: !!data.windows,
+          windowsCount: data.windows?.length || 0,
+          hasObjects: !!data.objects,
+          objectsCount: data.objects?.length || 0,
+        });
+        
         if (!cancelled) {
           setRoomPlanMetadata(data);
+          console.log('✅ [SceneEditor] setRoomPlanMetadata() called - metadata stored in Zustand');
+        } else {
+          console.log('ℹ️ [SceneEditor] Metadata load cancelled (component unmounted)');
         }
       } catch (error) {
-        console.error('❌ [Measurements] Error loading RoomPlan metadata:', error);
+        console.error('❌ [SceneEditor] Error loading RoomPlan metadata:', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          url: roomPlanJsonPath?.substring(0, 100),
+        });
       }
     };
 
@@ -4894,10 +4933,17 @@ export default function SceneEditor({
 
     const loadUploadedModel = async (modelPath: string, projectName?: string) => {
       try {
-        console.log('📤 [ScrollScene] Loading uploaded model:', modelPath);
+        console.log('📤 [SceneEditor] Loading uploaded model:', {
+          modelPath: modelPath?.substring(0, 100) + (modelPath?.length > 100 ? '...' : ''),
+          pathType: modelPath?.startsWith('https://') ? 'public/signed URL ✅' : 
+                    modelPath?.startsWith('supabase://') ? 'Supabase URI ⚠️ (will fail)' : 
+                    modelPath?.startsWith('/') ? 'relative path' : 'unknown',
+          pathLength: modelPath?.length || 0,
+          projectName: projectName || 'Unknown',
+        });
         
         if (!sceneRef.current) {
-          console.warn('📤 [ScrollScene] Scene not ready for model loading');
+          console.warn('⚠️ [SceneEditor] Scene not ready for model loading');
           return;
         }
         
@@ -4915,8 +4961,11 @@ export default function SceneEditor({
 
         const modelLoader = ModelLoader.getInstance();
         
-        console.log('📤 [ScrollScene] Model loading details:');
+        console.log('📤 [SceneEditor] Model loading details:');
         console.log('  - Model Path:', modelPath);
+        console.log('  - Path Type:', modelPath?.startsWith('https://') ? 'HTTPS URL (resolved) ✅' : 
+                                      modelPath?.startsWith('supabase://') ? 'Supabase URI (will fail) ⚠️' : 
+                                      'Relative/Unknown');
         console.log('  - Project Name:', projectName || 'Unknown');
         
         const result = await modelLoader.loadModel({
@@ -5129,6 +5178,47 @@ export default function SceneEditor({
       }
     }
   }, [rotateModelRequested, rotationAngle, clearRotateModelRequest])
+  
+  // ✅ ZUSTAND SUBSCRIPTION: Watch modelPath from store and load model automatically
+  // This handles iOS redirects where modelPath is set directly in Zustand
+  const previousModelPathRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!modelPath) {
+      previousModelPathRef.current = null;
+      return;
+    }
+    
+    // Only load if modelPath actually changed
+    if (modelPath === previousModelPathRef.current) {
+      return;
+    }
+    
+    console.log('🔄 [SceneEditor] modelPath changed in Zustand store:', {
+      previousPath: previousModelPathRef.current,
+      newPath: modelPath?.substring(0, 100) + (modelPath?.length > 100 ? '...' : ''),
+      pathType: modelPath?.startsWith('https://') ? 'public/signed URL ✅' : 
+                modelPath?.startsWith('supabase://') ? 'Supabase URI ⚠️ (will fail)' : 
+                modelPath?.startsWith('/') ? 'relative path' : 'unknown',
+      pathLength: modelPath?.length || 0,
+    });
+    
+    previousModelPathRef.current = modelPath;
+    
+    // Dispatch load-uploaded-model event to trigger model loading
+    // This reuses the existing event handler logic
+    if (typeof window !== 'undefined') {
+      console.log('📤 [SceneEditor] Dispatching load-uploaded-model event for Zustand modelPath change');
+      window.dispatchEvent(new CustomEvent('load-uploaded-model', {
+        detail: {
+          modelPath,
+          projectName: 'iOS Export',
+          rawModelOnly: true
+        }
+      }));
+      console.log('✅ [SceneEditor] load-uploaded-model event dispatched');
+    }
+  }, [modelPath]);
+  
   // Mouse event handlers for hotspot interaction
   useEffect(() => {
     if (!mountRef.current) return;
