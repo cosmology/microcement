@@ -56,12 +56,25 @@ export async function createExport(params: CreateExportParams): Promise<CreateEx
   // Use dynamic import to avoid bundling Node.js-only modules on client-side
   // This avoids Vercel Deployment Protection issues
   import('./ConvertService').then(({ convertExport }) => {
-    convertExport(data.id).catch((e) => {
-      console.error('Background conversion failed:', e);
-      // Don't throw - export is still created and can be retried later
-    });
+    console.log(`🚀 [ExportService] Starting background conversion for export ${data.id}`);
+    convertExport(data.id)
+      .then((result) => {
+        if (result.success) {
+          console.log(`✅ [ExportService] Conversion completed successfully for export ${data.id}`);
+          console.log(`   GLB Path: ${result.glbPath}`);
+          console.log(`   GLB URL: ${result.glbUrl}`);
+        } else {
+          console.error(`❌ [ExportService] Conversion failed for export ${data.id}:`, result.error);
+        }
+      })
+      .catch((e) => {
+        console.error(`❌ [ExportService] Background conversion error for export ${data.id}:`, e);
+        console.error('   Error stack:', e instanceof Error ? e.stack : 'No stack trace');
+        // Don't throw - export is still created and can be retried later
+      });
   }).catch((e) => {
-    console.error('Failed to load ConvertService:', e);
+    console.error('❌ [ExportService] Failed to load ConvertService:', e);
+    console.error('   Error stack:', e instanceof Error ? e.stack : 'No stack trace');
     // Don't throw - export is still created and can be processed later
   });
 
