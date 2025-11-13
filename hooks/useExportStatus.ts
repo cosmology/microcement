@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { ExportRecord } from '@/lib/supabaseAdmin';
+import type { ExportRecord } from '@/lib/types/exports';
 import { resolveToPublicUrl } from '@/lib/storage/utils';
 
 export interface ExportStatus {
