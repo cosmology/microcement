@@ -5,6 +5,8 @@ import * as THREE from "three";
 import { gsap } from "gsap";
 import SwiperGallery, { GalleryImage } from './SwiperGallery';
 import LoaderOverlay from './LoaderOverlay';
+import RotationControl from './RotationControl';
+import ZoomControl3D from './ZoomControl3D';
 import { isMobile, getThemeColors, cssColorToHex } from '../../lib/utils';
 import { ModelLoader, SCENE_CONFIG, getCameraPathData, getHotspotSettings, getUserSceneConfig } from '@/lib/services';
 import { SceneConfigService } from '@/lib/services/SceneConfigService';
@@ -82,6 +84,7 @@ export default function SceneEditor({
     setRoomPlanMetadata,
     modelPath,
     setModelPath,
+    worldRotation,
   } = useSceneStore((state) => ({
     showMeasurements: state.showMeasurements,
     roomPlanJsonPath: state.roomPlanJsonPath,
@@ -89,6 +92,7 @@ export default function SceneEditor({
     setRoomPlanMetadata: state.setRoomPlanMetadata,
     modelPath: state.modelPath,
     setModelPath: state.setModelPath,
+    worldRotation: state.worldRotation,
   }));
   
   const [hasUserConfig, setHasUserConfig] = useState(false);
@@ -825,18 +829,71 @@ export default function SceneEditor({
 
     const loadMetadata = async () => {
       try {
-        console.log('📐 [Measurements] Fetching RoomPlan metadata from', roomPlanJsonPath);
+        console.log('📐 [SceneEditor] RoomPlan JSON path changed in Zustand store:', {
+          jsonPath: roomPlanJsonPath?.substring(0, 100) + (roomPlanJsonPath?.length > 100 ? '...' : ''),
+          pathType: roomPlanJsonPath?.startsWith('https://') ? 'public/signed URL ✅' : 
+                    roomPlanJsonPath?.startsWith('supabase://') ? 'Supabase URI ⚠️ (will fail)' : 
+                    roomPlanJsonPath?.startsWith('/') ? 'relative path' : 'unknown',
+          pathLength: roomPlanJsonPath?.length || 0,
+        });
+        
+        console.log('📐 [SceneEditor] Fetching RoomPlan metadata from resolved URL...');
         const response = await fetch(roomPlanJsonPath);
+        
+        console.log('📐 [SceneEditor] JSON fetch response:', {
+          ok: response.ok,
+          status: response.status,
+          statusText: response.statusText,
+          contentType: response.headers.get('content-type'),
+        });
+        
         if (!response.ok) {
-          console.warn('⚠️ [Measurements] Failed to load metadata:', response.status);
+          console.error('❌ [SceneEditor] Failed to load RoomPlan metadata:', {
+            status: response.status,
+            statusText: response.statusText,
+            url: roomPlanJsonPath?.substring(0, 100),
+            fullUrl: roomPlanJsonPath,
+            responseHeaders: Object.fromEntries(response.headers.entries()),
+          });
+          // Don't silently fail - set metadata to null explicitly so measurements know it failed
+          if (!cancelled) {
+            setRoomPlanMetadata(null);
+            console.warn('⚠️ [SceneEditor] Set roomPlanMetadata to null due to fetch failure');
+          }
           return;
         }
+        
         const data: RoomPlanMetadata = await response.json();
+        console.log('✅ [SceneEditor] JSON metadata parsed successfully:', {
+          hasWalls: !!data.walls,
+          wallsCount: data.walls?.length || 0,
+          hasDoors: !!data.doors,
+          doorsCount: data.doors?.length || 0,
+          hasWindows: !!data.windows,
+          windowsCount: data.windows?.length || 0,
+          hasObjects: !!data.objects,
+          objectsCount: data.objects?.length || 0,
+        });
+        
         if (!cancelled) {
           setRoomPlanMetadata(data);
+          console.log('✅ [SceneEditor] setRoomPlanMetadata() called - metadata stored in Zustand');
+        } else {
+          console.log('ℹ️ [SceneEditor] Metadata load cancelled (component unmounted)');
         }
       } catch (error) {
-        console.error('❌ [Measurements] Error loading RoomPlan metadata:', error);
+        console.error('❌ [SceneEditor] Error loading RoomPlan metadata:', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          url: roomPlanJsonPath?.substring(0, 100),
+          fullUrl: roomPlanJsonPath,
+          errorType: error?.constructor?.name || typeof error,
+        });
+        // Set metadata to null on error so measurements don't try to show with invalid data
+        if (!cancelled) {
+          setRoomPlanMetadata(null);
+          console.warn('⚠️ [SceneEditor] Set roomPlanMetadata to null due to error');
+        }
       }
     };
 
@@ -857,12 +914,62 @@ export default function SceneEditor({
       measurementGroupRef.current = null;
     }
 
+    console.log('📐 [SceneEditor] Measurements useEffect triggered:', {
+      showMeasurements,
+      hasRoomPlanMetadata: !!roomPlanMetadata,
+      hasModelPath: !!modelPath,
+      measurementGroupExists: !!measurementGroupRef.current,
+      timestamp: new Date().toISOString(),
+    });
+
     if (!showMeasurements || !roomPlanMetadata) {
+      if (!showMeasurements) {
+        console.log('📐 [SceneEditor] Measurements hidden (showMeasurements = false)');
+        console.log('   → Hiding measurements UI');
+      } else {
+        console.log('📐 [SceneEditor] Measurements hidden (no roomPlanMetadata)');
+        console.log('   → Cannot show measurements without RoomPlan metadata');
+        console.log('   → Debug info:', {
+          hasRoomPlanJsonPath: !!roomPlanJsonPath,
+          roomPlanJsonPath: roomPlanJsonPath?.substring(0, 100) || 'null',
+          modelPath: modelPath?.substring(0, 100) || 'null',
+          hasModelRef: !!modelRef.current,
+          hasScene: !!sceneRef.current,
+        });
+        // Helpful message: If JSON path exists but metadata is null, the fetch might have failed
+        if (roomPlanJsonPath) {
+          console.warn('⚠️ [SceneEditor] RoomPlan JSON path exists but metadata is null.');
+          console.warn('   → This might indicate the JSON file failed to load.');
+          console.warn('   → Check the browser console for fetch errors related to:', roomPlanJsonPath.substring(0, 100));
+        } else {
+          console.warn('⚠️ [SceneEditor] No RoomPlan JSON path available.');
+          console.warn('   → Measurements require RoomPlan metadata JSON file.');
+          console.warn('   → Ensure the scanned room includes RoomPlan JSON metadata.');
+        }
+      }
+      // Note: Measurements already removed at top of useEffect (lines 894-897)
+      if (measurementGroupRef.current) {
+        console.log('📐 [SceneEditor] Removing measurement group from scene');
+      }
       if (rendererRef.current && cameraRef.current && sceneRef.current) {
         rendererRef.current.render(sceneRef.current, cameraRef.current);
+        console.log('📐 [SceneEditor] Scene re-rendered after hiding measurements');
       }
       return;
     }
+
+    console.log('📐 [SceneEditor] Showing measurements - roomPlanMetadata:', {
+      hasWalls: !!roomPlanMetadata.walls,
+      wallsCount: roomPlanMetadata.walls?.length || 0,
+      hasDoors: !!roomPlanMetadata.doors,
+      doorsCount: roomPlanMetadata.doors?.length || 0,
+      hasWindows: !!roomPlanMetadata.windows,
+      windowsCount: roomPlanMetadata.windows?.length || 0,
+      hasObjects: !!roomPlanMetadata.objects,
+      objectsCount: roomPlanMetadata.objects?.length || 0,
+      totalSurfaceArea: roomPlanMetadata.totalSurfaceArea || 'not calculated',
+    });
+    console.log('📐 [SceneEditor] → Starting measurement visualization creation');
 
     const scene = sceneRef.current;
     const model = modelRef.current ?? scene?.getObjectByName('floorPlan') ?? null;
@@ -878,18 +985,34 @@ export default function SceneEditor({
     const modelSize = modelBox.getSize(new THREE.Vector3());
     const modelCenter = modelBox.getCenter(new THREE.Vector3());
 
-    const measurementGroup = createRoomMeasurements(roomPlanMetadata, true, 1);
+    // Get theme for dimension labels (theme-aware colors)
+    const themeColors = getThemeColors();
+    const isDarkMode = themeColors.isDark;
+
+    const measurementGroup = createRoomMeasurements(roomPlanMetadata, true, 1, isDarkMode);
     measurementGroupRef.current = measurementGroup;
+    console.log('📐 [SceneEditor] Measurement group created:', {
+      childrenCount: measurementGroup.children.length,
+      groupName: measurementGroup.name,
+    });
 
     const metadataBox = new THREE.Box3().setFromObject(measurementGroup);
     if (metadataBox.isEmpty()) {
       console.warn('📐 [Measurements] Metadata bounding box is empty, skipping overlay');
+      console.warn('   → This usually means no valid wall/door/window data was found');
       measurementGroupRef.current = null;
       return;
     }
 
     const metadataSize = metadataBox.getSize(new THREE.Vector3());
     const metadataCenter = metadataBox.getCenter(new THREE.Vector3());
+
+    console.log('📐 [SceneEditor] Model and metadata bounding boxes:', {
+      modelSize: { x: modelSize.x.toFixed(2), y: modelSize.y.toFixed(2), z: modelSize.z.toFixed(2) },
+      modelCenter: { x: modelCenter.x.toFixed(2), y: modelCenter.y.toFixed(2), z: modelCenter.z.toFixed(2) },
+      metadataSize: { x: metadataSize.x.toFixed(2), y: metadataSize.y.toFixed(2), z: metadataSize.z.toFixed(2) },
+      metadataCenter: { x: metadataCenter.x.toFixed(2), y: metadataCenter.y.toFixed(2), z: metadataCenter.z.toFixed(2) },
+    });
 
     const scaleX = metadataSize.x !== 0 ? modelSize.x / metadataSize.x : 1;
     const scaleY = metadataSize.y !== 0 ? modelSize.y / metadataSize.y : scaleX;
@@ -899,6 +1022,15 @@ export default function SceneEditor({
       ? (scaleX + scaleZ) / 2
       : model.scale.x;
     const verticalScale = Number.isFinite(scaleY) && scaleY > 0 ? scaleY : uniformHorizontalScale;
+
+    console.log('📐 [SceneEditor] Calculating alignment scales:', {
+      scaleX: scaleX.toFixed(4),
+      scaleY: scaleY.toFixed(4),
+      scaleZ: scaleZ.toFixed(4),
+      uniformHorizontalScale: uniformHorizontalScale.toFixed(4),
+      verticalScale: verticalScale.toFixed(4),
+      modelScale: { x: model.scale.x.toFixed(4), y: model.scale.y.toFixed(4), z: model.scale.z.toFixed(4) },
+    });
 
     const toOrigin = new THREE.Matrix4().makeTranslation(-metadataCenter.x, -metadataCenter.y, -metadataCenter.z);
     measurementGroup.applyMatrix4(toOrigin);
@@ -910,15 +1042,24 @@ export default function SceneEditor({
     measurementGroup.updateMatrixWorld(true);
 
     scene.add(measurementGroup);
-    console.log('📐 [Measurements] Overlay aligned', {
+    console.log('📐 [SceneEditor] Measurement overlay aligned and added to scene:', {
+      finalPosition: {
+        x: measurementGroup.position.x.toFixed(2),
+        y: measurementGroup.position.y.toFixed(2),
+        z: measurementGroup.position.z.toFixed(2),
+      },
+      finalScale: {
+        x: measurementGroup.scale.x.toFixed(4),
+        y: measurementGroup.scale.y.toFixed(4),
+        z: measurementGroup.scale.z.toFixed(4),
+      },
       modelSize,
       metadataSize,
-      uniformHorizontalScale,
-      verticalScale,
     });
 
     if (rendererRef.current && cameraRef.current) {
       rendererRef.current.render(scene, cameraRef.current);
+      console.log('📐 [SceneEditor] Scene re-rendered with measurements visible');
     }
 
     return () => {
@@ -4160,6 +4301,25 @@ export default function SceneEditor({
   };
 
 
+  // Apply world rotation to scene
+  useEffect(() => {
+    if (sceneRef.current) {
+      console.log('🌍 [SceneEditor] Applying world rotation to scene:', {
+        x: (worldRotation.x * 180 / Math.PI).toFixed(1) + '°',
+        y: (worldRotation.y * 180 / Math.PI).toFixed(1) + '°',
+        z: (worldRotation.z * 180 / Math.PI).toFixed(1) + '°',
+      });
+      sceneRef.current.rotation.x = worldRotation.x;
+      sceneRef.current.rotation.y = worldRotation.y;
+      sceneRef.current.rotation.z = worldRotation.z;
+      
+      // Force render to show rotation immediately
+      if (rendererRef.current && cameraRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
+    }
+  }, [worldRotation, sceneRef, rendererRef, cameraRef]);
+
   // Theme change listener
   useEffect(() => {
     const handleThemeChange = () => {
@@ -4174,8 +4334,8 @@ export default function SceneEditor({
           WALL_COLOR: themeColors.isDark ? 0x04070E : 0xffffff,
           CUBE_COLOR: 0x00ff00,
           CUBE_EMISSIVE_COLOR: 0x003300,
-          GRID_COLOR_MAJOR: themeColors.isDark ? 0x444444 : 0x888888,
-          GRID_COLOR_MINOR: themeColors.isDark ? 0x222222 : 0xcccccc,
+          GRID_COLOR_MAJOR: themeColors.isDark ? 0x444444 : 0x888888, // Dark: gray, Light: lighter gray
+          GRID_COLOR_MINOR: themeColors.isDark ? 0x222222 : 0xcccccc, // Dark: darker gray, Light: light gray
           AXES_COLOR: themeColors.isDark ? 0x666666 : 0x333333,
           HOTSPOT_NORMAL_COLOR: 0xffffff,
         };
@@ -4207,10 +4367,27 @@ export default function SceneEditor({
         });
         
         // Update grid helper colors
+        // GridHelper uses an array of materials: [majorLinesMaterial, minorLinesMaterial]
         sceneRef.current.traverse((child: THREE.Object3D) => {
           if (child instanceof THREE.GridHelper) {
-            child.material.color.setHex(colors.GRID_COLOR_MAJOR);
-            child.material.opacity = 0.8;
+            // GridHelper.material is an array of two LineBasicMaterials
+            const material = child.material;
+            if (Array.isArray(material)) {
+              // Update major lines material (index 0)
+              const majorMaterial = material[0] as THREE.LineBasicMaterial;
+              if (majorMaterial) {
+                majorMaterial.color.setHex(colors.GRID_COLOR_MAJOR);
+              }
+              // Update minor lines material (index 1)
+              const minorMaterial = material[1] as THREE.LineBasicMaterial;
+              if (minorMaterial) {
+                minorMaterial.color.setHex(colors.GRID_COLOR_MINOR);
+              }
+            } else {
+              // Fallback for single material (shouldn't happen, but just in case)
+              const singleMaterial = material as THREE.LineBasicMaterial;
+              singleMaterial.color.setHex(colors.GRID_COLOR_MAJOR);
+            }
           }
         });
         
@@ -4894,10 +5071,17 @@ export default function SceneEditor({
 
     const loadUploadedModel = async (modelPath: string, projectName?: string) => {
       try {
-        console.log('📤 [ScrollScene] Loading uploaded model:', modelPath);
+        console.log('📤 [SceneEditor] Loading uploaded model:', {
+          modelPath: modelPath?.substring(0, 100) + (modelPath?.length > 100 ? '...' : ''),
+          pathType: modelPath?.startsWith('https://') ? 'public/signed URL ✅' : 
+                    modelPath?.startsWith('supabase://') ? 'Supabase URI ⚠️ (will fail)' : 
+                    modelPath?.startsWith('/') ? 'relative path' : 'unknown',
+          pathLength: modelPath?.length || 0,
+          projectName: projectName || 'Unknown',
+        });
         
         if (!sceneRef.current) {
-          console.warn('📤 [ScrollScene] Scene not ready for model loading');
+          console.warn('⚠️ [SceneEditor] Scene not ready for model loading');
           return;
         }
         
@@ -4915,8 +5099,11 @@ export default function SceneEditor({
 
         const modelLoader = ModelLoader.getInstance();
         
-        console.log('📤 [ScrollScene] Model loading details:');
+        console.log('📤 [SceneEditor] Model loading details:');
         console.log('  - Model Path:', modelPath);
+        console.log('  - Path Type:', modelPath?.startsWith('https://') ? 'HTTPS URL (resolved) ✅' : 
+                                      modelPath?.startsWith('supabase://') ? 'Supabase URI (will fail) ⚠️' : 
+                                      'Relative/Unknown');
         console.log('  - Project Name:', projectName || 'Unknown');
         
         const result = await modelLoader.loadModel({
@@ -5129,6 +5316,47 @@ export default function SceneEditor({
       }
     }
   }, [rotateModelRequested, rotationAngle, clearRotateModelRequest])
+  
+  // ✅ ZUSTAND SUBSCRIPTION: Watch modelPath from store and load model automatically
+  // This handles iOS redirects where modelPath is set directly in Zustand
+  const previousModelPathRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!modelPath) {
+      previousModelPathRef.current = null;
+      return;
+    }
+    
+    // Only load if modelPath actually changed
+    if (modelPath === previousModelPathRef.current) {
+      return;
+    }
+    
+    console.log('🔄 [SceneEditor] modelPath changed in Zustand store:', {
+      previousPath: previousModelPathRef.current,
+      newPath: modelPath?.substring(0, 100) + (modelPath?.length > 100 ? '...' : ''),
+      pathType: modelPath?.startsWith('https://') ? 'public/signed URL ✅' : 
+                modelPath?.startsWith('supabase://') ? 'Supabase URI ⚠️ (will fail)' : 
+                modelPath?.startsWith('/') ? 'relative path' : 'unknown',
+      pathLength: modelPath?.length || 0,
+    });
+    
+    previousModelPathRef.current = modelPath;
+    
+    // Dispatch load-uploaded-model event to trigger model loading
+    // This reuses the existing event handler logic
+    if (typeof window !== 'undefined') {
+      console.log('📤 [SceneEditor] Dispatching load-uploaded-model event for Zustand modelPath change');
+      window.dispatchEvent(new CustomEvent('load-uploaded-model', {
+        detail: {
+          modelPath,
+          projectName: 'iOS Export',
+          rawModelOnly: true
+        }
+      }));
+      console.log('✅ [SceneEditor] load-uploaded-model event dispatched');
+    }
+  }, [modelPath]);
+  
   // Mouse event handlers for hotspot interaction
   useEffect(() => {
     if (!mountRef.current) return;
@@ -6533,8 +6761,16 @@ export default function SceneEditor({
           </div>
         </div>
       )}
-
-      {/* CameraPathEditor3D now integrated into DockedNavigation panel */}
+      
+      {/* RotationControl - Blender-style 3D gizmo */}
+      <RotationControl sceneRef={sceneRef} />
+      
+      
+      <ZoomControl3D 
+        cameraRef={cameraRef}
+        sceneRef={sceneRef}
+        rendererRef={rendererRef}
+      />
       
       {/* Loader Overlay Portal - Shows real loading progress */}
       {showLoader && (

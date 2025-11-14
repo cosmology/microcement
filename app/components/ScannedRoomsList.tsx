@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2, Download, Eye, Trash2, Calendar, User, Scan, Home, ChevronDown } from 'lucide-react';
 import { useSceneStore } from '@/lib/stores/sceneStore';
+import { useDockedNavigationStore } from '@/lib/stores/dockedNavigationStore';
 
 interface ScannedRoom {
   id: string;
@@ -41,6 +42,7 @@ export default function ScannedRoomsList({ userId }: ScannedRoomsListProps) {
   const t = useTranslations('Dock');
   const setRoomPlanJsonPath = useSceneStore(state => state.setRoomPlanJsonPath);
   const { setModelLoadingProgress } = useSceneStore();
+  const { setShowScannedRooms } = useDockedNavigationStore();
   const [scannedRooms, setScannedRooms] = useState<ScannedRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingRoomId, setLoadingRoomId] = useState<string | null>(null);
@@ -123,6 +125,9 @@ export default function ScannedRoomsList({ userId }: ScannedRoomsListProps) {
       const dispatched = window.dispatchEvent(event);
       console.log('🏠 [ScannedRoomsPanel] load-uploaded-model event dispatched:', dispatched);
       
+      // Collapse the panel after loading
+      setShowScannedRooms(false);
+      
       // Clear loading state after a short delay
       setTimeout(() => {
         setLoadingRoomId(null);
@@ -196,7 +201,7 @@ export default function ScannedRoomsList({ userId }: ScannedRoomsListProps) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-blue-600 dark:text-blue-400" />
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-purple-600 dark:text-purple-400" />
           <p className="text-gray-600 dark:text-gray-400">Loading scanned rooms...</p>
         </div>
       </div>
@@ -211,7 +216,7 @@ export default function ScannedRoomsList({ userId }: ScannedRoomsListProps) {
           <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
           <button 
             onClick={fetchScannedRooms}
-            className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+            className="bg-purple-600 dark:bg-purple-700 text-white px-4 py-2 rounded hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors"
           >
             Retry
           </button>
@@ -286,7 +291,7 @@ export default function ScannedRoomsList({ userId }: ScannedRoomsListProps) {
                     }}
                     className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
                       statusFilter === option.value 
-                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' 
+                        ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 font-medium' 
                         : 'text-gray-700 dark:text-gray-300'
                     }`}
                   >
@@ -322,7 +327,7 @@ export default function ScannedRoomsList({ userId }: ScannedRoomsListProps) {
                   </h4>
                   <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
                     room.status === 'ready' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' :
-                    room.status === 'processing' ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' :
+                    room.status === 'processing' ? 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300' :
                     room.status === 'failed' ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300' :
                     'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                   }`}>
@@ -340,7 +345,7 @@ export default function ScannedRoomsList({ userId }: ScannedRoomsListProps) {
                     <button
                       onClick={() => handleLoadRoom(room)}
                       disabled={loadingRoomId === room.id}
-                      className="flex-1 bg-blue-600 text-white px-3 py-1.5 rounded text-xs hover:bg-blue-700 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 bg-purple-600 dark:bg-purple-400 text-white px-3 py-1.5 rounded text-xs hover:bg-purple-700 dark:hover:bg-purple-500 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loadingRoomId === room.id ? (
                         <>

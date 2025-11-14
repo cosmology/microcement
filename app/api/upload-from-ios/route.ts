@@ -124,19 +124,44 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Automatically trigger the export pipeline using shared service
-    // This avoids HTTP calls that may be blocked by Vercel Deployment Protection
+    // Automatically trigger the export pipeline with timeout
+    // This awaits conversion up to 4 minutes (Vercel Pro plan has 5 minute maxDuration limit)
+    // If conversion completes within timeout, we return success. Otherwise, it continues in background.
     let exportId: string | null = null;
+    let conversionCompleted = false;
+    let conversionResult: any = null;
+    const startTime = Date.now();
+    
     try {
-      const { createExport } = await import('@/lib/services/ExportService');
-      const exportResult = await createExport({
+      const { createExportAndAwait } = await import('@/lib/services/ExportService');
+      const exportResult = await createExportAndAwait({
         sceneId: finalSceneId,
         usdzPath: usdzUri,
         userId,
         jsonPath: jsonUri
+      }, 240000); // 4 minute timeout (leaving 1 minute buffer for Pro plan's 5 minute maxDuration)
+      
+      const conversionDuration = Date.now() - startTime;
+      console.log(`⏱️ [Upload API] Conversion attempt completed in ${conversionDuration}ms`);
+      
+      console.log('Export pipeline result:', {
+        exportId: exportResult.id,
+        status: exportResult.status,
+        completed: exportResult.completed
       });
-      console.log('Export pipeline triggered successfully:', exportResult);
+      
       exportId = exportResult.id;
+      conversionCompleted = exportResult.completed || false;
+      conversionResult = exportResult.conversionResult;
+      
+      if (conversionCompleted && exportResult.conversionResult?.success) {
+        console.log('✅ Conversion completed successfully during upload!');
+        console.log(`   GLB Path: ${exportResult.conversionResult.glbPath}`);
+        console.log(`   GLB URL: ${exportResult.conversionResult.glbUrl}`);
+      } else if (!conversionCompleted) {
+        console.log('⏱️ Conversion started but did not complete within timeout');
+        console.log('   Client can poll export status or use Realtime to get notified when ready');
+      }
     } catch (error) {
       console.error('Error triggering export pipeline:', error);
       // Don't fail the upload if export creation fails - the export can be created manually later
@@ -146,11 +171,36 @@ export async function POST(request: NextRequest) {
     const fileAccessibleUrl = usdzUrls.publicUrl || usdzUrls.signedUrl || usdzUri;
     const jsonAccessibleUrl = jsonUrls?.publicUrl || jsonUrls?.signedUrl || jsonUri || null;
 
+    // Calculate file size for user messaging
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+    const isLargeFile = file.size > 10 * 1024 * 1024; // > 10MB
+    
     const response = {
-      message: 'File uploaded successfully and export pipeline started',
+      message: conversionCompleted 
+        ? `File uploaded successfully (${fileSizeMB} MB) and conversion completed in ${((Date.now() - startTime) / 1000).toFixed(1)}s`
+        : isLargeFile 
+          ? `File uploaded successfully (${fileSizeMB} MB). Large scan detected - conversion may take a few minutes. Please wait and check back shortly.`
+          : `File uploaded successfully (${fileSizeMB} MB) and conversion started. This usually takes 5-10 seconds for typical room scans.`,
       userId,
       sceneId: finalSceneId,
       exportId,
+      conversion: {
+        completed: conversionCompleted,
+        status: conversionCompleted 
+          ? (conversionResult?.success ? 'ready' : 'failed')
+          : 'processing',
+        glbPath: conversionResult?.glbPath,
+        glbUrl: conversionResult?.glbUrl,
+        glbSignedUrl: conversionResult?.glbSignedUrl,
+        error: conversionResult?.error,
+        durationMs: Date.now() - startTime,
+        fileSizeMB: parseFloat(fileSizeMB),
+        note: !conversionCompleted && isLargeFile 
+          ? 'Large scans (>10MB) may take up to 4 minutes to process. Please be patient or check back later.'
+          : !conversionCompleted 
+            ? 'Conversion is processing in the background. Check back in a few moments.'
+            : null,
+      },
       file: {
         storagePath: usdzUri,
         path: fileAccessibleUrl,

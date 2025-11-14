@@ -132,11 +132,11 @@ export default function RotationControl3D({
 
 
   return (
-    <div className={`fixed bottom-4 left-48 z-[50] ${className}`} data-rotation-control style={{ marginLeft: '1rem' }}>
+    <div className={`fixed top-0 right-0 mt-2 mr-2 z-[50] ${className}`} data-rotation-control>
       {/* Tracking Ball Control */}
       <div 
         ref={containerRef}
-        className="relative w-32 h-32 my-2"
+        className="relative w-28 h-28 mb-2"
       >
         {/* Central tracking ball */}
         <div 
@@ -214,25 +214,13 @@ export default function RotationControl3D({
         </button>
       </div>
       
-      {/* Bottom aligned text controls */}
-      <div className="absolute bottom-1 left-1 right-1 flex justify-between items-end pointer-events-none">
-        {/* Instructions */}
-        <div className="p-1 rounded-lg backdrop-blur-sm">
-          <div className="bg-white/5 dark:bg-black/50 p-1 rounded">
-            <div className="text-xs text-foreground/80">Drag axis buttons to rotate world</div>
-            <div className="text-xs text-foreground/80">Red=X, Green=Y, Blue=Z</div>
-          </div>
-        </div>
-
-        {/* Rotation Values Display */}
-        <div className="p-1 rounded-lg backdrop-blur-sm">
-          <div className="text-xs bg-white/5 dark:bg-black/50 p-1 rounded">
-            <div className="text-xs text-foreground/80">X: {(displayRotation.x * 180 / Math.PI).toFixed(1)}°</div>
-            <div className="text-xs text-foreground/80">Y: {(displayRotation.y * 180 / Math.PI).toFixed(1)}°</div>
-            <div className="text-xs text-foreground/80">Z: {(displayRotation.z * 180 / Math.PI).toFixed(1)}°</div>
-            <div className={`mt-1 text-xs ${isActiveInstance ? 'text-green-400' : 'text-red-400'}`}>
-              {isActiveInstance ? '✅ Active' : '⚠️ Inactive'}
-            </div>
+      {/* Rotation Values Display - Positioned below the sphere */}
+      <div className="flex justify-center pointer-events-none">
+        <div className="text-xs bg-white/5 dark:bg-black/50 px-2 py-1 rounded backdrop-blur-sm">
+          <div className="text-xs text-foreground/80 whitespace-nowrap">
+            X: {(displayRotation.x * 180 / Math.PI).toFixed(1)}° | 
+            Y: {(displayRotation.y * 180 / Math.PI).toFixed(1)}° | 
+            Z: {(displayRotation.z * 180 / Math.PI).toFixed(1)}°
           </div>
         </div>
       </div>

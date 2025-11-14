@@ -150,31 +150,86 @@ export default function HomeClient() {
             
             if (exportData.status === 'ready' && exportData.glb_path) {
               console.log('✅ [HomeClient] Export is ready, saving to Zustand store');
+              console.log('📊 [HomeClient] Raw export data URLs:', {
+                glb_path: exportData.glb_path,
+                glb_public_url: exportData.glb_public_url,
+                glb_signed_url: exportData.glb_signed_url ? 'present' : 'missing',
+                json_path: exportData.json_path,
+                json_public_url: exportData.json_public_url,
+                json_signed_url: exportData.json_signed_url ? 'present' : 'missing',
+              });
+              
+              // Use resolved public/signed URLs instead of Supabase URIs
+              // Priority: signed URL > public URL > raw path
+              const modelUrl = exportData.glb_signed_url || exportData.glb_public_url || exportData.glb_path;
+              const jsonUrl = exportData.json_signed_url || exportData.json_public_url || exportData.json_path;
+              
+              console.log('🔗 [HomeClient] Resolved URLs for loading:', {
+                modelUrl: modelUrl?.substring(0, 100) + (modelUrl?.length > 100 ? '...' : ''),
+                modelUrlType: modelUrl?.startsWith('https://') ? 'public/signed URL ✅' : 
+                              modelUrl?.startsWith('supabase://') ? 'Supabase URI ⚠️ (will fail)' : 
+                              modelUrl?.startsWith('/') ? 'relative path' : 'unknown',
+                jsonUrl: jsonUrl?.substring(0, 100) + (jsonUrl?.length > 100 ? '...' : ''),
+                jsonUrlType: jsonUrl?.startsWith('https://') ? 'public/signed URL ✅' : 
+                             jsonUrl?.startsWith('supabase://') ? 'Supabase URI ⚠️ (will fail)' : 
+                             jsonUrl?.startsWith('/') ? 'relative path' : 'none',
+              });
               
               // Save model path to store - SceneEditor will watch this and load automatically
-              setModelPath(exportData.glb_path);
-              console.log('✅ [HomeClient] Set modelPath in store:', exportData.glb_path);
+              setModelPath(modelUrl);
+              console.log('✅ [HomeClient] setModelPath() called with resolved URL');
+              console.log('   URL length:', modelUrl?.length || 0);
+              console.log('   URL starts with https://', modelUrl?.startsWith('https://') || false);
+              console.log('   URL starts with supabase://', modelUrl?.startsWith('supabase://') || false);
               
-              // Save JSON path to store
-              if (exportData.json_path) {
-                setRoomPlanJsonPath(exportData.json_path);
-                console.log('✅ [HomeClient] Set roomPlanJsonPath in store:', exportData.json_path);
+              // Save JSON path to store (use resolved URL)
+              if (jsonUrl) {
+                setRoomPlanJsonPath(jsonUrl);
+                console.log('✅ [HomeClient] setRoomPlanJsonPath() called with resolved URL');
+                console.log('   JSON URL length:', jsonUrl.length);
+                console.log('   JSON URL starts with https://', jsonUrl.startsWith('https://'));
                 
                 // Load and save JSON metadata
                 try {
-                  const jsonResponse = await fetch(exportData.json_path);
+                  console.log('📥 [HomeClient] Fetching JSON metadata from resolved URL...');
+                  const jsonResponse = await fetch(jsonUrl);
+                  console.log('📥 [HomeClient] JSON fetch response:', {
+                    ok: jsonResponse.ok,
+                    status: jsonResponse.status,
+                    statusText: jsonResponse.statusText,
+                    contentType: jsonResponse.headers.get('content-type'),
+                  });
+                  
                   if (jsonResponse.ok) {
                     const roomPlanJson = await jsonResponse.json();
+                    console.log('✅ [HomeClient] JSON metadata parsed successfully:', {
+                      hasWalls: !!roomPlanJson.walls,
+                      wallsCount: roomPlanJson.walls?.length || 0,
+                      hasDoors: !!roomPlanJson.doors,
+                      doorsCount: roomPlanJson.doors?.length || 0,
+                      hasWindows: !!roomPlanJson.windows,
+                      windowsCount: roomPlanJson.windows?.length || 0,
+                      hasObjects: !!roomPlanJson.objects,
+                      objectsCount: roomPlanJson.objects?.length || 0,
+                    });
+                    
                     setRoomPlanMetadata(roomPlanJson);
-                    console.log('✅ [HomeClient] Loaded and saved roomPlanMetadata to store');
+                    console.log('✅ [HomeClient] setRoomPlanMetadata() called - metadata stored in Zustand');
                   } else {
-                    console.warn('⚠️ [HomeClient] Failed to load JSON metadata:', jsonResponse.status);
+                    console.warn('⚠️ [HomeClient] Failed to load JSON metadata:', {
+                      status: jsonResponse.status,
+                      statusText: jsonResponse.statusText,
+                      url: jsonUrl.substring(0, 100),
+                    });
                   }
                 } catch (jsonError) {
-                  console.error('❌ [HomeClient] Error loading JSON metadata:', jsonError);
+                  console.error('❌ [HomeClient] Error loading JSON metadata:', {
+                    error: jsonError instanceof Error ? jsonError.message : String(jsonError),
+                    url: jsonUrl.substring(0, 100),
+                  });
                 }
               } else {
-                console.log('ℹ️ [HomeClient] No JSON path available for this export');
+                console.log('ℹ️ [HomeClient] No JSON path available for this export - measurements will not be available');
               }
               
               // Clear URL params after saving to store

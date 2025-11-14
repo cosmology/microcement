@@ -8,9 +8,10 @@ export async function GET(request: NextRequest) {
   
   try {
     // Fetch all ready exports directly (single query)
+    // Include json_path in the SELECT to properly resolve JSON metadata URLs
     const { data: exports, error } = await supabaseAdmin
       .from('exports')
-      .select('id, user_id, scene_id, usdz_path, glb_path, status, error, created_at, updated_at')
+      .select('id, user_id, scene_id, usdz_path, glb_path, json_path, status, error, created_at, updated_at')
       .eq('status', 'ready')
       .not('glb_path', 'is', null)
       .order('created_at', { ascending: false });
@@ -24,11 +25,11 @@ export async function GET(request: NextRequest) {
 
     const rooms = await Promise.all(
       (exports || []).map(async (exportItem) => {
-        const existingJsonPath =
-          (exportItem as any).json_path ??
-          (exportItem.usdz_path && !exportItem.usdz_path.startsWith('supabase://')
-            ? exportItem.usdz_path.replace('-Room.usdz', '-room.json').replace('.usdz', '-room.json')
-            : null);
+        // Use json_path from database if available
+        // Note: The fallback derivation from USDZ path is unreliable because:
+        // - USDZ files are in ios-uploads/, JSON files are in ios-metadata/
+        // - Each file gets its own UUID, so filenames don't match
+        const existingJsonPath = (exportItem as any).json_path || null;
 
         const [usdzUrls, glbUrls, jsonUrls] = await Promise.all([
           resolveStorageUrls(exportItem.usdz_path ?? null),

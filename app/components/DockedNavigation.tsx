@@ -62,8 +62,8 @@ export default function DockedNavigation({ role, userWithRole }: DockedNavigatio
   // Camera store (for editor state and model utilities)
   const { isEditorEnabled, requestClearScene, requestRotateModel } = useCameraStore()
   
-  // Scene store (for measurements toggle)
-  const { showMeasurements, toggleMeasurements } = useSceneStore()
+  // Scene store (for measurements toggle and metadata check)
+  const { showMeasurements, toggleMeasurements, roomPlanMetadata, roomPlanJsonPath } = useSceneStore()
 
   // Monitor header visibility - panels stick to top when header is hidden
   React.useEffect(() => {
@@ -276,8 +276,39 @@ export default function DockedNavigation({ role, userWithRole }: DockedNavigatio
                   {/* Toggle Measurements */}
                   <li className="group/menu-item relative">
                     <a 
-                      onClick={() => toggleMeasurements()} 
-                      className="flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer group"
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Check if metadata is available before toggling
+                        const hasMetadata = !!roomPlanMetadata;
+                        const hasJsonPath = !!roomPlanJsonPath;
+                        
+                        console.log('📐 [DockedNav] Toggling measurements, current state:', {
+                          showMeasurements,
+                          hasMetadata,
+                          hasJsonPath,
+                          roomPlanJsonPath: roomPlanJsonPath?.substring(0, 100) || 'null',
+                        });
+                        
+                        if (!showMeasurements && !hasMetadata) {
+                          // Trying to enable measurements but no metadata available
+                          if (!hasJsonPath) {
+                            console.warn('⚠️ [DockedNav] Cannot show measurements: No RoomPlan JSON path available');
+                            alert('Measurements require RoomPlan metadata. Please load a scanned room with RoomPlan data.');
+                          } else {
+                            console.warn('⚠️ [DockedNav] Cannot show measurements: RoomPlan metadata not loaded yet or failed to load');
+                            alert('RoomPlan metadata is loading or failed to load. Please check the console for details.');
+                          }
+                          return;
+                        }
+                        
+                        toggleMeasurements();
+                        // Note: State update is asynchronous, check console for actual state after toggle
+                      }}
+                      className={`flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer group ${!roomPlanMetadata && !showMeasurements ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      title={!roomPlanMetadata && !showMeasurements ? 'RoomPlan metadata required for measurements' : undefined}
                     >
                       <div className="flex items-center justify-center shrink-0">
                         <RulerIcon className={`w-[19px] h-[19px] transition-colors ${showMeasurements ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'} group-hover:text-blue-600 dark:group-hover:text-blue-400`} />

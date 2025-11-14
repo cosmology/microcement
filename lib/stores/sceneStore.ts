@@ -170,8 +170,17 @@ export const useSceneStore = create<SceneState>()(
       setModelLoadingProgress: (progress) => set({ modelLoadingProgress: progress }),
       setRoomPlanJsonPath: (path) => set({ roomPlanJsonPath: path }),
       setRoomPlanMetadata: (metadata) => set({ roomPlanMetadata: metadata }),
-      setShowMeasurements: (show) => set({ showMeasurements: show }),
-      toggleMeasurements: () => set((state) => ({ showMeasurements: !state.showMeasurements })),
+      setShowMeasurements: (show) => {
+        console.log('📐 [SceneStore] setShowMeasurements called:', show);
+        set({ showMeasurements: show });
+      },
+      toggleMeasurements: () => {
+        const currentState = get().showMeasurements;
+        const newState = !currentState;
+        console.log('📐 [SceneStore] toggleMeasurements called, current:', currentState, '-> new:', newState);
+        set({ showMeasurements: newState });
+        console.log('📐 [SceneStore] showMeasurements updated to:', get().showMeasurements);
+      },
       setSceneStage: (stage) => set({ sceneStage: stage }),
       setCurrentSection: (section) => set({ currentSection: section }),
       setScrollProgress: (progress) => set({ scrollProgress: progress }),

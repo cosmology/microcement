@@ -10,12 +10,29 @@ export interface CreateExportParams {
 export interface CreateExportResult {
   id: string;
   status: string;
+  completed?: boolean; // true if conversion completed during the await period
+  conversionResult?: {
+    success: boolean;
+    glbPath?: string;
+    glbUrl?: string;
+    glbSignedUrl?: string;
+    error?: string;
+  };
+}
+
+/**
+ * Creates a promise that resolves after a delay (for timeout purposes)
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**
  * Creates an export record in the database and triggers background conversion.
- * This is a shared service function to avoid HTTP calls that may be blocked
- * by Vercel Deployment Protection.
+ * This is a shared service function that calls the conversion logic directly,
+ * avoiding HTTP calls that may be blocked by Vercel Deployment Protection.
+ * 
+ * NOTE: Uses dynamic import to avoid bundling Node.js-only modules on client-side
  */
 export async function createExport(params: CreateExportParams): Promise<CreateExportResult> {
   const { sceneId, usdzPath, userId, jsonPath } = params;
@@ -50,11 +67,75 @@ export async function createExport(params: CreateExportParams): Promise<CreateEx
     throw new Error(`Failed to create export: ${error.message}`);
   }
 
-  // Trigger background conversion asynchronously
-  // Use internal URL or environment variable to bypass Vercel auth if needed
-  triggerBackgroundConversion(data.id).catch((e) => {
-    console.error('Background conversion trigger failed:', e);
-  });
+  // Trigger background conversion directly (no HTTP call needed)
+  // Use dynamic import to avoid bundling Node.js-only modules on client-side
+  // This avoids Vercel Deployment Protection issues
+  // 
+  // NOTE: On Vercel, serverless functions may terminate background promises when the function returns.
+  // For production, consider using Vercel Cron Jobs to poll for queued exports instead.
+  const conversionPromise = import('./ConvertService')
+    .then(({ convertExport }) => {
+      console.log(`🚀 [ExportService] Starting background conversion for export ${data.id}`);
+      console.log(`   Export ID: ${data.id}`);
+      console.log(`   USDZ Path: ${usdzPath}`);
+      console.log(`   JSON Path: ${jsonPath || 'none'}`);
+      return convertExport(data.id);
+    })
+    .then((result) => {
+      if (result.success) {
+        console.log(`✅ [ExportService] Conversion completed successfully for export ${data.id}`);
+        console.log(`   GLB Path: ${result.glbPath}`);
+        console.log(`   GLB URL: ${result.glbUrl}`);
+        if (result.glbSignedUrl) {
+          console.log(`   GLB Signed URL: ${result.glbSignedUrl.substring(0, 100)}...`);
+        }
+      } else {
+        console.error(`❌ [ExportService] Conversion failed for export ${data.id}:`, result.error);
+      }
+      return result;
+    })
+    .catch((e) => {
+      console.error(`❌ [ExportService] Background conversion error for export ${data.id}:`, e);
+      console.error('   Error type:', e?.constructor?.name || typeof e);
+      console.error('   Error message:', e instanceof Error ? e.message : String(e));
+      console.error('   Error stack:', e instanceof Error ? e.stack : 'No stack trace');
+      // Update export status to failed in database
+      (async () => {
+        try {
+          const { error: dbError } = await supabaseAdmin
+            .from('exports')
+            .update({ 
+              status: 'failed', 
+              error: e instanceof Error ? e.message : String(e),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', data.id);
+          
+          if (dbError) {
+            console.error(`❌ [ExportService] Failed to update error status in database:`, dbError);
+          }
+        } catch (dbError) {
+          console.error(`❌ [ExportService] Exception updating error status in database:`, dbError);
+        }
+      })();
+      // Don't throw - export is still created and can be retried later
+    })
+    .catch((importError) => {
+      console.error('❌ [ExportService] Failed to load ConvertService:', importError);
+      console.error('   Error type:', importError?.constructor?.name || typeof importError);
+      console.error('   Error message:', importError instanceof Error ? importError.message : String(importError));
+      console.error('   Error stack:', importError instanceof Error ? importError.stack : 'No stack trace');
+      // Don't throw - export is still created and can be processed later
+    });
+
+  // On Vercel, we can't reliably await background promises because the function may return first.
+  // However, we can at least ensure the promise is started and will log any errors.
+  // For production, use Vercel Cron Jobs to poll for queued exports.
+  
+  // Log that conversion was initiated (but not awaited)
+  console.log(`📋 [ExportService] Export ${data.id} created and conversion initiated (background)`);
+  console.log(`   Note: On Vercel, background promises may be killed when the function returns.`);
+  console.log(`   Consider using Vercel Cron Jobs to process queued exports periodically.`);
 
   return {
     id: data.id,
@@ -63,75 +144,91 @@ export async function createExport(params: CreateExportParams): Promise<CreateEx
 }
 
 /**
- * Triggers background conversion for an export.
+ * Creates an export and awaits conversion with a timeout.
  * 
- * NOTE: On Vercel with Deployment Protection enabled, HTTP calls between
- * serverless functions may be blocked at the edge level. See
- * docs/VERCEL-DEPLOYMENT-PROTECTION.md for solutions.
+ * @param params Export creation parameters
+ * @param timeoutMs Maximum time to wait for conversion (default: 240000ms = 4 minutes for Pro plan)
+ * @returns Export result with conversion status if completed within timeout
  */
-async function triggerBackgroundConversion(exportId: string): Promise<void> {
-  const baseUrlEnv = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL || 'http://localhost:3000';
-  const baseUrl = baseUrlEnv.startsWith('http') ? baseUrlEnv : `https://${baseUrlEnv}`;
+export async function createExportAndAwait(
+  params: CreateExportParams,
+  timeoutMs: number = 240000 // 4 minutes (leaving 1 minute buffer for Pro plan's 5 minute maxDuration)
+): Promise<CreateExportResult> {
+  // First, create the export record
+  const exportData = await createExport(params);
+  const exportId = exportData.id;
   
-  // Build URL with potential bypass token for Vercel Deployment Protection
-  let bgUrl = `${baseUrl.replace(/\/+$/, '')}/api/background/convert`;
-  if (process.env.VERCEL_PROTECTION_BYPASS_TOKEN) {
-    bgUrl += `?x-vercel-protection-bypass=${process.env.VERCEL_PROTECTION_BYPASS_TOKEN}`;
-  }
-
-  try {
-    // Add service role header for internal authentication
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    // Add service role key for internal service authentication
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
-    if (serviceRoleKey) {
-      headers['x-service-role'] = serviceRoleKey;
-    }
-
-    // Add internal API key if available
-    if (process.env.INTERNAL_API_KEY) {
-      headers['x-internal-api-key'] = process.env.INTERNAL_API_KEY;
-    }
-
-    const response = await fetch(bgUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ exportId })
+  const timeoutSeconds = Math.round(timeoutMs / 1000);
+  console.log(`🚀 [ExportService] Starting conversion with ${timeoutSeconds}s timeout (${timeoutMs}ms) for export ${exportId}`);
+  console.log(`   Note: Pro plan allows up to 5 minutes. Timeout set to ${timeoutSeconds}s to leave buffer for function overhead.`);
+  
+  // Import ConvertService and start conversion
+  const conversionStartTime = Date.now();
+  const conversionPromise = import('./ConvertService')
+    .then(({ convertExport }) => {
+      console.log(`⏱️ [ExportService] Conversion started at ${new Date().toISOString()}`);
+      return convertExport(exportId).then((conversionResult) => {
+        const conversionDuration = Date.now() - conversionStartTime;
+        console.log(`⏱️ [ExportService] Conversion completed in ${conversionDuration}ms (${(conversionDuration / 1000).toFixed(2)}s)`);
+        return { exportId, conversionResult, completed: true };
+      });
+    })
+    .catch((e) => {
+      console.error('❌ [ExportService] Error during awaitable conversion:', e);
+      return {
+        exportId,
+        conversionResult: {
+          success: false,
+          error: e instanceof Error ? e.message : String(e)
+        },
+        completed: false
+      };
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      // Check if this is an HTML response (Vercel Deployment Protection page)
-      const isHtmlError = errorText.trim().startsWith('<!') || errorText.includes('Authentication Required');
-      
-      if (isHtmlError || response.status === 401 || response.status === 403 || response.status === 451) {
-        console.warn(`⚠️ Background conversion endpoint blocked by Vercel Deployment Protection. Export ${exportId} is queued.`);
-        console.warn(`💡 Solutions:`);
-        console.warn(`   1. Disable Deployment Protection for /api/background/* routes in Vercel Settings`);
-        console.warn(`   2. Set VERCEL_PROTECTION_BYPASS_TOKEN environment variable with a bypass token`);
-        console.warn(`   3. Use Vercel Cron Jobs to process queued exports (see docs/VERCEL-DEPLOYMENT.md)`);
-        console.warn(`   4. Export ${exportId} can be processed manually via POST /api/background/convert`);
-        return;
-      }
-      throw new Error(`Background conversion failed: ${response.status} ${errorText.substring(0, 200)}`);
-    }
+  // Timeout promise
+  const timeoutPromise = sleep(timeoutMs).then(() => {
+    return { exportId, timedOut: true, completed: false };
+  });
 
-    console.log(`✅ Background conversion triggered successfully for export ${exportId}`);
-  } catch (error) {
-    // Log but don't throw - export is still created and can be processed later
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const isNetworkError = errorMessage.includes('fetch failed') || errorMessage.includes('ECONNREFUSED');
+  try {
+    // Race between conversion completion and timeout
+    const raceResult = await Promise.race([conversionPromise, timeoutPromise]);
     
-    if (isNetworkError && process.env.VERCEL) {
-      console.warn(`⚠️ Network error triggering background conversion (likely Vercel Deployment Protection). Export ${exportId} is queued.`);
-      console.warn(`💡 Configure Vercel Deployment Protection or use cron jobs to process exports.`);
-    } else {
-      console.error(`❌ Failed to trigger background conversion for export ${exportId}:`, errorMessage);
+    // Check if conversion completed
+    if ('conversionResult' in raceResult && raceResult.completed) {
+      const { exportId: id, conversionResult } = raceResult;
+      console.log(`✅ [ExportService] Conversion completed within timeout for export ${id}`);
+      return {
+        id,
+        status: conversionResult.success ? 'ready' : 'failed',
+        completed: true,
+        conversionResult
+      };
     }
-    console.log(`💡 Export ${exportId} is queued. It can be processed via cron job, manual retry, or by disabling Deployment Protection.`);
+    
+    // Timeout occurred - conversion still running in background (may be killed by Vercel)
+    const timeoutSeconds = Math.round(timeoutMs / 1000);
+    const actualDuration = Date.now() - conversionStartTime;
+    console.log(`⏱️ [ExportService] Conversion timeout after ${timeoutSeconds}s (${timeoutMs}ms) for export ${exportId}`);
+    console.log(`   Actual duration: ${actualDuration}ms (${(actualDuration / 1000).toFixed(2)}s)`);
+    console.log(`   Conversion continues in background (may be killed by Vercel function termination at 5 minutes)`);
+    console.log(`   Client should poll export status or use Realtime to get notified when ready`);
+    console.log(`   💡 Tip: Very large scans may take longer than ${timeoutSeconds}s. Check back later or use GET /api/background/convert to manually process.`);
+    
+    // Note: Conversion is still running, but may be killed when function returns
+    // Fallback: Use the GET /api/background/convert endpoint manually or with a cron job
+    return {
+      id: exportId,
+      status: 'processing',
+      completed: false
+    };
+  } catch (error) {
+    console.error(`❌ [ExportService] Error in awaitable export creation:`, error);
+    return {
+      id: exportId,
+      status: 'queued', // Export was created, will be processed later
+      completed: false
+    };
   }
 }
 

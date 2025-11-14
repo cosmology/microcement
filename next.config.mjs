@@ -66,6 +66,18 @@ const nextConfig = {
         ],
       }
     }
+    
+    // Ensure server-only modules are not bundled for client
+    // This prevents 'fs/promises' and other Node.js modules from being included in client bundles
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        crypto: false,
+      };
+    }
+    
     return config
   },
 };
