@@ -14,6 +14,7 @@ export const SCENE_CONFIG = {
   CAMERA_NEAR: 0.1,
   CAMERA_FAR: 1000,
   ORBITAL_HEIGHT: 40,
+  ORBITAL_RADIUS: 50, // Distance from center for orbital camera (matches defaultOrbitalPath.ts)
   ORBITAL_RADIUS_MULTIPLIER: 6,
   ORBITAL_SPEED: 0.2,
   

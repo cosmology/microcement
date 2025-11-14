@@ -132,7 +132,7 @@ export default function RotationControl3D({
 
 
   return (
-    <div className={`fixed bottom-0 left-14 mb-2 ml-2 z-[50] ${className}`} data-rotation-control>
+    <div className={`fixed top-0 right-0 mt-2 mr-2 z-[50] ${className}`} data-rotation-control>
       {/* Tracking Ball Control */}
       <div 
         ref={containerRef}

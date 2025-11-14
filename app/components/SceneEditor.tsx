@@ -5,7 +5,8 @@ import * as THREE from "three";
 import { gsap } from "gsap";
 import SwiperGallery, { GalleryImage } from './SwiperGallery';
 import LoaderOverlay from './LoaderOverlay';
-import RotationControl3D from './RotationControl3D';
+import RotationControl from './RotationControl';
+import ZoomControl3D from './ZoomControl3D';
 import { isMobile, getThemeColors, cssColorToHex } from '../../lib/utils';
 import { ModelLoader, SCENE_CONFIG, getCameraPathData, getHotspotSettings, getUserSceneConfig } from '@/lib/services';
 import { SceneConfigService } from '@/lib/services/SceneConfigService';
@@ -4333,8 +4334,8 @@ export default function SceneEditor({
           WALL_COLOR: themeColors.isDark ? 0x04070E : 0xffffff,
           CUBE_COLOR: 0x00ff00,
           CUBE_EMISSIVE_COLOR: 0x003300,
-          GRID_COLOR_MAJOR: themeColors.isDark ? 0x444444 : 0x888888,
-          GRID_COLOR_MINOR: themeColors.isDark ? 0x222222 : 0xcccccc,
+          GRID_COLOR_MAJOR: themeColors.isDark ? 0x444444 : 0x888888, // Dark: gray, Light: lighter gray
+          GRID_COLOR_MINOR: themeColors.isDark ? 0x222222 : 0xcccccc, // Dark: darker gray, Light: light gray
           AXES_COLOR: themeColors.isDark ? 0x666666 : 0x333333,
           HOTSPOT_NORMAL_COLOR: 0xffffff,
         };
@@ -4366,10 +4367,27 @@ export default function SceneEditor({
         });
         
         // Update grid helper colors
+        // GridHelper uses an array of materials: [majorLinesMaterial, minorLinesMaterial]
         sceneRef.current.traverse((child: THREE.Object3D) => {
           if (child instanceof THREE.GridHelper) {
-            child.material.color.setHex(colors.GRID_COLOR_MAJOR);
-            child.material.opacity = 0.8;
+            // GridHelper.material is an array of two LineBasicMaterials
+            const material = child.material;
+            if (Array.isArray(material)) {
+              // Update major lines material (index 0)
+              const majorMaterial = material[0] as THREE.LineBasicMaterial;
+              if (majorMaterial) {
+                majorMaterial.color.setHex(colors.GRID_COLOR_MAJOR);
+              }
+              // Update minor lines material (index 1)
+              const minorMaterial = material[1] as THREE.LineBasicMaterial;
+              if (minorMaterial) {
+                minorMaterial.color.setHex(colors.GRID_COLOR_MINOR);
+              }
+            } else {
+              // Fallback for single material (shouldn't happen, but just in case)
+              const singleMaterial = material as THREE.LineBasicMaterial;
+              singleMaterial.color.setHex(colors.GRID_COLOR_MAJOR);
+            }
           }
         });
         
@@ -6743,11 +6761,16 @@ export default function SceneEditor({
           </div>
         </div>
       )}
-
-      {/* CameraPathEditor3D now integrated into DockedNavigation panel */}
       
-      {/* RotationControl3D - World rotation controls */}
-      <RotationControl3D sceneRef={sceneRef} />
+      {/* RotationControl - Blender-style 3D gizmo */}
+      <RotationControl sceneRef={sceneRef} />
+      
+      
+      <ZoomControl3D 
+        cameraRef={cameraRef}
+        sceneRef={sceneRef}
+        rendererRef={rendererRef}
+      />
       
       {/* Loader Overlay Portal - Shows real loading progress */}
       {showLoader && (

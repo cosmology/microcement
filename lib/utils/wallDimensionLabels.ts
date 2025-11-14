@@ -32,22 +32,22 @@ function createTextTexture(text: string, isDarkMode: boolean): THREE.CanvasTextu
     throw new Error('Could not get 2D context');
   }
 
-  // Set canvas size
-  canvas.width = 256;
-  canvas.height = 64;
+  // Set canvas size - increased for larger font
+  canvas.width = 384;
+  canvas.height = 96;
 
   // Clear canvas
   context.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Set font
-  context.font = 'bold 20px Arial, sans-serif';
+  // Set font - larger for better readability
+  context.font = 'bold 28px Arial, sans-serif';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
 
   // Set colors based on theme
   const textColor = isDarkMode ? '#ffffff' : '#000000';
   const strokeColor = isDarkMode ? '#000000' : '#ffffff';
-  const strokeWidth = 3;
+  const strokeWidth = 4; // Increased stroke width for better visibility
 
   // Draw text with outline for readability
   context.strokeStyle = strokeColor;
@@ -228,9 +228,9 @@ export function createWallDimensionLabel(
   sprite.position.copy(labelPos);
   
   // Scale sprite to appropriate size (billboard - always faces camera)
-  // Scale based on typical measurement scale - adjust as needed
-  const spriteScale = 0.8 * measurementScale; // Slightly larger for better readability
-  sprite.scale.set(spriteScale, spriteScale * 0.3, 1); // Wider than tall
+  // Increased scale for better readability with larger font
+  const spriteScale = 1.2 * measurementScale; // Increased from 0.8 for larger text
+  sprite.scale.set(spriteScale, spriteScale * 0.35, 1); // Slightly taller for larger font
   sprite.name = 'dimension-label';
   
   console.log(`📐 [DimensionLabel] Created label "${dimensionText}" at position:`, {

@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { gsap } from "gsap";
 import SwiperGallery, { GalleryImage } from './SwiperGallery';
 import { isMobile } from '../../lib/utils';
+import { SCENE_CONFIG } from '../../lib/config/sceneConfig';
 
 
 interface ScrollSceneProps {
@@ -78,8 +79,10 @@ export default function ScrollScene({
   
   // Animation configuration
   const INTRO_START_POS = new THREE.Vector3(0, 50, 3); // Start perfectly above the cube center
-  const INTRO_END_POS = new THREE.Vector3(50, ORBITAL_HEIGHT, 0); // End at proper radius for centered scene
-  const ORBITAL_START_POS = new THREE.Vector3(50, ORBITAL_HEIGHT, 0); // Explicit orbital start position
+  // Use ORBITAL_RADIUS from sceneConfig.ts for consistency
+  const ORBITAL_RADIUS = SCENE_CONFIG.ORBITAL_RADIUS;
+  const INTRO_END_POS = new THREE.Vector3(ORBITAL_RADIUS, ORBITAL_HEIGHT, 0); // End at proper radius for centered scene
+  const ORBITAL_START_POS = new THREE.Vector3(ORBITAL_RADIUS, ORBITAL_HEIGHT, 0); // Explicit orbital start position
   const ANIMATION_STEPS = 100;
   const ANIMATION_STEP_INTERVAL = 17; // 17ms per step = ~1.7 seconds total
   
