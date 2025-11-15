@@ -349,11 +349,8 @@
     "showMeasurements": "Show Measurements",
     "hideMeasurements": "Hide Measurements",
     "calculator": "Calculator",
-<<<<<<< HEAD
     "wall": "Wall",
     "total": "Total",
-=======
->>>>>>> origin/main
     "roomScanner": "Room Scanner",
   "scannedRooms": "Scanned Rooms",
     "Upload Models": "Upload Models",

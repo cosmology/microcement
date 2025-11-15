@@ -346,11 +346,8 @@
     "showMeasurements": "Mostrar Medidas",
     "hideMeasurements": "Ocultar Medidas",
     "calculator": "Calculadora",
-<<<<<<< HEAD
     "wall": "Pared",
     "total": "Total",
-=======
->>>>>>> origin/main
     "rotateModel": "Rotar Modelo 90°",
     "clearScene": "Limpiar Escena",
     "resetScene": "Restablecer Escena",

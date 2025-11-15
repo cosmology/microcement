@@ -346,11 +346,8 @@
     "showMeasurements": "Prikaži Merenja",
     "hideMeasurements": "Sakrij Merenja",
     "calculator": "Kalkulator",
-<<<<<<< HEAD
     "wall": "Zid",
     "total": "Ukupno",
-=======
->>>>>>> origin/main
     "rotateModel": "Rotiraj Model 90°",
     "clearScene": "Očisti Scenu",
     "resetScene": "Resetuj Scenu",
