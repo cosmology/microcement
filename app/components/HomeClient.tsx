@@ -923,6 +923,7 @@ export default function HomeClient() {
             currentSection={currentSection}
             user={user}
             userRole={role}
+            userRoleLoading={userRoleLoading}
             onIntroComplete={() => {
               setScrollEnabled(true);
               window.dispatchEvent(new CustomEvent('introComplete'));
@@ -966,6 +967,7 @@ export default function HomeClient() {
             currentSection={currentSection}
             user={user}
             userRole={role}
+            userRoleLoading={userRoleLoading}
             onIntroComplete={() => {
               setScrollEnabled(true);
               window.dispatchEvent(new CustomEvent('introComplete'));

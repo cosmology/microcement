@@ -36,6 +36,7 @@ interface ScrollSceneProps {
   onDebugUpdate?: (data: any) => void;
   user?: any;
   userRole?: 'admin' | 'architect' | 'end_user' | 'guest';
+  userRoleLoading?: boolean; // Prevent intro animation when user is loading
 }
 
 const isSceneDisabledGlobally = () => {
@@ -55,7 +56,8 @@ export default function SceneEditor({
   onIntroStart,
   onDebugUpdate,
   user,
-  userRole  // Get role from props instead of calling useUserRole again
+  userRole,  // Get role from props instead of calling useUserRole again
+  userRoleLoading = false  // Prevent intro animation when user is loading
 }: ScrollSceneProps) {
   const authRole = userRole || 'guest';
   const authUser = user;
@@ -148,6 +150,9 @@ export default function SceneEditor({
   const modelTransformRef = useRef<ModelTransform | null>(null);
   const roomPlanSystemRef = useRef<RoomPlanCoordinateSystem | null>(null);
   const scaleFactorRef = useRef<ScaleFactorAnalysis | null>(null);
+
+  // Track if we've already processed surface areas for current metadata to prevent infinite loop
+  const surfaceAreasProcessedRef = useRef<boolean>(false);
   
   // Watch camera type and orbital height - swap waypoint data
   useEffect(() => {
@@ -724,7 +729,8 @@ export default function SceneEditor({
       }
 
       // Start intro now that model is loaded (second intro only)
-      if (WITH_INTRO && cameraRef.current && rendererRef.current && sceneRef.current) {
+      // Only start intro if user is not loading
+      if (WITH_INTRO && !userRoleLoading && cameraRef.current && rendererRef.current && sceneRef.current) {
         // Set exact intro start frame (top view over cube)
         cameraRef.current.up.set(0, 1, 0);
         cameraRef.current.position.copy(INTRO_START_POS);
@@ -744,6 +750,11 @@ export default function SceneEditor({
         });
         
         startIntroAnimation(cameraRef.current, rendererRef.current, sceneRef.current);
+      } else if (userRoleLoading) {
+        // Skip intro when user is loading
+        introCompletedRef.current = true;
+        hasIntroRef.current = true;
+        console.log('[ScrollScene] Skipping intro on model load - user profile is loading');
       }
       
       // Re-add path visuals after loading model
@@ -995,6 +1006,9 @@ export default function SceneEditor({
         if (!cancelled) {
           // Phase 4: Reset calculator when new model metadata is loaded
           resetCalculator();
+          // Reset processed flag so new metadata can have surface areas calculated
+          surfaceAreasProcessedRef.current = false;
+
           setRoomPlanMetadata(data);
           console.log('✅ [SceneEditor] setRoomPlanMetadata() called - metadata stored in Zustand, calculator reset');
         } else {
@@ -1010,6 +1024,7 @@ export default function SceneEditor({
         });
         // Set metadata to null on error so measurements don't try to show with invalid data
         if (!cancelled) {
+          surfaceAreasProcessedRef.current = false; // Reset flag when metadata is cleared
           setRoomPlanMetadata(null);
           console.warn('⚠️ [SceneEditor] Set roomPlanMetadata to null due to error');
         }
@@ -1141,7 +1156,12 @@ export default function SceneEditor({
     // createRoomMeasurements mutates the metadata object with calculated surface areas
     // We need to update the store to ensure reactivity by creating a new object reference
     // Note: roomPlanMetadata is mutated by createRoomMeasurements, so we read from it directly
-    if (roomPlanMetadata) {
+
+    // IMPORTANT: Only update if surface areas haven't been processed yet to prevent infinite loop
+    if (roomPlanMetadata && !surfaceAreasProcessedRef.current) {
+      // Mark as processed BEFORE updating to prevent loop
+      surfaceAreasProcessedRef.current = true;
+      
       // Create new metadata object with surface areas from the mutated metadata
       // Since createRoomMeasurements mutates roomPlanMetadata in place, we can read the values directly
       const updatedMetadata = {
@@ -1158,6 +1178,10 @@ export default function SceneEditor({
         totalSurfaceArea: updatedMetadata.totalSurfaceArea || 'not calculated',
         wallsWithSurfaceArea: updatedMetadata.walls?.filter((w: any) => w.surfaceArea !== undefined).length || 0,
       });
+
+    } else if (roomPlanMetadata && surfaceAreasProcessedRef.current) {
+      console.log('📐 [SceneEditor] Surface areas already processed, skipping update to prevent infinite loop');
+
     }
     
     console.log('📐 [SceneEditor] Measurement group created (Phase 2 - precise alignment):', {
@@ -1196,7 +1220,8 @@ export default function SceneEditor({
       }
       measurementGroupRef.current = null;
     };
-  }, [showMeasurements, roomPlanMetadata, modelPath, modelTransform, scaleFactor, modelRef]);
+  }, [showMeasurements, roomPlanMetadata, modelPath, modelTransform, scaleFactor, roomPlanSystem]);
+
 
   // Phase 3: Model/Measurement Toggle
   // When measurements are ON: hide model and show measurements
@@ -4025,7 +4050,8 @@ export default function SceneEditor({
                   }
 
                   // Start intro now that model is loaded (second intro only)
-                  if (WITH_INTRO && cameraRef.current && rendererRef.current && sceneRef.current) {
+                  // Only start intro if user is not loading
+                  if (WITH_INTRO && !userRoleLoading && cameraRef.current && rendererRef.current && sceneRef.current) {
                                       // Set exact intro start frame (top view over cube)
                   cameraRef.current.up.set(0, 1, 0);
                   cameraRef.current.position.copy(INTRO_START_POS);
@@ -4044,6 +4070,11 @@ export default function SceneEditor({
                   });
                   
                   startIntroAnimation(cameraRef.current, rendererRef.current, sceneRef.current);
+                  } else if (userRoleLoading) {
+                    // Skip intro when user is loading
+                    introCompletedRef.current = true;
+                    hasIntroRef.current = true;
+                    console.log('[ScrollScene] Skipping intro on model load - user profile is loading');
                   }
 
                   const total = loaderTotalBytesRef.current;
@@ -4537,18 +4568,32 @@ export default function SceneEditor({
         // Update scene materials
         sceneRef.current.traverse((child: THREE.Object3D) => {
           if (child instanceof THREE.Mesh && child.material) {
-            if (child.geometry instanceof THREE.PlaneGeometry) {
-              // Update floor and walls
-              if (child.position.y === FLOOR_Y_POSITION) {
-                child.material.color.setHex(colors.FLOOR_COLOR);
-              } else {
-                child.material.color.setHex(colors.WALL_COLOR);
+            // Handle array of materials
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            
+            materials.forEach((material) => {
+              if (!material || !(material instanceof THREE.MeshStandardMaterial || material instanceof THREE.MeshBasicMaterial)) {
+                return; // Skip if material doesn't have color property
               }
-            } else if (child.geometry instanceof THREE.BoxGeometry) {
-              // Update cube
-              child.material.color.setHex(colors.CUBE_COLOR);
-              child.material.emissive.setHex(colors.CUBE_EMISSIVE_COLOR);
-            }
+              
+              if (material.color && typeof material.color.setHex === 'function') {
+                if (child.geometry instanceof THREE.PlaneGeometry) {
+                  // Update floor and walls
+                  if (child.position.y === FLOOR_Y_POSITION) {
+                    material.color.setHex(colors.FLOOR_COLOR);
+                  } else {
+                    material.color.setHex(colors.WALL_COLOR);
+                  }
+                } else if (child.geometry instanceof THREE.BoxGeometry) {
+                  // Update cube
+                  material.color.setHex(colors.CUBE_COLOR);
+                  // Only set emissive if material has emissive property
+                  if (material instanceof THREE.MeshStandardMaterial && material.emissive && typeof material.emissive.setHex === 'function') {
+                    material.emissive.setHex(colors.CUBE_EMISSIVE_COLOR);
+                  }
+                }
+              }
+            });
           }
         });
         
@@ -4822,7 +4867,13 @@ export default function SceneEditor({
     raycasterRef.current = new THREE.Raycaster();
     
     // Initial render and animation setup
-    if (WITH_INTRO) {
+    // Skip intro if user is still loading to prevent Hero animation from showing
+    if (userRoleLoading) {
+      // Skip intro when user profile is loading
+      introCompletedRef.current = true;
+      hasIntroRef.current = true;
+      console.log('[ScrollScene] Skipping intro - user profile is loading');
+    } else if (WITH_INTRO) {
       // Defer intro until model is loaded so only the in-scene intro plays
       console.log('[ScrollScene] Deferring intro until model loads');
     } else {
@@ -4838,7 +4889,8 @@ export default function SceneEditor({
     animate(camera, renderer, scene);
     
     // Fallback: if intro didn't start within 3s after mount/model init, trigger it
-    if (WITH_INTRO) {
+    // But only if user is not loading
+    if (WITH_INTRO && !userRoleLoading) {
       window.setTimeout(() => {
         if (!introStartedRef.current && !introCompletedRef.current && cameraRef.current && rendererRef.current && sceneRef.current) {
           console.log('[ScrollScene] Intro fallback trigger after timeout');
