@@ -14,6 +14,7 @@ export interface WallDimensionLabel {
 export interface CreateWallDimensionLabelOptions {
   width: number; // meters
   height: number; // meters
+  surfaceArea?: number; // m² - optional, will be calculated if not provided
   position: THREE.Vector3;
   rotation: THREE.Quaternion;
   measurementScale: number;
@@ -32,15 +33,15 @@ function createTextTexture(text: string, isDarkMode: boolean): THREE.CanvasTextu
     throw new Error('Could not get 2D context');
   }
 
-  // Set canvas size - increased for larger font
-  canvas.width = 384;
-  canvas.height = 96;
+          // Set canvas size - increased for larger, more visible text
+          canvas.width = 512; // Increased from 384
+          canvas.height = 128; // Increased from 96
 
-  // Clear canvas
-  context.clearRect(0, 0, canvas.width, canvas.height);
+          // Clear canvas
+          context.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Set font - larger for better readability
-  context.font = 'bold 28px Arial, sans-serif';
+          // Set font - much larger for better readability at model scale
+          context.font = 'bold 36px Arial, sans-serif'; // Increased from 28px
   context.textAlign = 'center';
   context.textBaseline = 'middle';
 
@@ -194,6 +195,7 @@ export function createWallDimensionLabel(
   const {
     width,
     height,
+    surfaceArea,
     position,
     rotation,
     measurementScale,
@@ -202,8 +204,11 @@ export function createWallDimensionLabel(
     extensionLineLength = 0.2,
   } = options;
 
-  // Format dimension text: "3.50m × 2.50m"
-  const dimensionText = `${width.toFixed(2)}m × ${height.toFixed(2)}m`;
+  // Calculate surface area if not provided
+  const calculatedSurfaceArea = surfaceArea ?? (width * height);
+  
+  // Format dimension text: "3.50m × 2.50m (8.75m²)"
+  const dimensionText = `${width.toFixed(2)}m × ${height.toFixed(2)}m (${calculatedSurfaceArea.toFixed(2)}m²)`;
 
   // Create text texture
   const textTexture = createTextTexture(dimensionText, isDarkMode);
@@ -228,9 +233,10 @@ export function createWallDimensionLabel(
   sprite.position.copy(labelPos);
   
   // Scale sprite to appropriate size (billboard - always faces camera)
-  // Increased scale for better readability with larger font
-  const spriteScale = 1.2 * measurementScale; // Increased from 0.8 for larger text
-  sprite.scale.set(spriteScale, spriteScale * 0.35, 1); // Slightly taller for larger font
+  // Make labels much larger - measurementScale is ModelLoader scale (~11x), but labels need to be visible
+  // Use a larger multiplier so labels are clearly readable at model scale
+  const spriteScale = 3.0 * measurementScale; // Increased from 1.2 - make labels much larger
+  sprite.scale.set(spriteScale, spriteScale * 0.35, 1); // Aspect ratio for text
   sprite.name = 'dimension-label';
   
   console.log(`📐 [DimensionLabel] Created label "${dimensionText}" at position:`, {

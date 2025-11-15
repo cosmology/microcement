@@ -64,6 +64,65 @@ interface RoomPlanMetadata {
   totalSurfaceArea?: number // total calculated surface area in m²
 }
 
+/**
+ * Model transformation data (serializable for Zustand)
+ * Stores only lightweight, serializable data - not Three.js objects
+ * Vertex samples are kept in component refs for performance (not stored here)
+ */
+interface ModelTransformData {
+  // Position (meters)
+  position: { x: number; y: number; z: number }
+  // Rotation (quaternion: [x, y, z, w])
+  rotation: [number, number, number, number]
+  // Scale (unitless multiplier)
+  scale: { x: number; y: number; z: number }
+  // Bounding box (meters)
+  boundingBox: {
+    min: { x: number; y: number; z: number }
+    max: { x: number; y: number; z: number }
+    center: { x: number; y: number; z: number }
+    size: { x: number; y: number; z: number }
+  }
+  // Bounding sphere (meters)
+  boundingSphere: {
+    center: { x: number; y: number; z: number }
+    radius: number
+  }
+}
+
+/**
+ * RoomPlan coordinate system analysis (serializable)
+ */
+interface RoomPlanSystemData {
+  units: 'meters' | 'unknown'
+  origin: { x: number; y: number; z: number } | null
+  boundingBox: {
+    min: { x: number; y: number; z: number }
+    max: { x: number; y: number; z: number }
+    center: { x: number; y: number; z: number }
+    size: { x: number; y: number; z: number }
+  } | null
+  wallCount: number
+  hasVertexData: boolean
+  averageWallWidth: number // meters
+  averageWallHeight: number // meters
+  totalSurfaceArea: number | null // m²
+}
+
+/**
+ * Precise scale factor calculation (for 1mm alignment)
+ */
+interface ScaleFactorData {
+  scaleX: number // Scale factor for X axis (model / roomplan)
+  scaleY: number // Scale factor for Y axis (model / roomplan)
+  scaleZ: number // Scale factor for Z axis (model / roomplan)
+  uniformHorizontalScale: number // Average of X and Z for walls
+  verticalScale: number // Y scale for height
+  centerOffset: { x: number; y: number; z: number } // Offset to align centers (meters)
+  precision: number // Precision achieved (meters, target: 0.001m = 1mm)
+  confidence: 'high' | 'medium' | 'low' // Confidence in alignment
+}
+
 interface SceneState {
   // Current scene config
   currentConfig: SceneConfig | null
@@ -78,6 +137,12 @@ interface SceneState {
   roomPlanJsonPath: string | null
   roomPlanMetadata: RoomPlanMetadata | null
   showMeasurements: boolean
+  
+  // Phase 1: Coordinate system data for precise measurement alignment (1mm precision)
+  // Stored as serializable data (not Three.js objects) for performance and Zustand compatibility
+  modelTransform: ModelTransformData | null
+  roomPlanSystem: RoomPlanSystemData | null
+  scaleFactor: ScaleFactorData | null
   
   // Scene progress
   sceneStage: number
@@ -96,6 +161,10 @@ interface SceneState {
     z: number
   }
   
+  // Calculator state (Phase 4: Performance optimization)
+  // Material selection per wall: { [wallIdentifier]: 'paint' | 'tile' | 'microcement' }
+  wallMaterials: Record<string, 'paint' | 'tile' | 'microcement'>
+  
   // Loading states
   configsLoading: boolean
   hasUserConfig: boolean | null
@@ -111,6 +180,12 @@ interface SceneState {
   setRoomPlanMetadata: (metadata: RoomPlanMetadata | null) => void
   setShowMeasurements: (show: boolean) => void
   toggleMeasurements: () => void
+  
+  // Coordinate system actions (Phase 1)
+  setModelTransform: (transform: ModelTransformData | null) => void
+  setRoomPlanSystem: (system: RoomPlanSystemData | null) => void
+  setScaleFactor: (factor: ScaleFactorData | null) => void
+  clearCoordinateData: () => void // Clear all coordinate system data
   setSceneStage: (stage: number) => void
   setCurrentSection: (section: string) => void
   setScrollProgress: (progress: number) => void
@@ -125,6 +200,10 @@ interface SceneState {
   setWorldRotation: (rotation: { x: number; y: number; z: number }) => void
   updateWorldRotation: (axis: 'x' | 'y' | 'z', value: number) => void
   resetWorldRotation: () => void
+  
+  // Calculator actions (Phase 4: Performance optimization)
+  setWallMaterial: (wallId: string, material: 'paint' | 'tile' | 'microcement') => void
+  resetCalculator: () => void // Reset when new model loads
   
   // Complex actions
   loadConfig: (configId: string) => Promise<void>
@@ -141,6 +220,11 @@ const initialState = {
   roomPlanJsonPath: null,
   roomPlanMetadata: null,
   showMeasurements: false,
+  
+  // Coordinate system data (Phase 1)
+  modelTransform: null,
+  roomPlanSystem: null,
+  scaleFactor: null,
   sceneStage: 0,
   currentSection: 'hero',
   scrollProgress: 0,
@@ -152,6 +236,7 @@ const initialState = {
     y: 0,
     z: 0
   },
+  wallMaterials: {}, // Calculator state: empty by default, populated when walls are loaded
   configsLoading: false,
   hasUserConfig: null,
   configCheckComplete: false,
@@ -181,6 +266,28 @@ export const useSceneStore = create<SceneState>()(
         set({ showMeasurements: newState });
         console.log('📐 [SceneStore] showMeasurements updated to:', get().showMeasurements);
       },
+      
+      // Coordinate system actions (Phase 1)
+      setModelTransform: (transform) => {
+        console.log('📊 [SceneStore] setModelTransform called');
+        set({ modelTransform: transform });
+      },
+      setRoomPlanSystem: (system) => {
+        console.log('📊 [SceneStore] setRoomPlanSystem called');
+        set({ roomPlanSystem: system });
+      },
+      setScaleFactor: (factor) => {
+        console.log('📊 [SceneStore] setScaleFactor called, precision:', factor ? `${(factor.precision * 1000).toFixed(3)}mm` : 'null');
+        set({ scaleFactor: factor });
+      },
+      clearCoordinateData: () => {
+        console.log('📊 [SceneStore] clearCoordinateData called');
+        set({ 
+          modelTransform: null, 
+          roomPlanSystem: null, 
+          scaleFactor: null 
+        });
+      },
       setSceneStage: (stage) => set({ sceneStage: stage }),
       setCurrentSection: (section) => set({ currentSection: section }),
       setScrollProgress: (progress) => set({ scrollProgress: progress }),
@@ -203,6 +310,15 @@ export const useSceneStore = create<SceneState>()(
         worldRotation: { x: 0, y: 0, z: 0 }
       }),
       
+      // Calculator actions (Phase 4: Performance optimization)
+      setWallMaterial: (wallId, material) => set((state) => ({
+        wallMaterials: {
+          ...state.wallMaterials,
+          [wallId]: material,
+        },
+      })),
+      resetCalculator: () => set({ wallMaterials: {} }),
+      
       // Complex actions
       loadConfig: async (configId) => {
         // This will be implemented to load scene config from database
@@ -215,7 +331,12 @@ export const useSceneStore = create<SceneState>()(
         modelLoadingProgress: 0,
         roomPlanJsonPath: null,
         roomPlanMetadata: null,
-        worldRotation: { x: 0, y: 0, z: 0 }
+        worldRotation: { x: 0, y: 0, z: 0 },
+        wallMaterials: {}, // Reset calculator when scene is cleared
+        // Clear coordinate system data when scene is cleared
+        modelTransform: null,
+        roomPlanSystem: null,
+        scaleFactor: null,
       }),
       
       reset: () => set(initialState),

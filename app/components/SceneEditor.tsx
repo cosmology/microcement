@@ -14,6 +14,18 @@ import { useCameraStore } from '@/lib/stores/cameraStore';
 import { DEFAULT_ORBITAL_CONFIG } from '@/lib/config/defaultOrbitalPath';
 import { useSceneStore } from '@/lib/stores/sceneStore';
 import { createRoomMeasurements, RoomPlanMetadata } from './RoomMeasurementsOverlay';
+import { 
+  extractModelTransform, 
+  analyzeRoomPlanCoordinateSystem, 
+  calculatePreciseScaleFactor,
+  logTransformationAnalysis,
+  serializeModelTransform,
+  serializeRoomPlanSystem,
+  serializeScaleFactor,
+  ModelTransform,
+  RoomPlanCoordinateSystem,
+  ScaleFactorAnalysis
+} from '@/lib/utils/coordinateSystemAnalysis';
 
 
 interface ScrollSceneProps {
@@ -82,17 +94,34 @@ export default function SceneEditor({
     roomPlanJsonPath,
     roomPlanMetadata,
     setRoomPlanMetadata,
+    setModelTransform,
+    setRoomPlanSystem,
+    setScaleFactor,
+    resetCalculator,
     modelPath,
     setModelPath,
+    setModelLoaded,
     worldRotation,
+    modelTransform,
+    scaleFactor,
+    roomPlanSystem,
   } = useSceneStore((state) => ({
     showMeasurements: state.showMeasurements,
     roomPlanJsonPath: state.roomPlanJsonPath,
     roomPlanMetadata: state.roomPlanMetadata,
     setRoomPlanMetadata: state.setRoomPlanMetadata,
+    setModelTransform: state.setModelTransform,
+    setRoomPlanSystem: state.setRoomPlanSystem,
+    setScaleFactor: state.setScaleFactor,
+    resetCalculator: state.resetCalculator,
     modelPath: state.modelPath,
     setModelPath: state.setModelPath,
+    setModelLoaded: state.setModelLoaded,
     worldRotation: state.worldRotation,
+    // Phase 2: Access coordinate system data from Zustand store
+    modelTransform: state.modelTransform,
+    scaleFactor: state.scaleFactor,
+    roomPlanSystem: state.roomPlanSystem,
   }));
   
   const [hasUserConfig, setHasUserConfig] = useState(false);
@@ -114,6 +143,11 @@ export default function SceneEditor({
   
   const measurementGroupRef = useRef<THREE.Group | null>(null);
   const modelRef = useRef<THREE.Object3D | null>(null);
+  
+  // Phase 1: Model transform tracking for precise measurement alignment
+  const modelTransformRef = useRef<ModelTransform | null>(null);
+  const roomPlanSystemRef = useRef<RoomPlanCoordinateSystem | null>(null);
+  const scaleFactorRef = useRef<ScaleFactorAnalysis | null>(null);
   
   // Watch camera type and orbital height - swap waypoint data
   useEffect(() => {
@@ -616,13 +650,56 @@ export default function SceneEditor({
       sceneRef.current.add(model);
       modelRef.current = model;
       setModelPath(modelPath);
+      setModelLoaded(true); // Mark model as loaded for calculator visibility
       
-      // Log final model position and rotation
-      console.log('📐 MODEL LOADED - Position and Rotation:');
-      console.log('  Model Position (X, Y, Z):', model.position.x.toFixed(3), model.position.y.toFixed(3), model.position.z.toFixed(3));
-      console.log('  Model Rotation (X, Y, Z):', model.rotation.x.toFixed(3), model.rotation.y.toFixed(3), model.rotation.z.toFixed(3));
+      // Phase 1: Extract model transformation details for precise measurement alignment
+      console.log('📊 [Phase 1] Extracting model transformation details...');
+      const modelTransform = extractModelTransform(model, 100); // Limit to 100 vertices for performance
+      modelTransformRef.current = modelTransform; // Keep full transform in ref for component use
+      
+      // Store serialized version in Zustand for shared access (lightweight, no Three.js objects)
+      const serializedTransform = serializeModelTransform(modelTransform);
+      setModelTransform(serializedTransform);
+      console.log('✅ [Phase 1] Model transform extracted and stored in Zustand');
+      
+      // If RoomPlan metadata is already loaded, analyze coordinate systems now
+      if (roomPlanMetadata?.walls && roomPlanMetadata.walls.length > 0) {
+        console.log('📊 [Phase 1] RoomPlan metadata already loaded - analyzing coordinate systems...');
+        const roomPlanSystem = analyzeRoomPlanCoordinateSystem(roomPlanMetadata, roomPlanMetadata.walls);
+        roomPlanSystemRef.current = roomPlanSystem; // Keep full system in ref
+        
+        // Store serialized version in Zustand
+        const serializedSystem = serializeRoomPlanSystem(roomPlanSystem);
+        setRoomPlanSystem(serializedSystem);
+        
+        const scaleFactor = calculatePreciseScaleFactor(
+          modelTransform,
+          roomPlanSystem,
+          roomPlanMetadata.walls
+        );
+        scaleFactorRef.current = scaleFactor; // Keep full factor in ref
+        
+        // Store serialized version in Zustand
+        const serializedScaleFactor = serializeScaleFactor(scaleFactor);
+        setScaleFactor(serializedScaleFactor);
+        
+        logTransformationAnalysis(modelTransform, roomPlanSystem, scaleFactor);
+        console.log('✅ [Phase 1] Coordinate system analysis complete and stored in Zustand (triggered by model load)');
+      }
+      
+      // Log final model position, rotation, and scale
+      const modelBox = new THREE.Box3().setFromObject(model);
+      const modelSize = modelBox.getSize(new THREE.Vector3());
+      const modelCenter = modelBox.getCenter(new THREE.Vector3());
+      console.log('📐 MODEL LOADED - Complete Transform Info:');
+      console.log('  Model Position (X, Y, Z):', model.position.x.toFixed(6), model.position.y.toFixed(6), model.position.z.toFixed(6));
+      console.log('  Model Rotation (X, Y, Z):', model.rotation.x.toFixed(6), model.rotation.y.toFixed(6), model.rotation.z.toFixed(6));
       console.log('  Model Rotation Y (degrees):', (model.rotation.y * 180 / Math.PI).toFixed(2));
-      console.log('  Model Scale:', model.scale.x.toFixed(3));
+      console.log('  Model Scale (applied by ModelLoader):', model.scale.x.toFixed(6), model.scale.y.toFixed(6), model.scale.z.toFixed(6));
+      console.log('  Model Bounding Box Size:', modelSize.x.toFixed(6), 'x', modelSize.y.toFixed(6), 'x', modelSize.z.toFixed(6));
+      console.log('  Model Bounding Box Center:', modelCenter.x.toFixed(6), modelCenter.y.toFixed(6), modelCenter.z.toFixed(6));
+      console.log('  Model Bounding Box Min:', modelBox.min.x.toFixed(6), modelBox.min.y.toFixed(6), modelBox.min.z.toFixed(6));
+      console.log('  Model Bounding Box Max:', modelBox.max.x.toFixed(6), modelBox.max.y.toFixed(6), modelBox.max.z.toFixed(6));
 
       // Fit camera so the model is visible
       if (cameraRef.current) {
@@ -875,9 +952,51 @@ export default function SceneEditor({
           objectsCount: data.objects?.length || 0,
         });
         
+        // Phase 1: Analyze RoomPlan coordinate system
+        if (data.walls && data.walls.length > 0 && modelTransformRef.current) {
+          console.log('📊 [Phase 1] Analyzing RoomPlan coordinate system...');
+          const roomPlanSystem = analyzeRoomPlanCoordinateSystem(data, data.walls);
+          roomPlanSystemRef.current = roomPlanSystem; // Keep full system in ref
+          
+          // Store serialized version in Zustand for shared access
+          const serializedSystem = serializeRoomPlanSystem(roomPlanSystem);
+          setRoomPlanSystem(serializedSystem);
+          
+          // Calculate precise scale factors
+          console.log('📊 [Phase 1] Calculating precise scale factors...');
+          const scaleFactor = calculatePreciseScaleFactor(
+            modelTransformRef.current,
+            roomPlanSystem,
+            data.walls
+          );
+          scaleFactorRef.current = scaleFactor; // Keep full factor in ref
+          
+          // Store serialized version in Zustand
+          const serializedScaleFactor = serializeScaleFactor(scaleFactor);
+          setScaleFactor(serializedScaleFactor);
+          
+          // Log comprehensive transformation analysis
+          logTransformationAnalysis(
+            modelTransformRef.current,
+            roomPlanSystem,
+            scaleFactor
+          );
+          
+          console.log('✅ [Phase 1] Coordinate system analysis complete and stored in Zustand');
+        } else {
+          if (!data.walls || data.walls.length === 0) {
+            console.warn('⚠️ [Phase 1] No walls found in RoomPlan metadata - skipping coordinate analysis');
+          }
+          if (!modelTransformRef.current) {
+            console.warn('⚠️ [Phase 1] Model transform not available yet - coordinate analysis will run after model loads');
+          }
+        }
+        
         if (!cancelled) {
+          // Phase 4: Reset calculator when new model metadata is loaded
+          resetCalculator();
           setRoomPlanMetadata(data);
-          console.log('✅ [SceneEditor] setRoomPlanMetadata() called - metadata stored in Zustand');
+          console.log('✅ [SceneEditor] setRoomPlanMetadata() called - metadata stored in Zustand, calculator reset');
         } else {
           console.log('ℹ️ [SceneEditor] Metadata load cancelled (component unmounted)');
         }
@@ -923,9 +1042,16 @@ export default function SceneEditor({
     });
 
     if (!showMeasurements || !roomPlanMetadata) {
+      // Phase 3: Ensure model is visible when measurements are hidden
+      const model = modelRef.current;
+      if (model) {
+        model.visible = true;
+        console.log('📐 [Phase 3] Model made visible (measurements hidden)');
+      }
+      
       if (!showMeasurements) {
         console.log('📐 [SceneEditor] Measurements hidden (showMeasurements = false)');
-        console.log('   → Hiding measurements UI');
+        console.log('   → Hiding measurements UI, showing model');
       } else {
         console.log('📐 [SceneEditor] Measurements hidden (no roomPlanMetadata)');
         console.log('   → Cannot show measurements without RoomPlan metadata');
@@ -976,86 +1102,88 @@ export default function SceneEditor({
 
     if (!scene || !model) {
       console.warn('📐 [Measurements] Cannot align measurements - scene/model missing');
+      console.warn('   → This usually means the model hasn\'t finished loading yet');
+      console.warn('   → Measurements will be created once the model is loaded and transform is extracted');
       return;
     }
 
-    model.updateMatrixWorld(true);
+    // Wait for model transform to be extracted (Phase 1)
+    // If we're using fallback scaling, we should wait for precise alignment data
+    if (!modelTransform || !scaleFactor) {
+      console.warn('📐 [Measurements] Model transform or scale factor not yet available');
+      console.warn('   → Model:', model ? 'loaded ✅' : 'not loaded ❌');
+      console.warn('   → ModelTransform:', modelTransform ? 'available ✅' : 'not available ❌');
+      console.warn('   → ScaleFactor:', scaleFactor ? 'available ✅' : 'not available ❌');
+      console.warn('   → Will use fallback scaling (imprecise alignment)');
+      console.warn('   → Measurements will be recreated with precise alignment once transform is extracted');
+    }
 
-    const modelBox = new THREE.Box3().setFromObject(model);
-    const modelSize = modelBox.getSize(new THREE.Vector3());
-    const modelCenter = modelBox.getCenter(new THREE.Vector3());
+    model.updateMatrixWorld(true);
 
     // Get theme for dimension labels (theme-aware colors)
     const themeColors = getThemeColors();
     const isDarkMode = themeColors.isDark;
 
-    const measurementGroup = createRoomMeasurements(roomPlanMetadata, true, 1, isDarkMode);
+    // Phase 2: Pass Zustand store data for precise 1mm alignment
+    // Measurements are now pre-aligned using precise scale factors and model transform
+    // No post-processing alignment needed - measurements are created at exact positions
+    const measurementGroup = createRoomMeasurements(
+      roomPlanMetadata,
+      true, // visible
+      modelTransform, // Model transform from Zustand store (null = fallback)
+      scaleFactor, // Precise scale factor from Zustand store (null = fallback)
+      roomPlanSystem, // RoomPlan coordinate system from Zustand store (for floor calculation)
+      isDarkMode
+    );
     measurementGroupRef.current = measurementGroup;
-    console.log('📐 [SceneEditor] Measurement group created:', {
+    
+    // Phase 1: Update store with calculated surface areas
+    // createRoomMeasurements mutates the metadata object with calculated surface areas
+    // We need to update the store to ensure reactivity by creating a new object reference
+    // Note: roomPlanMetadata is mutated by createRoomMeasurements, so we read from it directly
+    if (roomPlanMetadata) {
+      // Create new metadata object with surface areas from the mutated metadata
+      // Since createRoomMeasurements mutates roomPlanMetadata in place, we can read the values directly
+      const updatedMetadata = {
+        ...roomPlanMetadata,
+        walls: roomPlanMetadata.walls?.map((wall: any) => ({
+          ...wall,
+          surfaceArea: wall.surfaceArea, // Keep calculated surface area
+        })),
+        totalSurfaceArea: (roomPlanMetadata as any).totalSurfaceArea || 0,
+      };
+      
+      setRoomPlanMetadata(updatedMetadata);
+      console.log('📐 [SceneEditor] Updated store with calculated surface areas:', {
+        totalSurfaceArea: updatedMetadata.totalSurfaceArea || 'not calculated',
+        wallsWithSurfaceArea: updatedMetadata.walls?.filter((w: any) => w.surfaceArea !== undefined).length || 0,
+      });
+    }
+    
+    console.log('📐 [SceneEditor] Measurement group created (Phase 2 - precise alignment):', {
       childrenCount: measurementGroup.children.length,
       groupName: measurementGroup.name,
+      usingPreciseAlignment: !!(modelTransform && scaleFactor),
+      precision: scaleFactor ? `${(scaleFactor.precision * 1000).toFixed(3)}mm` : 'fallback',
     });
 
-    const metadataBox = new THREE.Box3().setFromObject(measurementGroup);
-    if (metadataBox.isEmpty()) {
-      console.warn('📐 [Measurements] Metadata bounding box is empty, skipping overlay');
-      console.warn('   → This usually means no valid wall/door/window data was found');
-      measurementGroupRef.current = null;
-      return;
-    }
-
-    const metadataSize = metadataBox.getSize(new THREE.Vector3());
-    const metadataCenter = metadataBox.getCenter(new THREE.Vector3());
-
-    console.log('📐 [SceneEditor] Model and metadata bounding boxes:', {
-      modelSize: { x: modelSize.x.toFixed(2), y: modelSize.y.toFixed(2), z: modelSize.z.toFixed(2) },
-      modelCenter: { x: modelCenter.x.toFixed(2), y: modelCenter.y.toFixed(2), z: modelCenter.z.toFixed(2) },
-      metadataSize: { x: metadataSize.x.toFixed(2), y: metadataSize.y.toFixed(2), z: metadataSize.z.toFixed(2) },
-      metadataCenter: { x: metadataCenter.x.toFixed(2), y: metadataCenter.y.toFixed(2), z: metadataCenter.z.toFixed(2) },
-    });
-
-    const scaleX = metadataSize.x !== 0 ? modelSize.x / metadataSize.x : 1;
-    const scaleY = metadataSize.y !== 0 ? modelSize.y / metadataSize.y : scaleX;
-    const scaleZ = metadataSize.z !== 0 ? modelSize.z / metadataSize.z : 1;
-
-    const uniformHorizontalScale = Number.isFinite(scaleX) && Number.isFinite(scaleZ) && scaleX > 0 && scaleZ > 0
-      ? (scaleX + scaleZ) / 2
-      : model.scale.x;
-    const verticalScale = Number.isFinite(scaleY) && scaleY > 0 ? scaleY : uniformHorizontalScale;
-
-    console.log('📐 [SceneEditor] Calculating alignment scales:', {
-      scaleX: scaleX.toFixed(4),
-      scaleY: scaleY.toFixed(4),
-      scaleZ: scaleZ.toFixed(4),
-      uniformHorizontalScale: uniformHorizontalScale.toFixed(4),
-      verticalScale: verticalScale.toFixed(4),
-      modelScale: { x: model.scale.x.toFixed(4), y: model.scale.y.toFixed(4), z: model.scale.z.toFixed(4) },
-    });
-
-    const toOrigin = new THREE.Matrix4().makeTranslation(-metadataCenter.x, -metadataCenter.y, -metadataCenter.z);
-    measurementGroup.applyMatrix4(toOrigin);
-
-    measurementGroup.scale.set(uniformHorizontalScale, verticalScale, uniformHorizontalScale);
-    measurementGroup.quaternion.copy(model.quaternion);
-    measurementGroup.position.copy(modelCenter);
-    measurementGroup.matrixAutoUpdate = true;
-    measurementGroup.updateMatrixWorld(true);
-
+    // Phase 2: Measurements are already precisely aligned, just add to scene
+    // No bounding-box approximation or post-processing needed
     scene.add(measurementGroup);
-    console.log('📐 [SceneEditor] Measurement overlay aligned and added to scene:', {
-      finalPosition: {
-        x: measurementGroup.position.x.toFixed(2),
-        y: measurementGroup.position.y.toFixed(2),
-        z: measurementGroup.position.z.toFixed(2),
-      },
-      finalScale: {
-        x: measurementGroup.scale.x.toFixed(4),
-        y: measurementGroup.scale.y.toFixed(4),
-        z: measurementGroup.scale.z.toFixed(4),
-      },
-      modelSize,
-      metadataSize,
-    });
+    
+    // Ensure measurements inherit model's world rotation if needed
+    // (Model rotation is already applied in createRoomMeasurements, but we might need world rotation)
+    if (model.rotation.y !== 0) {
+      measurementGroup.rotation.y = model.rotation.y;
+    }
+    
+    measurementGroup.updateMatrixWorld(true);
+    
+    // Phase 3: Hide model when measurements are shown
+    model.visible = false;
+    console.log('📐 [Phase 3] Model hidden, measurements visible');
+    
+    console.log('📐 [SceneEditor] Measurement overlay added to scene (Phase 2 - no post-processing needed)');
 
     if (rendererRef.current && cameraRef.current) {
       rendererRef.current.render(scene, cameraRef.current);
@@ -1068,7 +1196,64 @@ export default function SceneEditor({
       }
       measurementGroupRef.current = null;
     };
-  }, [showMeasurements, roomPlanMetadata, modelPath]);
+  }, [showMeasurements, roomPlanMetadata, modelPath, modelTransform, scaleFactor, modelRef]);
+
+  // Phase 3: Model/Measurement Toggle
+  // When measurements are ON: hide model and show measurements
+  // When measurements are OFF: show model and hide measurements
+  useEffect(() => {
+    const model = modelRef.current;
+    const scene = sceneRef.current;
+    const renderer = rendererRef.current;
+    const camera = cameraRef.current;
+    const measurementGroup = measurementGroupRef.current;
+    
+    if (!model || !scene) {
+      // Model not loaded yet, nothing to toggle
+      return;
+    }
+
+    console.log('🔄 [Phase 3] Model/Measurement toggle:', {
+      showMeasurements,
+      modelName: model.name,
+      modelVisible: model.visible,
+      hasMeasurementGroup: !!measurementGroup,
+      measurementGroupVisible: measurementGroup?.visible,
+    });
+
+    if (showMeasurements) {
+      // Measurements ON: Hide model, show measurements
+      console.log('🔄 [Phase 3] Hiding model, showing measurements');
+      model.visible = false;
+      
+      // Ensure measurement group is visible (it's already handled by the measurements useEffect)
+      if (measurementGroup) {
+        measurementGroup.visible = true;
+        measurementGroup.traverse((child) => {
+          child.visible = true;
+        });
+      }
+    } else {
+      // Measurements OFF: Show model, hide measurements
+      console.log('🔄 [Phase 3] Showing model, hiding measurements');
+      model.visible = true;
+      
+      // Hide measurement group (it's already removed by the measurements useEffect, but double-check)
+      if (measurementGroup) {
+        measurementGroup.visible = false;
+        measurementGroup.traverse((child) => {
+          child.visible = false;
+        });
+      }
+    }
+
+    // Force render to reflect visibility changes
+    if (renderer && camera && scene) {
+      renderer.render(scene, camera);
+      console.log('🔄 [Phase 3] Scene re-rendered with visibility changes');
+    }
+  }, [showMeasurements]);
+
   // Handle external waypoint navigation requests
   useEffect(() => {
     const handleGotoWaypoint = (e: any) => {
@@ -3815,6 +4000,7 @@ export default function SceneEditor({
                   scene.add(model);
                   modelRef.current = model;
                   setModelPath(modelPath);
+                  setModelLoaded(true); // Mark model as loaded for calculator visibility
 
                   // Fit camera so the model is visible
                   if (cameraRef.current) {
@@ -5135,16 +5321,73 @@ export default function SceneEditor({
         if (sceneRef.current && model) {
           sceneRef.current.add(model);
           modelRef.current = model;
+          setModelPath(modelPath); // Update model path in Zustand store
+          setModelLoaded(true); // Mark model as loaded for calculator visibility
           console.log('📤 [ScrollScene] Model added to scene');
         }
         
         // Store hotspots for interaction
         clickableObjectsRef.current = clickableObjects;
         
+        // Phase 1: Extract model transformation details for precise measurement alignment
+        // This is CRITICAL - measurements need this data for alignment!
+        console.log('📊 [Phase 1] Extracting model transformation details (loadUploadedModel)...');
+        const modelTransform = extractModelTransform(model, 100); // Limit to 100 vertices for performance
+        modelTransformRef.current = modelTransform; // Keep full transform in ref for component use
+        
+        // Store serialized version in Zustand for shared access (lightweight, no Three.js objects)
+        const serializedTransform = serializeModelTransform(modelTransform);
+        setModelTransform(serializedTransform);
+        console.log('✅ [Phase 1] Model transform extracted and stored in Zustand (loadUploadedModel)');
+        
+        // If RoomPlan metadata is already loaded, analyze coordinate systems now
+        const currentRoomPlanMetadata = useSceneStore.getState().roomPlanMetadata;
+        if (currentRoomPlanMetadata?.walls && currentRoomPlanMetadata.walls.length > 0) {
+          console.log('📊 [Phase 1] RoomPlan metadata already loaded - analyzing coordinate systems...');
+          const roomPlanSystem = analyzeRoomPlanCoordinateSystem(currentRoomPlanMetadata, currentRoomPlanMetadata.walls);
+          roomPlanSystemRef.current = roomPlanSystem; // Keep full system in ref
+          
+          // Store serialized version in Zustand
+          const serializedSystem = serializeRoomPlanSystem(roomPlanSystem);
+          setRoomPlanSystem(serializedSystem);
+          
+          const scaleFactor = calculatePreciseScaleFactor(
+            modelTransform,
+            roomPlanSystem,
+            currentRoomPlanMetadata.walls
+          );
+          scaleFactorRef.current = scaleFactor; // Keep full factor in ref
+          
+          // Store serialized version in Zustand
+          const serializedScaleFactor = serializeScaleFactor(scaleFactor);
+          setScaleFactor(serializedScaleFactor);
+          
+          logTransformationAnalysis(modelTransform, roomPlanSystem, scaleFactor);
+          console.log('✅ [Phase 1] Coordinate system analysis complete and stored in Zustand (loadUploadedModel)');
+        } else {
+          console.log('⚠️ [Phase 1] RoomPlan metadata not yet loaded - coordinate analysis will run when metadata loads');
+        }
+        
+        // Log final model position, rotation, and scale
+        const modelBox = new THREE.Box3().setFromObject(model);
+        const modelSize = modelBox.getSize(new THREE.Vector3());
+        const modelCenter = modelBox.getCenter(new THREE.Vector3());
+        console.log('📐 MODEL LOADED (loadUploadedModel) - Complete Transform Info:');
+        console.log('  Model Position (X, Y, Z):', model.position.x.toFixed(6), model.position.y.toFixed(6), model.position.z.toFixed(6));
+        console.log('  Model Rotation (X, Y, Z):', model.rotation.x.toFixed(6), model.rotation.y.toFixed(6), model.rotation.z.toFixed(6));
+        console.log('  Model Rotation Y (degrees):', (model.rotation.y * 180 / Math.PI).toFixed(2));
+        console.log('  Model Scale (applied by ModelLoader):', model.scale.x.toFixed(6), model.scale.y.toFixed(6), model.scale.z.toFixed(6));
+        console.log('  Model Bounding Box Size:', modelSize.x.toFixed(6), 'x', modelSize.y.toFixed(6), 'x', modelSize.z.toFixed(6));
+        console.log('  Model Bounding Box Center:', modelCenter.x.toFixed(6), modelCenter.y.toFixed(6), modelCenter.z.toFixed(6));
+        console.log('  Model Bounding Box Min:', modelBox.min.x.toFixed(6), modelBox.min.y.toFixed(6), modelBox.min.z.toFixed(6));
+        console.log('  Model Bounding Box Max:', modelBox.max.x.toFixed(6), modelBox.max.y.toFixed(6), modelBox.max.z.toFixed(6));
+        
         console.log('📤 [ScrollScene] Uploaded model loaded successfully:', {
           modelPath,
           projectName,
-          hotspotsFound: clickableObjects.length
+          hotspotsFound: clickableObjects.length,
+          modelScale: model.scale.x.toFixed(6),
+          modelSize: `${modelSize.x.toFixed(2)} x ${modelSize.y.toFixed(2)} x ${modelSize.z.toFixed(2)}`
         });
         
         // Re-add path visuals after loading new model

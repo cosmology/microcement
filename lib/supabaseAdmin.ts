@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { existsSync } from 'fs';
 
 // Lazy initialization: only create the client when accessed (server-side only)
 // This allows the module to be imported on client-side without errors
@@ -21,7 +22,26 @@ function getSupabaseAdmin(): SupabaseClient {
 
     // Server-side: initialize the admin client
     // Only access env vars on server-side where they're available
-    const url = process.env.SUPABASE_SERVER_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    let url = process.env.SUPABASE_SERVER_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    
+    // Auto-detect Docker environment and fix localhost URL
+    // In Docker, localhost:8000 won't work - need host.docker.internal:8000
+    // Only auto-fix if we detect we're likely in Docker and URL is localhost:8000
+    if (url && url.includes('localhost:8000') && typeof window === 'undefined') {
+      // Check for Docker environment indicators
+      // Docker containers typically have these indicators
+      const isDocker = 
+        process.env.DOCKER === '1' || 
+        existsSync('/.dockerenv') ||
+        (process.env.HOSTNAME && process.env.HOSTNAME.match(/^[a-f0-9]{12}$/)); // Container IDs are 12-char hex
+      
+      if (isDocker) {
+        const fixedUrl = url.replace('localhost:8000', 'host.docker.internal:8000');
+        console.warn(`[supabaseAdmin] Auto-fixing localhost URL for Docker: ${url} -> ${fixedUrl}`);
+        url = fixedUrl;
+      }
+    }
+    
     // Support both SUPABASE_SERVICE_ROLE_KEY and SERVICE_ROLE_KEY for backwards compatibility
     const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
 
