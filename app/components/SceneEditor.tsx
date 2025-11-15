@@ -148,11 +148,9 @@ export default function SceneEditor({
   const modelTransformRef = useRef<ModelTransform | null>(null);
   const roomPlanSystemRef = useRef<RoomPlanCoordinateSystem | null>(null);
   const scaleFactorRef = useRef<ScaleFactorAnalysis | null>(null);
-<<<<<<< HEAD
+
   // Track if we've already processed surface areas for current metadata to prevent infinite loop
   const surfaceAreasProcessedRef = useRef<boolean>(false);
-=======
->>>>>>> origin/main
   
   // Watch camera type and orbital height - swap waypoint data
   useEffect(() => {
