@@ -936,7 +936,7 @@ export default function HomeClient() {
             onDebugUpdate={setDebugData}
           />
           {debugData && <DebugInfo {...debugData} />}
-          <TimelineWaypoints />
+          {/* <TimelineWaypoints /> */}
           <ScrollDownCTA />
           {/* Virtual scroll sections (no content) to drive scroll-based progression */}
           <main className="relative z-10" style={{ visibility: preloadDone ? 'visible' : 'hidden' }}>
@@ -979,7 +979,7 @@ export default function HomeClient() {
             onDebugUpdate={setDebugData}
           />
           {debugData && <DebugInfo {...debugData} />}
-          <TimelineWaypoints />
+          {/* <TimelineWaypoints /> */}
           <ScrollDownCTA />
           {/* Virtual scroll sections (no content) to drive scroll-based progression */}
           <main className="relative z-10" style={{ visibility: preloadDone ? 'visible' : 'hidden' }}>

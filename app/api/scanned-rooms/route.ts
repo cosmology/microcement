@@ -17,8 +17,21 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (error) {
+      const supabaseUrl = process.env.SUPABASE_SERVER_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
       console.error('❌ [ScannedRooms] Database error:', error);
-      return NextResponse.json({ error: 'Database error' }, { status: 500 });
+      console.error('❌ [ScannedRooms] Error details:', JSON.stringify(error, null, 2));
+      console.error('❌ [ScannedRooms] Supabase URL:', supabaseUrl);
+      
+      // Check if it's a connection error
+      if (error.message?.includes('fetch failed') || String(error).includes('fetch failed')) {
+        console.error('❌ [ScannedRooms] Connection error detected. If running in Docker, ensure SUPABASE_SERVER_URL=http://host.docker.internal:8000');
+      }
+      
+      return NextResponse.json({ 
+        error: 'Database error', 
+        details: error.message || String(error),
+        hint: error.message?.includes('fetch failed') ? 'Connection error - check SUPABASE_SERVER_URL for Docker setup' : undefined
+      }, { status: 500 });
     }
 
     console.log(`✅ [ScannedRooms] Found ${exports?.length || 0} ready exports in ${Date.now() - startTime}ms`);

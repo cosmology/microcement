@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Upload, FileStack, Settings, Users, RulerIcon, RotateCw, RotateCcw, PanelLeftClose, Boxes, Camera, Scan, Home, Ruler } from 'lucide-react'
+import { Upload, FileStack, Settings, Users, RulerIcon, RotateCw, RotateCcw, PanelLeftClose, Boxes, Camera, Scan, Home, Ruler, Calculator } from 'lucide-react'
 import { UserRole } from '@/hooks/useUserRole'
 import { useTranslations } from 'next-intl'
 import { useDockedNavigationStore } from '@/lib/stores/dockedNavigationStore'
@@ -15,6 +15,7 @@ import UploadsList from './UploadsList'
 import CameraPathEditor3D from './CameraPathEditor3D'
 import RoomScanner from './RoomScanner'
 import ScannedRoomsList from './ScannedRoomsList'
+import CalculatorPanel from './CalculatorPanel'
 
 // UI Constants
 const SUBPANEL_WIDTH = 'w-[21rem]' // 800px uniform width for all subpanels
@@ -35,35 +36,45 @@ export default function DockedNavigation({ role, userWithRole }: DockedNavigatio
   // Track header height for pushing panels down
   const [headerHeight, setHeaderHeight] = React.useState(44)
   
-  // Zustand stores
-  const {
-    isCollapsed,
-    showModelsList,
-    showUploadModal,
-    showUploads: showMyUploads,
-    showCameraControls,
-    showScanner,
-    showScannedRooms,
-    setIsCollapsed,
-    setShowUploadModal,
-    setShowModelsList,
-    setShowUploads,
-    setShowCameraControls,
-    setShowScanner,
-    setShowScannedRooms,
-    openModelsList,
-    openUploads,
-    openUploadModal,
-    openCameraControls,
-    openScanner,
-    openScannedRooms,
-  } = useDockedNavigationStore()
+  // Zustand stores - Use individual selectors for better performance
+  // This prevents unnecessary re-renders when unrelated state changes
+  const isCollapsed = useDockedNavigationStore((state) => state.isCollapsed)
+  const showModelsList = useDockedNavigationStore((state) => state.showModelsList)
+  const showUploadModal = useDockedNavigationStore((state) => state.showUploadModal)
+  const showMyUploads = useDockedNavigationStore((state) => state.showUploads)
+  const showCameraControls = useDockedNavigationStore((state) => state.showCameraControls)
+  const showScanner = useDockedNavigationStore((state) => state.showScanner)
+  const showScannedRooms = useDockedNavigationStore((state) => state.showScannedRooms)
+  const showCalculator = useDockedNavigationStore((state) => state.showCalculator)
+  
+  // Actions - These are stable references, safe to extract
+  const setIsCollapsed = useDockedNavigationStore((state) => state.setIsCollapsed)
+  const setShowUploadModal = useDockedNavigationStore((state) => state.setShowUploadModal)
+  const setShowModelsList = useDockedNavigationStore((state) => state.setShowModelsList)
+  const setShowUploads = useDockedNavigationStore((state) => state.setShowUploads)
+  const setShowCameraControls = useDockedNavigationStore((state) => state.setShowCameraControls)
+  const setShowScanner = useDockedNavigationStore((state) => state.setShowScanner)
+  const setShowScannedRooms = useDockedNavigationStore((state) => state.setShowScannedRooms)
+  const setShowCalculator = useDockedNavigationStore((state) => state.setShowCalculator)
+  const openModelsList = useDockedNavigationStore((state) => state.openModelsList)
+  const openUploads = useDockedNavigationStore((state) => state.openUploads)
+  const openUploadModal = useDockedNavigationStore((state) => state.openUploadModal)
+  const openCameraControls = useDockedNavigationStore((state) => state.openCameraControls)
+  const openScanner = useDockedNavigationStore((state) => state.openScanner)
+  const openScannedRooms = useDockedNavigationStore((state) => state.openScannedRooms)
+  const openCalculator = useDockedNavigationStore((state) => state.openCalculator)
   
   // Camera store (for editor state and model utilities)
-  const { isEditorEnabled, requestClearScene, requestRotateModel } = useCameraStore()
+  const isEditorEnabled = useCameraStore((state) => state.isEditorEnabled)
+  const requestClearScene = useCameraStore((state) => state.requestClearScene)
+  const requestRotateModel = useCameraStore((state) => state.requestRotateModel)
   
   // Scene store (for measurements toggle and metadata check)
-  const { showMeasurements, toggleMeasurements, roomPlanMetadata, roomPlanJsonPath } = useSceneStore()
+  const showMeasurements = useSceneStore((state) => state.showMeasurements)
+  const toggleMeasurements = useSceneStore((state) => state.toggleMeasurements)
+  const roomPlanMetadata = useSceneStore((state) => state.roomPlanMetadata)
+  const roomPlanJsonPath = useSceneStore((state) => state.roomPlanJsonPath)
+  const modelLoaded = useSceneStore((state) => state.modelLoaded)
 
   // Monitor header visibility - panels stick to top when header is hidden
   React.useEffect(() => {
@@ -319,6 +330,29 @@ export default function DockedNavigation({ role, userWithRole }: DockedNavigatio
                     </a>
                   </li>
 
+                  {/* Material Calculator - Only show if model is loaded */}
+                  {modelLoaded && roomPlanMetadata && (
+                    <li className="group/menu-item relative">
+                      <a 
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          openCalculator();
+                        }}
+                        className={`flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer group`}
+                        title="Material Calculator"
+                      >
+                        <div className="flex items-center justify-center shrink-0">
+                          <Calculator className={`w-[19px] h-[19px] transition-colors ${showCalculator ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'} group-hover:text-blue-600 dark:group-hover:text-blue-400`} />
+                        </div>
+                        <span className={`${isCollapsed ? 'opacity-0 -translate-x-2 pointer-events-none' : 'opacity-100 translate-x-0'} text-xs whitespace-nowrap transition-[opacity,transform] duration-100 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-accent-highlight`}>
+                          {t('calculator', { default: 'Calculator' })}
+                        </span>
+                      </a>
+                    </li>
+                  )}
+
                   {/* Reset Scene */}
                   <li className="group/menu-item relative">
                     <a onClick={handleResetScene} className="flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer group">
@@ -516,6 +550,11 @@ export default function DockedNavigation({ role, userWithRole }: DockedNavigatio
           </div>
           <ScannedRoomsList userId={userWithRole?.id} />
         </div>
+      )}
+
+      {/* Material Calculator Panel */}
+      {showCalculator && modelLoaded && roomPlanMetadata && (
+        <CalculatorPanel />
       )}
     </>
   )

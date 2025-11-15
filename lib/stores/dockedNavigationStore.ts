@@ -10,6 +10,7 @@ interface DockedNavigationState {
   showCameraControls: boolean
   showScanner: boolean
   showScannedRooms: boolean
+  showCalculator: boolean
   
   // Selected items
   selectedModelId: string | null
@@ -26,6 +27,7 @@ interface DockedNavigationState {
   setShowCameraControls: (show: boolean) => void
   setShowScanner: (show: boolean) => void
   setShowScannedRooms: (show: boolean) => void
+  setShowCalculator: (show: boolean) => void
   setSelectedModelId: (id: string | null) => void
   setSelectedUploadId: (id: string | null) => void
   setModelsStatusFilter: (filter: string) => void
@@ -37,6 +39,7 @@ interface DockedNavigationState {
   openCameraControls: () => void
   openScanner: () => void
   openScannedRooms: () => void
+  openCalculator: () => void
   closeAllPanels: () => void
   
   // Reset
@@ -51,6 +54,7 @@ const initialState = {
   showCameraControls: false,
   showScanner: false,
   showScannedRooms: false,
+  showCalculator: false,
   selectedModelId: null,
   selectedUploadId: null,
   modelsStatusFilter: 'all',
@@ -69,6 +73,7 @@ export const useDockedNavigationStore = create<DockedNavigationState>()(
       setShowCameraControls: (show) => set({ showCameraControls: show }),
       setShowScanner: (show) => set({ showScanner: show }),
       setShowScannedRooms: (show) => set({ showScannedRooms: show }),
+      setShowCalculator: (show) => set({ showCalculator: show }),
       setSelectedModelId: (id) => set({ selectedModelId: id }),
       setSelectedUploadId: (id) => set({ selectedUploadId: id }),
       setModelsStatusFilter: (filter) => set({ modelsStatusFilter: filter }),
@@ -81,6 +86,7 @@ export const useDockedNavigationStore = create<DockedNavigationState>()(
         showUploadModal: false,
         showScanner: false,
         showScannedRooms: false,
+        showCalculator: false,
       }),
       
       openUploads: () => set({
@@ -90,6 +96,7 @@ export const useDockedNavigationStore = create<DockedNavigationState>()(
         showUploadModal: false,
         showScanner: false,
         showScannedRooms: false,
+        showCalculator: false,
       }),
       
       openCameraControls: () => set({
@@ -99,6 +106,7 @@ export const useDockedNavigationStore = create<DockedNavigationState>()(
         showUploadModal: false,
         showScanner: false,
         showScannedRooms: false,
+        showCalculator: false,
       }),
       
       openUploadModal: () => set({
@@ -113,6 +121,7 @@ export const useDockedNavigationStore = create<DockedNavigationState>()(
         showUploadModal: false,
         showScanner: true,
         showScannedRooms: false,
+        showCalculator: false,
       }),
       
       openScannedRooms: () => set({
@@ -122,6 +131,17 @@ export const useDockedNavigationStore = create<DockedNavigationState>()(
         showUploadModal: false,
         showScanner: false,
         showScannedRooms: true,
+        showCalculator: false,
+      }),
+      
+      openCalculator: () => set({
+        showModelsList: false,
+        showUploads: false,
+        showCameraControls: false,
+        showUploadModal: false,
+        showScanner: false,
+        showScannedRooms: false,
+        showCalculator: true,
       }),
       
       closeAllPanels: () => set({
@@ -131,6 +151,7 @@ export const useDockedNavigationStore = create<DockedNavigationState>()(
         showUploadModal: false,
         showScanner: false,
         showScannedRooms: false,
+        showCalculator: false,
       }),
       
       // Reset
