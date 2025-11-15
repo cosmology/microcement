@@ -338,7 +338,12 @@ export default function DockedNavigation({ role, userWithRole }: DockedNavigatio
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          openCalculator();
+                          // Toggle calculator panel
+                          if (showCalculator) {
+                            setShowCalculator(false);
+                          } else {
+                            openCalculator();
+                          }
                         }}
                         className={`flex w-full items-center gap-2 overflow-hidden rounded-md py-2 px-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 h-8 cursor-pointer group`}
                         title="Material Calculator"

@@ -349,6 +349,8 @@
     "showMeasurements": "Show Measurements",
     "hideMeasurements": "Hide Measurements",
     "calculator": "Calculator",
+    "wall": "Wall",
+    "total": "Total",
     "roomScanner": "Room Scanner",
   "scannedRooms": "Scanned Rooms",
     "Upload Models": "Upload Models",

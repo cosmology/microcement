@@ -276,13 +276,13 @@ export default function RotationControl({
     };
   }, [displayRotation]);
   
-  // Mouse interaction handlers
-  // Order: handleMouseMove first (no dependencies), then handleMouseUp, then handleMouseDown
-  const handleMouseMove = useCallback((event: MouseEvent) => {
+  // Mouse and touch interaction handlers
+  // Order: updateRotation first (no dependencies), then handleMouseMove, handleTouchMove, then handleMouseUp, handleTouchEnd, then handleMouseDown, handleTouchStart
+  const updateRotation = useCallback((clientX: number, clientY: number) => {
     if (!isDraggingRef.current) return;
     
-    const deltaX = event.clientX - lastMousePositionRef.current.x;
-    const deltaY = event.clientY - lastMousePositionRef.current.y;
+    const deltaX = clientX - lastMousePositionRef.current.x;
+    const deltaY = clientY - lastMousePositionRef.current.y;
     
     // Convert mouse movement to rotation (circular motion)
     // This mimics Blender's viewport rotation behavior
@@ -310,10 +310,22 @@ export default function RotationControl({
     
     console.log(`🎯 [RotationControl-${instanceId.current}] Rotation updated: X=${(newX * 180 / Math.PI).toFixed(1)}°, Y=${(newY * 180 / Math.PI).toFixed(1)}°`);
     
-    lastMousePositionRef.current = { x: event.clientX, y: event.clientY };
+    lastMousePositionRef.current = { x: clientX, y: clientY };
   }, [updateWorldRotation]);
+
+  const handleMouseMove = useCallback((event: MouseEvent) => {
+    updateRotation(event.clientX, event.clientY);
+  }, [updateRotation]);
+
+  const handleTouchMove = useCallback((event: TouchEvent) => {
+    event.preventDefault(); // Prevent scrolling while dragging
+    const touch = event.touches[0];
+    if (touch) {
+      updateRotation(touch.clientX, touch.clientY);
+    }
+  }, [updateRotation]);
   
-  const handleMouseUp = useCallback(() => {
+  const endDrag = useCallback(() => {
     if (isDraggingRef.current) {
       console.log(`🎯 [RotationControl-${instanceId.current}] Stopped dragging`);
     }
@@ -321,28 +333,58 @@ export default function RotationControl({
     isDraggingRef.current = false;
     setIsDragging(false);
     lastMousePositionRef.current = { x: 0, y: 0 };
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    endDrag();
     
     // Remove global mouse event listeners
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
-  }, [handleMouseMove]);
+  }, [endDrag, handleMouseMove]);
+
+  const handleTouchEnd = useCallback(() => {
+    endDrag();
+    
+    // Remove global touch event listeners
+    document.removeEventListener('touchmove', handleTouchMove);
+    document.removeEventListener('touchend', handleTouchEnd);
+  }, [endDrag, handleTouchMove]);
+
+  const startDrag = useCallback((clientX: number, clientY: number) => {
+    if (isDraggingRef.current) return;
+    
+    isDraggingRef.current = true;
+    setIsDragging(true);
+    lastMousePositionRef.current = { x: clientX, y: clientY };
+    
+    console.log(`🎯 [RotationControl-${instanceId.current}] Started dragging`);
+  }, []);
 
   const handleMouseDown = useCallback((event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
     
-    if (isDraggingRef.current) return;
-    
-    isDraggingRef.current = true;
-    setIsDragging(true);
-    lastMousePositionRef.current = { x: event.clientX, y: event.clientY };
-    
-    console.log(`🎯 [RotationControl-${instanceId.current}] Started dragging`);
+    startDrag(event.clientX, event.clientY);
     
     // Add global mouse event listeners
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, [handleMouseMove, handleMouseUp]);
+  }, [startDrag, handleMouseMove, handleMouseUp]);
+
+  const handleTouchStart = useCallback((event: React.TouchEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const touch = event.touches[0];
+    if (touch) {
+      startDrag(touch.clientX, touch.clientY);
+      
+      // Add global touch event listeners
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleTouchEnd);
+    }
+  }, [startDrag, handleTouchMove, handleTouchEnd]);
   
   // Debug component lifecycle
   useEffect(() => {
@@ -363,6 +405,7 @@ export default function RotationControl({
       {/* Blender-style 3D Gizmo - Same size as ZoomControl3D */}
       <div
         onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
         className={`
@@ -377,6 +420,7 @@ export default function RotationControl({
           hover:scale-110
           active:scale-95
           cursor-grab active:cursor-grabbing
+          touch-none select-none
           relative
           ${isDragging ? 'ring-2 ring-purple-500 dark:ring-purple-400' : ''}
         `}

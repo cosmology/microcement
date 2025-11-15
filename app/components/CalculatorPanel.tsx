@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { PanelLeftClose, GripVertical } from 'lucide-react'
+import { X, GripVertical } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useSceneStore } from '@/lib/stores/sceneStore'
 import { useDockedNavigationStore } from '@/lib/stores/dockedNavigationStore'
@@ -104,14 +104,14 @@ const CalculatorPanel = React.memo(function CalculatorPanel() {
       
       return {
         id: wallId,
-        name: `Wall ${index + 1}`,
+        name: `${t('wall', { default: 'Wall' })} ${index + 1}`,
         dimensions: { width, height },
         surfaceArea,
         material,
         price,
       }
     })
-  }, [roomPlanMetadata?.walls, wallMaterials]) // Only recalculate when walls or materials change
+  }, [roomPlanMetadata?.walls, wallMaterials, t]) // Only recalculate when walls, materials, or translations change
   
   // Phase 4: Memoized total price calculation
   const totalPrice = React.useMemo(() => {
@@ -123,14 +123,8 @@ const CalculatorPanel = React.memo(function CalculatorPanel() {
     setWallMaterial(wallId, material)
   }, [setWallMaterial])
   
-  // Draggable panel handlers
-  const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
-    // Only allow dragging from header (not buttons or interactive elements)
-    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('select')) {
-      return
-    }
-    
-    e.preventDefault()
+  // Draggable panel handlers (mouse and touch)
+  const startDrag = React.useCallback((clientX: number, clientY: number) => {
     setIsDragging(true)
     
     const panel = panelRef.current
@@ -142,19 +136,42 @@ const CalculatorPanel = React.memo(function CalculatorPanel() {
     const currentY = position?.y ?? 80 // Default: top-20 (5rem = 80px)
     
     dragStartRef.current = {
-      x: e.clientX - currentX,
-      y: e.clientY - currentY,
+      x: clientX - currentX,
+      y: clientY - currentY,
     }
   }, [position])
+
+  const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
+    // Only allow dragging from header (not buttons or interactive elements)
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('select')) {
+      return
+    }
+    
+    e.preventDefault()
+    startDrag(e.clientX, e.clientY)
+  }, [startDrag])
+
+  const handleTouchStart = React.useCallback((e: React.TouchEvent) => {
+    // Only allow dragging from header (not buttons or interactive elements)
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('select')) {
+      return
+    }
+    
+    e.preventDefault()
+    const touch = e.touches[0]
+    if (touch) {
+      startDrag(touch.clientX, touch.clientY)
+    }
+  }, [startDrag])
   
-  const handleMouseMove = React.useCallback((e: MouseEvent) => {
+  const updatePosition = React.useCallback((clientX: number, clientY: number) => {
     if (!isDragging || !dragStartRef.current) return
     
     const panel = panelRef.current
     if (!panel) return
     
-    const newX = e.clientX - dragStartRef.current.x
-    const newY = e.clientY - dragStartRef.current.y
+    const newX = clientX - dragStartRef.current.x
+    const newY = clientY - dragStartRef.current.y
     
     // Constrain to viewport bounds
     const maxX = window.innerWidth - panel.offsetWidth
@@ -165,23 +182,47 @@ const CalculatorPanel = React.memo(function CalculatorPanel() {
       y: Math.max(0, Math.min(newY, maxY)),
     })
   }, [isDragging])
+
+  const handleMouseMove = React.useCallback((e: MouseEvent) => {
+    updatePosition(e.clientX, e.clientY)
+  }, [updatePosition])
+
+  const handleTouchMove = React.useCallback((e: TouchEvent) => {
+    e.preventDefault() // Prevent scrolling while dragging
+    const touch = e.touches[0]
+    if (touch) {
+      updatePosition(touch.clientX, touch.clientY)
+    }
+  }, [updatePosition])
   
-  const handleMouseUp = React.useCallback(() => {
+  const endDrag = React.useCallback(() => {
     setIsDragging(false)
     dragStartRef.current = null
   }, [])
+
+  const handleMouseUp = React.useCallback(() => {
+    endDrag()
+  }, [endDrag])
+
+  const handleTouchEnd = React.useCallback(() => {
+    endDrag()
+  }, [endDrag])
   
-  // Set up global mouse event listeners for dragging
+  // Set up global mouse and touch event listeners for dragging
   React.useEffect(() => {
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
+      document.addEventListener('touchmove', handleTouchMove, { passive: false })
+      document.addEventListener('touchend', handleTouchEnd)
       return () => {
         document.removeEventListener('mousemove', handleMouseMove)
         document.removeEventListener('mouseup', handleMouseUp)
+        document.removeEventListener('touchmove', handleTouchMove)
+        document.removeEventListener('touchend', handleTouchEnd)
       }
     }
-  }, [isDragging, handleMouseMove, handleMouseUp])
+  }, [isDragging, handleMouseMove, handleMouseUp, handleTouchMove, handleTouchEnd])
   
   if (!roomPlanMetadata?.walls || wallsWithMaterials.length === 0) {
     return null
@@ -190,7 +231,7 @@ const CalculatorPanel = React.memo(function CalculatorPanel() {
   return (
     <div 
       ref={panelRef}
-      className={`fixed w-[28rem] max-h-[calc(100vh-6rem)] bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-[90] flex flex-col transition-all duration-200 ease-out ${isDragging ? 'cursor-grabbing' : 'cursor-default'}`}
+      className={`fixed w-[320px] sm:w-[28rem] max-h-[calc(100vh-6rem)] bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-[90] flex flex-col transition-all duration-200 ease-out ${isDragging ? 'cursor-grabbing' : 'cursor-default'}`}
       style={{
         ...(position 
           ? { left: `${position.x}px`, top: `${position.y}px` }
@@ -200,12 +241,13 @@ const CalculatorPanel = React.memo(function CalculatorPanel() {
     >
       {/* Header - Draggable */}
       <div 
-        className={`sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-4 py-3 flex items-center justify-between z-10 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        className={`sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 px-4 py-3 flex items-center justify-between z-10 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} touch-none select-none`}
         onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
       >
-        <div className="flex items-center gap-2 flex-1">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           <GripVertical className="w-4 h-4 text-gray-400 dark:text-gray-600 flex-shrink-0" />
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
             {t('calculator', { default: 'Material Calculator' })}
           </h2>
         </div>
@@ -214,34 +256,34 @@ const CalculatorPanel = React.memo(function CalculatorPanel() {
             e.stopPropagation()
             setShowCalculator(false)
           }}
-          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors flex-shrink-0"
+          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors flex-shrink-0 ml-2"
           aria-label="Close calculator"
         >
-          <PanelLeftClose className="w-5 h-5 text-gray-400 dark:text-gray-600" />
+          <X className="w-5 h-5 text-gray-400 dark:text-gray-600" />
         </button>
       </div>
       
-      {/* Content */}
-      <ScrollArea className="flex-1 px-4 py-3">
+      {/* Content - Scrollable */}
+      <ScrollArea className="flex-1 min-h-0 px-4 py-3 overflow-y-auto">
         <div className="space-y-3">
           {wallsWithMaterials.map((wall) => (
             <div
               key={wall.id}
-              className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-2"
+              className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-2 w-full min-w-0"
             >
               {/* Wall Name */}
-              <div className="font-medium text-sm text-gray-900 dark:text-white">
+              <div className="font-medium text-sm text-gray-900 dark:text-white truncate">
                 {wall.name}
               </div>
               
               {/* Dimensions */}
-              <div className="text-xs text-gray-600 dark:text-gray-400">
+              <div className="text-xs text-gray-600 dark:text-gray-400 break-words">
                 {wall.dimensions.width.toFixed(2)}m × {wall.dimensions.height.toFixed(2)}m ({wall.surfaceArea.toFixed(2)}m²)
               </div>
               
               {/* Material Selection */}
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap">
+              <div className="flex items-center gap-2 w-full min-w-0">
+                <label className="text-xs text-gray-700 dark:text-gray-300 whitespace-nowrap flex-shrink-0">
                   Material:
                 </label>
                 <select
@@ -250,7 +292,7 @@ const CalculatorPanel = React.memo(function CalculatorPanel() {
                     const newMaterial = e.target.value as MaterialType
                     handleMaterialChange(wall.id, newMaterial)
                   }}
-                  className="flex-1 text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
+                  className="flex-1 min-w-0 text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
                 >
                   <option value="paint">Paint ($10/m²)</option>
                   <option value="tile">Tile ($30/m²)</option>
@@ -271,7 +313,7 @@ const CalculatorPanel = React.memo(function CalculatorPanel() {
       <div className="sticky bottom-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200/50 dark:border-gray-700/50 px-4 py-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-gray-900 dark:text-white">
-            Total:
+            {t('total', { default: 'Total' })}:
           </span>
           <span className="text-lg font-bold text-purple-600 dark:text-purple-400">
             ${totalPrice.toFixed(2)}

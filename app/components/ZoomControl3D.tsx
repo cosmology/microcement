@@ -194,14 +194,14 @@ export default function ZoomControl3D({
   }, [cameraRef]);
 
   /**
-   * Handle mouse move during drag
+   * Update zoom position based on clientY coordinate (works for both mouse and touch)
    */
-  const handleMouseMove = useCallback((event: MouseEvent) => {
+  const updateZoomPosition = useCallback((clientY: number) => {
     if (!isDraggingRef.current || !cameraRef?.current || !sceneRef?.current || !rendererRef?.current) {
       return;
     }
 
-    const deltaY = lastDragYRef.current - event.clientY; // Inverted: drag up = positive = zoom in
+    const deltaY = lastDragYRef.current - clientY; // Inverted: drag up = positive = zoom in
     const distanceDelta = deltaY * DRAG_SENSITIVITY;
     
     // Calculate new distance (drag up = zoom in = decrease distance)
@@ -214,13 +214,31 @@ export default function ZoomControl3D({
     currentDragDistanceRef.current = newDistance;
     setCurrentDistance(newDistance);
     
-    lastDragYRef.current = event.clientY;
+    lastDragYRef.current = clientY;
   }, [cameraRef, sceneRef, rendererRef, animateToDistance]);
 
   /**
-   * Handle mouse up - end drag
+   * Handle mouse move during drag
    */
-  const handleMouseUp = useCallback(() => {
+  const handleMouseMove = useCallback((event: MouseEvent) => {
+    updateZoomPosition(event.clientY);
+  }, [updateZoomPosition]);
+
+  /**
+   * Handle touch move during drag
+   */
+  const handleTouchMove = useCallback((event: TouchEvent) => {
+    event.preventDefault(); // Prevent scrolling while dragging
+    const touch = event.touches[0];
+    if (touch) {
+      updateZoomPosition(touch.clientY);
+    }
+  }, [updateZoomPosition]);
+
+  /**
+   * End drag operation (works for both mouse and touch)
+   */
+  const endDrag = useCallback(() => {
     if (!isDraggingRef.current) {
       return;
     }
@@ -233,27 +251,42 @@ export default function ZoomControl3D({
     setIsDragging(false);
     lastDragYRef.current = 0;
     dragStartYRef.current = 0;
+  }, [getCurrentDistance]);
 
+  /**
+   * Handle mouse up - end drag
+   */
+  const handleMouseUp = useCallback(() => {
+    endDrag();
+    
     // Remove global mouse event listeners
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
-  }, [getCurrentDistance, handleMouseMove]);
+  }, [endDrag, handleMouseMove]);
 
   /**
-   * Handle mouse down on button - start drag
+   * Handle touch end - end drag
    */
-  const handleMouseDown = useCallback((event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
+  const handleTouchEnd = useCallback(() => {
+    endDrag();
     
+    // Remove global touch event listeners
+    document.removeEventListener('touchmove', handleTouchMove);
+    document.removeEventListener('touchend', handleTouchEnd);
+  }, [endDrag, handleTouchMove]);
+
+  /**
+   * Start drag operation (works for both mouse and touch)
+   */
+  const startDrag = useCallback((clientY: number) => {
     if (isDraggingRef.current || !cameraRef?.current) {
       return;
     }
 
     isDraggingRef.current = true;
     setIsDragging(true);
-    lastDragYRef.current = event.clientY;
-    dragStartYRef.current = event.clientY;
+    lastDragYRef.current = clientY;
+    dragStartYRef.current = clientY;
     
     // Kill any ongoing zoom animations
     if (cameraRef.current) {
@@ -266,11 +299,38 @@ export default function ZoomControl3D({
     setCurrentDistance(initialDistance);
 
     console.log(`🔍 [ZoomControl3D-${instanceId.current}] Started drag from distance: ${initialDistance.toFixed(2)}`);
+  }, [cameraRef, getCurrentDistance]);
+
+  /**
+   * Handle mouse down on button - start drag
+   */
+  const handleMouseDown = useCallback((event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    startDrag(event.clientY);
 
     // Add global mouse event listeners
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, [cameraRef, getCurrentDistance, handleMouseMove, handleMouseUp]);
+  }, [startDrag, handleMouseMove, handleMouseUp]);
+
+  /**
+   * Handle touch start on button - start drag
+   */
+  const handleTouchStart = useCallback((event: React.TouchEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const touch = event.touches[0];
+    if (touch) {
+      startDrag(touch.clientY);
+
+      // Add global touch event listeners
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleTouchEnd);
+    }
+  }, [startDrag, handleTouchMove, handleTouchEnd]);
 
 
   return (
@@ -284,6 +344,7 @@ export default function ZoomControl3D({
       <button
         ref={buttonRef}
         onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
         className={`
           w-12 h-12 rounded-full
           flex items-center justify-center
@@ -296,6 +357,7 @@ export default function ZoomControl3D({
           hover:scale-110
           active:scale-95
           cursor-grab active:cursor-grabbing
+          touch-none select-none
           group
           ${isDragging ? 'ring-2 ring-purple-500 dark:ring-purple-400' : ''}
         `}
