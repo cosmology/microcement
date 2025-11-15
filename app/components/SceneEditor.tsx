@@ -1000,11 +1000,9 @@ export default function SceneEditor({
         if (!cancelled) {
           // Phase 4: Reset calculator when new model metadata is loaded
           resetCalculator();
-<<<<<<< HEAD
           // Reset processed flag so new metadata can have surface areas calculated
           surfaceAreasProcessedRef.current = false;
-=======
->>>>>>> origin/main
+
           setRoomPlanMetadata(data);
           console.log('✅ [SceneEditor] setRoomPlanMetadata() called - metadata stored in Zustand, calculator reset');
         } else {
@@ -1152,15 +1150,12 @@ export default function SceneEditor({
     // createRoomMeasurements mutates the metadata object with calculated surface areas
     // We need to update the store to ensure reactivity by creating a new object reference
     // Note: roomPlanMetadata is mutated by createRoomMeasurements, so we read from it directly
-<<<<<<< HEAD
+
     // IMPORTANT: Only update if surface areas haven't been processed yet to prevent infinite loop
     if (roomPlanMetadata && !surfaceAreasProcessedRef.current) {
       // Mark as processed BEFORE updating to prevent loop
       surfaceAreasProcessedRef.current = true;
       
-=======
-    if (roomPlanMetadata) {
->>>>>>> origin/main
       // Create new metadata object with surface areas from the mutated metadata
       // Since createRoomMeasurements mutates roomPlanMetadata in place, we can read the values directly
       const updatedMetadata = {
@@ -1177,11 +1172,10 @@ export default function SceneEditor({
         totalSurfaceArea: updatedMetadata.totalSurfaceArea || 'not calculated',
         wallsWithSurfaceArea: updatedMetadata.walls?.filter((w: any) => w.surfaceArea !== undefined).length || 0,
       });
-<<<<<<< HEAD
+
     } else if (roomPlanMetadata && surfaceAreasProcessedRef.current) {
       console.log('📐 [SceneEditor] Surface areas already processed, skipping update to prevent infinite loop');
-=======
->>>>>>> origin/main
+
     }
     
     console.log('📐 [SceneEditor] Measurement group created (Phase 2 - precise alignment):', {
@@ -1220,11 +1214,8 @@ export default function SceneEditor({
       }
       measurementGroupRef.current = null;
     };
-<<<<<<< HEAD
   }, [showMeasurements, roomPlanMetadata, modelPath, modelTransform, scaleFactor, roomPlanSystem]);
-=======
-  }, [showMeasurements, roomPlanMetadata, modelPath, modelTransform, scaleFactor, modelRef]);
->>>>>>> origin/main
+
 
   // Phase 3: Model/Measurement Toggle
   // When measurements are ON: hide model and show measurements
