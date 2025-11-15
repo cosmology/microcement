@@ -398,7 +398,7 @@ export default function RotationControl({
   return (
     <div 
       ref={containerRef}
-      className={`fixed top-[160px] right-0 mr-2 z-[50]`}
+      className={`fixed top-28 right-1 mr-2 z-[50]`}
       data-rotation-control-new
       style={{ pointerEvents: 'auto' }}
     >

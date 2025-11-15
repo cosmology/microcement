@@ -336,7 +336,7 @@ export default function ZoomControl3D({
   return (
     <div 
       ref={containerRef}
-      className={`fixed top-[95px] right-0 mr-2 z-[50] ${className}`}
+      className={`fixed top-14 right-1 mr-2 z-[50] ${className}`}
       data-zoom-control
       style={{ pointerEvents: 'auto' }}
     >
